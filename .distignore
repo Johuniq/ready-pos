@@ -1,0 +1,55 @@
+# Development and build files
+.git
+.github
+.gitignore
+.editorconfig
+.prettierignore
+.prettierrc.json
+.phpcs.xml.dist
+.kiro
+.puku
+.vscode
+
+# Node and package management
+node_modules
+package-lock.json
+package.json
+npm-debug.log
+yarn.lock
+yarn-error.log
+
+# Source files (pre-compiled)
+src
+
+# Build configuration
+vite.*.config.js
+postcss.config.cjs
+tailwind.config.js
+tsconfig.json
+components.json
+gruntfile.cjs
+next.config.js
+
+# Documentation and tests
+tests
+documentation
+CLAUDE.md
+README.md
+phpunit.xml
+.phpunit.result.cache
+
+# Release artifacts
+release
+
+# Development files
+plugin-config.json
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Composer dev dependencies (keep vendor for autoload)
+# Note: WordPress.org will run composer install --no-dev

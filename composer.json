@@ -1,0 +1,19 @@
+{
+  "name": "readypos/readypos",
+  "description": "Wordpress Plugin boilerplate",
+  "autoload": {
+    "psr-4": {
+      "Readypos\\": "includes/",
+      "Readypos\\Database\\": "database/",
+      "Readypos\\Libs\\": "libs/"
+    },
+    "files": [
+      "libs/assets.php",
+      "libs/db.php",
+      "includes/functions.php"
+    ]
+  },
+  "require": {
+    "prappo/wp-eloquent": "^3.0"
+  }
+}

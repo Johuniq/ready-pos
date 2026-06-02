@@ -1,0 +1,174 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 1rem;
+    --control-radius: 0.5rem;
+
+    /* Chart theme */
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+
+    /* Chart theme */
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  .myplugin-app input[type="text"],
+  .myplugin-app input[type="email"],
+  .myplugin-app input[type="tel"],
+  .myplugin-app input[type="url"],
+  .myplugin-app input[type="password"],
+  .myplugin-app input[type="search"],
+  .myplugin-app input[type="number"],
+  .myplugin-app input[type="date"],
+  .myplugin-app input[type="datetime-local"],
+  .myplugin-app input[type="time"],
+  .myplugin-app input[type="month"],
+  .myplugin-app input[type="week"],
+  .myplugin-app textarea,
+  .myplugin-frontend input[type="text"],
+  .myplugin-frontend input[type="email"],
+  .myplugin-frontend input[type="tel"],
+  .myplugin-frontend input[type="url"],
+  .myplugin-frontend input[type="password"],
+  .myplugin-frontend input[type="search"],
+  .myplugin-frontend input[type="number"],
+  .myplugin-frontend input[type="date"],
+  .myplugin-frontend input[type="datetime-local"],
+  .myplugin-frontend input[type="time"],
+  .myplugin-frontend input[type="month"],
+  .myplugin-frontend input[type="week"],
+  .myplugin-frontend textarea,
+  #myplugin-frontend input[type="text"],
+  #myplugin-frontend input[type="email"],
+  #myplugin-frontend input[type="tel"],
+  #myplugin-frontend input[type="url"],
+  #myplugin-frontend input[type="password"],
+  #myplugin-frontend input[type="search"],
+  #myplugin-frontend input[type="number"],
+  #myplugin-frontend input[type="date"],
+  #myplugin-frontend input[type="datetime-local"],
+  #myplugin-frontend input[type="time"],
+  #myplugin-frontend input[type="month"],
+  #myplugin-frontend input[type="week"],
+  #myplugin-frontend textarea {
+    border-radius: var(--control-radius) !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+  }
+
+  .myplugin-app select,
+  .myplugin-app [role="combobox"],
+  .myplugin-frontend select,
+  .myplugin-frontend [role="combobox"],
+  #myplugin-frontend select,
+  #myplugin-frontend [role="combobox"] {
+    border-radius: var(--control-radius) !important;
+  }
+}
+
+/* Override WordPress admin styles for full-width frontend */
+#wpcontent {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+}
+
+#wpbody-content {
+  padding-bottom: 0 !important;
+}
+
+body.wp-admin {
+  overflow-x: hidden;
+}
+
+.myplugin-app,
+.myplugin-frontend,
+#myplugin-frontend {
+  position: relative !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+}
+
+/* Ensure content takes full available width */
+.wrap,
+#wpbody {
+  max-width: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* Fix click issues - ensure app is clickable and above any overlays */
+#wpadminbar {
+  z-index: 9999 !important;
+}
+
+.myplugin-app,
+.myplugin-frontend,
+#myplugin-frontend {
+  z-index: 1 !important;
+  pointer-events: auto !important;
+}

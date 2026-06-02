@@ -1,0 +1,25 @@
+{
+  "name": "Ready POS",
+  "short_name": "ReadyPOS",
+  "description": "Professional WooCommerce Point of Sale Terminal",
+  "start_url": "/wp-admin/admin.php?page=ready-pos#/terminal",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/wp-content/plugins/ready-pos/assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/wp-content/plugins/ready-pos/assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

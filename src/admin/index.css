@@ -1,0 +1,556 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 99%;
+    --foreground: 224 71.4% 4.1%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71.4% 4.1%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71.4% 4.1%;
+    --primary: 220.9 84.2% 53.3%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
+    --destructive: 0 72.2% 50.6%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 220.9 84.2% 53.3%;
+    --radius: 0.5rem;
+    --control-radius: 0.5rem;
+
+    /* Extended palette */
+    --success: 152 69% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Chart theme */
+    --chart-1: 220 70% 55%;
+    --chart-2: 152 60% 45%;
+    --chart-3: 38 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+
+  .dark {
+    --background: 224 71.4% 4.1%;
+    --foreground: 210 20% 98%;
+    --card: 224 44% 7.5%;
+    --card-foreground: 210 20% 98%;
+    --popover: 224 44% 7.5%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 215 27.9% 13.8%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 215 27.9% 13.8%;
+    --muted-foreground: 217.9 10.6% 54.9%;
+    --accent: 215 27.9% 13.8%;
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 224.3 76.3% 48%;
+
+    /* Extended palette */
+    --success: 152 69% 31%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 40%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Chart theme */
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family:
+      "Inter",
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /*
+   * Override WordPress admin and browser default styles for inputs of all
+   * types (email, tel, number, search, etc.) so they pick up our shadcn
+   * radius and border consistently.
+   *
+   * WP wp-admin/css/forms.css applies "border-radius: 4px" to
+   * input[type=email], input[type=tel], etc. We need higher specificity
+   * to win against it.
+   */
+  .readypos-app input[type="text"],
+  .readypos-app input[type="email"],
+  .readypos-app input[type="tel"],
+  .readypos-app input[type="url"],
+  .readypos-app input[type="password"],
+  .readypos-app input[type="search"],
+  .readypos-app input[type="number"],
+  .readypos-app input[type="date"],
+  .readypos-app input[type="datetime-local"],
+  .readypos-app input[type="time"],
+  .readypos-app input[type="month"],
+  .readypos-app input[type="week"],
+  .readypos-app textarea,
+  #myplugin input[type="text"],
+  #myplugin input[type="email"],
+  #myplugin input[type="tel"],
+  #myplugin input[type="url"],
+  #myplugin input[type="password"],
+  #myplugin input[type="search"],
+  #myplugin input[type="number"],
+  #myplugin input[type="date"],
+  #myplugin input[type="datetime-local"],
+  #myplugin input[type="time"],
+  #myplugin input[type="month"],
+  #myplugin input[type="week"],
+  #myplugin textarea {
+    border-radius: var(--control-radius) !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    box-shadow: none;
+  }
+
+  .readypos-app select,
+  .readypos-app [role="combobox"],
+  #myplugin select,
+  #myplugin [role="combobox"] {
+    border-radius: var(--control-radius) !important;
+  }
+
+  /* Safari / iOS round-rect override on tel & email */
+  .readypos-app input[type="search"],
+  #myplugin input[type="search"] {
+    -webkit-appearance: textfield !important;
+  }
+}
+
+/* ==============================
+   WordPress Admin Overrides
+   ============================== */
+
+#wpcontent {
+  padding-left: 0px;
+}
+
+/* Fix frontend page content width and click issues */
+#wpbody-content {
+  padding-bottom: 0 !important;
+}
+
+/* Remove all WordPress admin bottom spacing */
+.toplevel_page_ready-pos #wpbody-content,
+.toplevel_page_ready-pos #wpbody,
+.toplevel_page_ready-pos #wpcontent {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Hide WP default footer on our plugin pages */
+.toplevel_page_ready-pos #wpfooter {
+  display: none !important;
+}
+
+body.wp-admin {
+  overflow-x: hidden;
+}
+
+.myplugin-app,
+.myplugin-frontend,
+#myplugin-frontend {
+  position: relative !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure WordPress admin bar doesn't block clicks */
+#wpadminbar {
+  z-index: 99999 !important;
+}
+
+/* ==============================
+   Premium Component Enhancements
+   ============================== */
+
+/* Card glassmorphism + hover lift */
+@layer components {
+  .card-elevated {
+    @apply bg-card border border-border/60 shadow-sm;
+    backdrop-filter: blur(8px);
+    transition:
+      box-shadow 0.25s ease,
+      transform 0.2s ease,
+      border-color 0.25s ease;
+  }
+  .card-elevated:hover {
+    @apply shadow-lg border-border;
+    transform: translateY(-1px);
+  }
+}
+
+/* Premium page container - full width with comfortable padding */
+@layer components {
+  .page-container {
+    @apply w-full space-y-6 bg-muted/20 px-6 py-6 md:px-8 lg:px-10 select-none;
+  }
+}
+
+/* Page header typography */
+@layer components {
+  .page-title {
+    @apply text-2xl md:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2.5;
+  }
+  .page-subtitle {
+    @apply text-sm text-muted-foreground mt-0.5 leading-relaxed;
+  }
+  .admin-page-actions > .btn-premium,
+  .admin-page-actions > button,
+  .admin-page-toolbar button {
+    @apply h-9 text-xs font-semibold;
+  }
+  .admin-page-toolbar input {
+    @apply h-9 text-xs;
+  }
+  .admin-page-toolbar [role="combobox"] {
+    @apply h-9 text-xs;
+  }
+  .admin-data-panel,
+  .page-container > .rounded-xl,
+  .page-container > .rounded-2xl,
+  .page-container .card-elevated,
+  .page-container .stat-card {
+    border-radius: 0.5rem !important;
+  }
+}
+
+/* Stat widget card styling */
+@layer components {
+  .stat-card {
+    @apply rounded-xl border bg-card text-card-foreground shadow-sm overflow-hidden relative;
+    transition:
+      box-shadow 0.25s ease,
+      transform 0.2s ease;
+  }
+  .stat-card:hover {
+    @apply shadow-md;
+    transform: translateY(-1px);
+  }
+  .stat-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      hsl(var(--primary)),
+      hsl(var(--primary) / 0.3)
+    );
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .stat-card:hover::before {
+    opacity: 1;
+  }
+}
+
+/* Table refinements */
+@layer components {
+  .premium-table th {
+    @apply text-[10px] font-bold uppercase tracking-wider text-muted-foreground;
+    letter-spacing: 0.08em;
+  }
+  .premium-table td {
+    @apply text-[13px] leading-snug;
+  }
+  .premium-table tr {
+    transition: background-color 0.15s ease;
+  }
+}
+
+/* Badge pill enhancements */
+@layer components {
+  .badge-status {
+    @apply text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full tracking-wide;
+    letter-spacing: 0.04em;
+  }
+  .badge-success {
+    @apply bg-emerald-500/10 text-emerald-600 border border-emerald-500/20;
+  }
+  .badge-danger {
+    @apply bg-rose-500/10 text-rose-500 border border-rose-500/20;
+  }
+  .badge-info {
+    @apply bg-sky-500/10 text-sky-500 border border-sky-500/20;
+  }
+  .badge-warning {
+    @apply bg-amber-500/10 text-amber-600 border border-amber-500/20;
+  }
+}
+
+/* Button hover micro-interactions */
+@layer components {
+  .btn-premium {
+    @apply font-semibold tracking-tight;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .btn-premium:hover {
+    transform: translateY(-0.5px);
+    box-shadow: 0 4px 12px -2px hsl(var(--primary) / 0.25);
+  }
+  .btn-premium:active {
+    transform: translateY(0);
+  }
+}
+
+/* Separator with fade */
+@layer components {
+  .separator-fade {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      hsl(var(--border)),
+      transparent
+    );
+    height: 1px;
+    border: none;
+  }
+}
+
+/* Smooth scroll areas */
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 9999px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+}
+
+/* Focus ring enhancements */
+@layer base {
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: var(--radius);
+  }
+}
+
+/* Pulse glow for low-stock badges */
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 8px 2px rgba(239, 68, 68, 0.15);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* PIN pad shake animation */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-4px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* Gradient text utility */
+.text-gradient-primary {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary)),
+    hsl(var(--primary) / 0.7)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Input field focus enhancement */
+@layer components {
+  .input-premium {
+    @apply border-border/60 bg-background;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .input-premium:focus {
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.08);
+  }
+}
+
+/* ==============================
+   Z-Index Overrides for Portals
+   ============================== */
+
+/* Ensure all Radix portals (Modals, Select Dropdowns, Popovers), Sonner toasts, and standard fixed overlay elements render above the fullscreen POS terminal (which has z-index 99999) */
+[data-radix-portal] {
+  z-index: 100000 !important;
+}
+[data-sonner-toaster] {
+  z-index: 100001 !important;
+}
+.fixed.z-50 {
+  z-index: 100000 !important;
+}
+
+/* ============================================================
+   Global High-Specificity Dark Mode Overrides
+   ============================================================ */
+.dark,
+.dark body,
+.dark .readypos-app,
+.dark #myplugin {
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Global input fields & textareas overrides in dark mode */
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="tel"],
+.dark input[type="url"],
+.dark input[type="password"],
+.dark input[type="search"],
+.dark input[type="number"],
+.dark input[type="date"],
+.dark input[type="datetime-local"],
+.dark input[type="time"],
+.dark input[type="month"],
+.dark input[type="week"],
+.dark textarea,
+.dark select {
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border) / 0.8) !important;
+}
+
+.dark input[type="text"]:focus,
+.dark input[type="email"]:focus,
+.dark input[type="tel"]:focus,
+.dark input[type="url"]:focus,
+.dark input[type="password"]:focus,
+.dark input[type="search"]:focus,
+.dark input[type="number"]:focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: hsl(var(--primary)) !important;
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.15) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: hsl(var(--muted-foreground) / 0.7) !important;
+}
+
+/* Style WP admin elements inside our page container in dark mode */
+.dark .readypos-app .bg-muted\/20,
+.dark #myplugin .bg-muted\/20 {
+  background-color: hsl(var(--background)) !important;
+}
+
+.dark .readypos-app .bg-muted\/10,
+.dark #myplugin .bg-muted\/10 {
+  background-color: hsl(var(--muted) / 0.3) !important;
+}
+
+.dark .readypos-app .bg-muted\/30,
+.dark #myplugin .bg-muted\/30 {
+  background-color: hsl(var(--muted) / 0.6) !important;
+}
+
+.dark .readypos-app .bg-muted\/50,
+.dark #myplugin .bg-muted\/50 {
+  background-color: hsl(var(--muted)) !important;
+}
+
+/* Enforce perfect card hover transitions and borders in dark mode */
+.dark .card-elevated {
+  background-color: hsl(var(--card)) !important;
+  border-color: hsl(var(--border) / 0.6) !important;
+}
+
+.dark .card-elevated:hover {
+  border-color: hsl(var(--border)) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Enforce select dropdown and popover borders in dark mode */
+.dark [role="listbox"],
+.dark [role="dialog"],
+.dark [data-radix-popper-content-wrapper] > * {
+  background-color: hsl(var(--popover)) !important;
+  color: hsl(var(--popover-foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Enforce dark background on dialog overlay to make modal distinct */
+.dark [data-state="open"].fixed.inset-0 {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(4px) !important;
+}

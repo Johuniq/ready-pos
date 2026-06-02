@@ -1,0 +1,15 @@
+{
+  "plugin_name": "Ready POS",
+  "plugin_description": "A professional readymade WooCommerce Point of Sale plugin.",
+  "plugin_version": "1.0.0",
+  "plugin_file_name": "ready-pos.php",
+  "author_name": "Johuniq",
+  "author_uri": "https://johuniq.tech",
+  "text_domain": "ready-pos",
+  "domain_path": "/languages",
+  "main_class_name": "Readypos",
+  "main_function_name": "ready_pos_init",
+  "namespace": "Readypos",
+  "plugin_prefix": "readypos",
+  "constant_prefix": "READYPOS"
+}
