@@ -11,6 +11,7 @@ lerna-debug.log*
 node_modules
 dist
 release
+release/
 dist-ssr
 *.local
 package-lock.json
@@ -30,3 +31,17 @@ composer.lock
 *.sw?
 
 /vendor/
+
+# Credentials and Secrets - NEVER COMMIT THESE
+.env
+.env.*
+!.env.example
+wp-config-local.php
+wp-config.php
+
+# Backup files that might contain sensitive data
+*.bak
+*.backup
+*.sql
+*.sql.gz
+*.dump

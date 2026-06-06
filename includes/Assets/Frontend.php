@@ -107,6 +107,8 @@ class Frontend {
 			'isAdmin'   => is_admin(),
 			'apiUrl'    => rest_url(),
 			'userInfo'  => $this->get_user_data(),
+			'pluginUrl' => plugins_url( '', READYPOS_PLUGIN_FILE ),
+			'assetsUrl' => plugins_url( 'assets', READYPOS_PLUGIN_FILE ),
 		);
 	}
 
