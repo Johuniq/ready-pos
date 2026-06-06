@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { Plus, Search, Check, X, Loader2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { useCart } from "@/admin/hooks/useCart";
-import { api } from "@/lib/api";
-import { toast } from "sonner";
 import CustomerFormModal from "@/admin/pages/customers/components/CustomerFormModal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { api } from "@/lib/api";
+import { Check, Loader2, Plus, Search, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export default function CustomerSelect() {
   const { customer, setCustomer } = useCart();
@@ -90,6 +90,7 @@ export default function CustomerSelect() {
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
             <Input
+              id="customer-search-input"
               placeholder="Add or search customer..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}

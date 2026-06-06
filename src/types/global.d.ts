@@ -31,6 +31,10 @@ interface ReadyPosAdminData {
   onboardingComplete: boolean;
   license: LicenseData;
   upgradeUrl: string;
+  pluginUrl: string;
+  assetsUrl: string;
+  version?: string;
+  logoutUrl?: string;
 }
 
 declare global {

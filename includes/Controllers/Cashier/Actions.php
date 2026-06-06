@@ -254,7 +254,7 @@ class Actions {
 		// Generate username from name.
 		$username = sanitize_user( strtolower( str_replace( ' ', '_', $name ) ) );
 		if ( username_exists( $username ) ) {
-			$username .= rand( 10, 99 );
+			$username .= wp_rand( 10, 99 );
 		}
 
 		// Create the WP user.

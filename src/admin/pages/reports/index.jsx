@@ -56,6 +56,10 @@ import {
   Users,
   DollarSign,
   Crown,
+  Store,
+  MapPin,
+  Target,
+  BarChart2,
 } from "lucide-react";
 import { useLicense } from "@/admin/hooks/useLicense";
 import { ProBadge } from "@/admin/components/ProGate";
@@ -63,6 +67,8 @@ import { ReportsSkeleton } from "@/components/loading/PageSkeleton";
 import { ErrorState, NetworkErrorState } from "@/components/error/ErrorState";
 import { handleError, isErrorType, ErrorType } from "@/lib/errorHandler";
 import { PageHeader } from "@/admin/components/PageLayout";
+import { useTableExport } from "@/hooks/useTableExport";
+import { ExportButton } from "@/components/export/ExportButton";
 
 const COLORS = [
   "#0ea5e9",
@@ -86,6 +92,7 @@ export default function Reports() {
   const [products, setProducts] = useState([]);
   const [cashiers, setCashiers] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [outletAnalytics, setOutletAnalytics] = useState(null);
   const [growth, setGrowth] = useState({});
   const [previousSummary, setPreviousSummary] = useState(null);
 
@@ -102,12 +109,14 @@ export default function Reports() {
         isPro ? api.get(`/reports/product-performance?days=${days}`) : Promise.reject(new Error("PRO_LOCKED")),
         isPro ? api.get(`/reports/cashier-performance?days=${days}`) : Promise.reject(new Error("PRO_LOCKED")),
         isPro ? api.get(`/reports/payment-methods?days=${days}`) : Promise.reject(new Error("PRO_LOCKED")),
+        isPro ? api.get(`/reports/outlet-analytics?days=${days}`) : Promise.reject(new Error("PRO_LOCKED")),
       ]);
 
       const salesData = results[0].status === "fulfilled" ? results[0].value : null;
       const productsData = results[1].status === "fulfilled" ? results[1].value : [];
       const cashiersData = results[2].status === "fulfilled" ? results[2].value : [];
       const paymentsData = results[3].status === "fulfilled" ? results[3].value : [];
+      const outletsData = results[4].status === "fulfilled" ? results[4].value : null;
 
       setSalesSummary(salesData?.summary || null);
       setPreviousSummary(salesData?.previous || null);
@@ -116,6 +125,7 @@ export default function Reports() {
       setProducts(productsData || []);
       setCashiers(cashiersData || []);
       setPayments(paymentsData || []);
+      setOutletAnalytics(outletsData || null);
 
       const realErrors = results.filter((r) => r.status === "rejected" && r.reason?.message !== "PRO_LOCKED");
       if (realErrors.length > 0) {
@@ -202,20 +212,20 @@ export default function Reports() {
     },
   ];
 
-  // Client-side CSV Exporter
-  const handleExportCSV = () => {
+  // Export functionality using new components
+  const getExportData = () => {
     let headers = [];
     let rows = [];
-    let filename = `pos_report_${activeTab}_${days}d_${new Date()
-      .toISOString()
-      .slice(0, 10)}.csv`;
+    let titleSuffix = "";
 
     if (activeTab === "sales") {
       headers = ["Date", "Gross Sales ($)"];
       rows = salesChart.map((item) => [item.date, item.sales]);
+      titleSuffix = "Sales Ledger";
     } else if (activeTab === "products") {
       headers = ["Product Name", "Units Sold", "Total Revenue ($)"];
       rows = products.map((item) => [item.name, item.quantity, item.total]);
+      titleSuffix = "Product Performance";
     } else if (activeTab === "cashiers") {
       headers = [
         "Cashier Name",
@@ -229,28 +239,34 @@ export default function Reports() {
         item.sales,
         item.orders > 0 ? (item.sales / item.orders).toFixed(2) : 0,
       ]);
+      titleSuffix = "Cashier Performance";
     } else if (activeTab === "payments") {
       headers = ["Payment Method", "Transactions Count", "Total Revenue ($)"];
       rows = payments.map((item) => [item.method, item.count, item.sales]);
+      titleSuffix = "Payment Methods";
+    } else if (activeTab === "outlets") {
+      headers = ["Outlet Name", "Location", "Orders", "Sales ($)", "Market Share (%)", "Profit ($)", "Profit Margin (%)"];
+      rows = outletAnalytics?.outlets?.map((item) => [
+        item.name,
+        `${item.city}, ${item.state}`,
+        item.orders,
+        item.sales,
+        item.market_share,
+        item.estimated_profit,
+        item.profit_margin
+      ]) || [];
+      titleSuffix = "Outlet Analytics";
     }
 
-    const csvContent =
-      "data:text/csv;charset=utf-8,\uFEFF" +
-      [
-        headers.join(","),
-        ...rows.map((e) =>
-          e.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(","),
-        ),
-      ].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success(`Exported ${activeTab} report to CSV successfully!`);
+    return { headers, rows, titleSuffix };
   };
+
+  const { handleExportCSV, handleExportExcel, handleExportPDF } = useTableExport({
+    getHeaders: () => getExportData().headers,
+    getRows: () => getExportData().rows,
+    filename: `ready_pos_report_${activeTab}_${days}d`,
+    title: `${getExportData().titleSuffix} (${days} days)`,
+  });
 
   // Client-side print styling trigger
   const handlePrintReport = () => {
@@ -399,7 +415,7 @@ export default function Reports() {
         onValueChange={setActiveTab}
         className="space-y-6 mt-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 tabs-list-container">
-          <TabsList className="grid grid-cols-4 max-w-lg bg-muted/10 border p-1 rounded-xl shrink-0">
+          <TabsList className="grid grid-cols-5 max-w-2xl bg-muted/10 border p-1 rounded-xl shrink-0">
             <TabsTrigger
               value="sales"
               className="text-xs font-semibold rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-xs">
@@ -447,6 +463,20 @@ export default function Reports() {
               Payments
               {!license.isPro && <ProBadge className="ml-1.5" />}
             </TabsTrigger>
+
+            <TabsTrigger
+              value="outlets"
+              disabled={!license.isPro}
+              onClick={(e) => {
+                if (!license.isPro) {
+                  e.preventDefault();
+                  license.requireFeature("outlet_reports");
+                }
+              }}
+              className="text-xs font-semibold rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-xs disabled:opacity-60 relative">
+              Outlets
+              {!license.isPro && <ProBadge className="ml-1.5" />}
+            </TabsTrigger>
           </TabsList>
 
           {/* Quick export tools */}
@@ -459,14 +489,12 @@ export default function Reports() {
               <Printer className="w-3.5 h-3.5 text-muted-foreground" />
               <span>Print Report</span>
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportCSV}
-              className="h-9 text-xs font-bold gap-1.5 btn-premium bg-background hover:bg-muted/50 text-emerald-600 hover:text-emerald-700">
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Export CSV</span>
-            </Button>
+            <ExportButton
+              onExportCSV={handleExportCSV}
+              onExportExcel={handleExportExcel}
+              onExportPDF={handleExportPDF}
+              disabled={loading}
+            />
           </div>
         </div>
 
@@ -633,7 +661,6 @@ export default function Reports() {
                     </TableRow>
                   ) : (
                     salesChart.map((item, idx) => {
-                      // Mock/estimate derived tax and discounts per date item for UI completeness
                       const estTax = item.sales * 0.08;
                       const estDisc = item.sales * 0.03;
                       return (
@@ -1088,6 +1115,391 @@ export default function Reports() {
               </CardContent>
             </Card>
           </TabsContent>
+
+        {/* Outlet Analytics Tab Content */}
+        <TabsContent value="outlets" className="space-y-6">
+          {/* Summary Stats Cards */}
+          {outletAnalytics && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Card className="border border-border/60 shadow-xs">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                        Total Outlets
+                      </p>
+                      <p className="text-2xl font-black text-foreground">
+                        {outletAnalytics.outlets_count || 0}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-sky-500/10 text-sky-500 border border-sky-500/20">
+                      <Store className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-2">
+                    Active store locations
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-border/60 shadow-xs">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                        Total Sales
+                      </p>
+                      <p className="text-2xl font-black text-emerald-600">
+                        {formatPrice(outletAnalytics.total_sales || 0)}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                      <DollarSign className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-2">
+                    Combined revenue across all outlets
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-border/60 shadow-xs">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                        Avg Per Outlet
+                      </p>
+                      <p className="text-2xl font-black text-foreground">
+                        {formatPrice(outletAnalytics.avg_sales_per_outlet || 0)}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                      <BarChart2 className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-2">
+                    Mean sales per location
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-border/60 shadow-xs">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                        Best Performer
+                      </p>
+                      <p className="text-xl font-black text-amber-600 truncate">
+                        {outletAnalytics.best_performing_outlet?.name || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                      <Crown className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground mt-2">
+                    Highest revenue location
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Performance Comparison Chart */}
+          <Card className="border border-border/60 shadow-xs print-section relative overflow-hidden">
+            {!license.isPro && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-md p-6 text-center space-y-3">
+                <div className="w-14 h-14 bg-gradient-to-br from-amber-500/20 to-amber-600/20 text-amber-500 rounded-full flex items-center justify-center shadow-lg border-2 border-amber-500/30">
+                  <Crown className="w-7 h-7 animate-pulse" />
+                </div>
+                <h4 className="text-base font-bold text-foreground">Outlet Performance Analytics</h4>
+                <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
+                  Compare your outlet locations by sales, profitability, market share, and customer traffic patterns.
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => license.openUpgrade("outlet_reports")}
+                  className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs shadow-lg transition-all hover:scale-105 border-0">
+                  <Crown className="w-3.5 h-3.5 mr-1.5" />
+                  Upgrade to Pro
+                </Button>
+              </div>
+            )}
+            <CardHeader>
+              <CardTitle className="text-sm font-bold text-foreground">
+                Outlet Sales Comparison
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">
+                Comparative performance across all outlet locations
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-[360px] pt-4">
+              {!outletAnalytics?.chart_data || outletAnalytics.chart_data.length === 0 ? (
+                <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+                  No outlet performance data available
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={outletAnalytics.chart_data}
+                    margin={{ top: 10, right: 10, left: -10, bottom: 5 }}>
+                    <defs>
+                      <linearGradient id="colorOutletSales" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.0} />
+                      </linearGradient>
+                      <linearGradient id="colorOutletProfit" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.15} />
+                    <XAxis
+                      dataKey="name"
+                      tickLine={false}
+                      axisLine={false}
+                      style={{ fontSize: 9, fontWeight: "bold" }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(val) => `$${val}`}
+                      style={{ fontSize: 9, fontWeight: "bold" }}
+                    />
+                    <Tooltip
+                      formatter={(value, name) => [
+                        formatPrice(value),
+                        name === 'sales' ? 'Sales' : name === 'profit' ? 'Estimated Profit' : 'Orders'
+                      ]}
+                      contentStyle={{
+                        fontSize: 11,
+                        borderRadius: 12,
+                        border: "1px solid rgba(0,0,0,0.1)",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 10, fontWeight: "bold" }} />
+                    <Area
+                      type="monotone"
+                      dataKey="sales"
+                      stroke="#0ea5e9"
+                      strokeWidth={2.5}
+                      fillOpacity={1}
+                      fill="url(#colorOutletSales)"
+                      name="Sales"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="profit"
+                      stroke="#10b981"
+                      strokeWidth={2.5}
+                      fillOpacity={1}
+                      fill="url(#colorOutletProfit)"
+                      name="Profit"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Detailed Outlet Performance Table */}
+          <Card className="border border-border/60 shadow-xs print-section relative overflow-hidden">
+            {!license.isPro && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-md p-6 text-center space-y-3">
+                <div className="w-14 h-14 bg-gradient-to-br from-amber-500/20 to-amber-600/20 text-amber-500 rounded-full flex items-center justify-center shadow-lg border-2 border-amber-500/30">
+                  <Crown className="w-7 h-7 animate-pulse" />
+                </div>
+                <h4 className="text-base font-bold text-foreground">Location Comparison Matrix</h4>
+                <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
+                  View detailed metrics for each outlet including sales, orders, profitability, and market share rankings.
+                </p>
+                <Button
+                  size="sm"
+                  onClick={() => license.openUpgrade("outlet_reports")}
+                  className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs shadow-lg transition-all hover:scale-105 border-0">
+                  <Crown className="w-3.5 h-3.5 mr-1.5" />
+                  Upgrade to Pro
+                </Button>
+              </div>
+            )}
+            <CardHeader>
+              <CardTitle className="text-sm font-bold text-foreground">
+                Location Performance Matrix
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">
+                Detailed metrics and profitability analysis by outlet
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader className="bg-muted/30">
+                  <TableRow>
+                    <TableHead className="font-bold text-[10px] uppercase py-3 pl-6">
+                      <div className="flex items-center gap-1">
+                        <Store className="w-3 h-3" />
+                        Outlet Name
+                      </div>
+                    </TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase py-3">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        Location
+                      </div>
+                    </TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase py-3 text-center">
+                      Orders
+                    </TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase py-3 text-right">
+                      Revenue
+                    </TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase py-3 text-right">
+                      <div className="flex items-center gap-1 justify-end">
+                        <Target className="w-3 h-3" />
+                        Market Share
+                      </div>
+                    </TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase py-3 text-right">
+                      Est. Profit
+                    </TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase py-3 text-right">
+                      Margin
+                    </TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase py-3 text-right pr-6">
+                      Avg Order
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!outletAnalytics?.outlets || outletAnalytics.outlets.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={8}
+                        className="text-center py-8 text-xs text-muted-foreground">
+                        No outlet data available
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    outletAnalytics.outlets.map((outlet, idx) => {
+                      const isTopPerformer = idx === 0;
+                      return (
+                        <TableRow
+                          key={outlet.id}
+                          className={`hover:bg-muted/10 transition-all font-medium ${
+                            isTopPerformer ? 'bg-amber-500/5' : ''
+                          }`}>
+                          <TableCell className="text-xs font-bold py-3 pl-6 text-foreground">
+                            <div className="flex items-center gap-2">
+                              {isTopPerformer && (
+                                <Crown className="w-3.5 h-3.5 text-amber-500" />
+                              )}
+                              <span>{outlet.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs py-3 text-muted-foreground">
+                            {outlet.city && outlet.state
+                              ? `${outlet.city}, ${outlet.state}`
+                              : outlet.address || 'N/A'}
+                          </TableCell>
+                          <TableCell className="text-xs text-center py-3 text-foreground font-bold">
+                            {outlet.orders}
+                          </TableCell>
+                          <TableCell className="text-xs text-right py-3 text-emerald-600 font-mono font-black">
+                            {formatPrice(outlet.sales)}
+                          </TableCell>
+                          <TableCell className="text-xs text-right py-3 font-bold">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-600">
+                              {outlet.market_share}%
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs text-right py-3 text-indigo-600 font-mono font-bold">
+                            {formatPrice(outlet.estimated_profit)}
+                          </TableCell>
+                          <TableCell className="text-xs text-right py-3 font-bold">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md ${
+                              outlet.profit_margin >= 50
+                                ? 'bg-emerald-500/10 text-emerald-600'
+                                : outlet.profit_margin >= 40
+                                ? 'bg-amber-500/10 text-amber-600'
+                                : 'bg-rose-500/10 text-rose-600'
+                            }`}>
+                              {outlet.profit_margin}%
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs text-right py-3 pr-6 text-foreground font-mono font-bold">
+                            {formatPrice(outlet.avg_order)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Best Performing Outlet Highlight */}
+          {outletAnalytics?.best_performing_outlet && (
+            <Card className="border-2 border-amber-500/30 shadow-md bg-gradient-to-br from-amber-500/5 to-amber-600/5">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-amber-500/20 text-amber-500 border border-amber-500/30">
+                    <Crown className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-bold text-foreground">
+                      Best Performing Outlet
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">
+                      Top revenue generator for this period
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                      Outlet Name
+                    </p>
+                    <p className="text-lg font-black text-amber-600">
+                      {outletAnalytics.best_performing_outlet.name}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                      Total Sales
+                    </p>
+                    <p className="text-lg font-black text-emerald-600">
+                      {formatPrice(outletAnalytics.best_performing_outlet.sales)}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                      Market Share
+                    </p>
+                    <p className="text-lg font-black text-sky-600">
+                      {outletAnalytics.best_performing_outlet.market_share}%
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">
+                      Profit Margin
+                    </p>
+                    <p className="text-lg font-black text-indigo-600">
+                      {outletAnalytics.best_performing_outlet.profit_margin}%
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
       </Tabs>
     </div>
   );

@@ -52,6 +52,7 @@ class Actions {
 			$is_phone_search = is_numeric( str_replace( array( '+', '-', ' ' ), '', $search ) );
 
 			if ( $is_phone_search ) {
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Billing phone lookup is required for POS customer search.
 				$args['meta_query'] = array(
 					array(
 						'key'     => 'billing_phone',
@@ -69,9 +70,19 @@ class Actions {
 		$users = $query->get_results();
 		$total = (int) $query->get_total();
 
+		// Pre-fetch POSCustomer records to avoid N+1 queries
+		$user_ids = wp_list_pluck( $users, 'ID' );
+		$pos_customers = array();
+		if ( ! empty( $user_ids ) ) {
+			$records = POSCustomer::whereIn( 'wc_customer_id', $user_ids )->get();
+			foreach ( $records as $record ) {
+				$pos_customers[ $record->wc_customer_id ] = $record;
+			}
+		}
+
 		$customers = array();
 		foreach ( $users as $user ) {
-			$customers[] = $this->format_customer( $user );
+			$customers[] = $this->format_customer( $user, $pos_customers );
 		}
 
 		$total_pages = $limit > 0 ? (int) ceil( $total / $limit ) : 1;
@@ -120,6 +131,7 @@ class Actions {
 			if ( is_numeric( str_replace( array( '+', '-', ' ' ), '', $search ) ) ) {
 				unset( $user_query_args['search'] );
 				unset( $user_query_args['search_columns'] );
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Billing phone lookup is required for POS customer search.
 				$user_query_args['meta_query'] = array(
 					array(
 						'key'     => 'billing_phone',
@@ -132,9 +144,19 @@ class Actions {
 			$users = get_users( $user_query_args );
 		}
 
+		// Pre-fetch POSCustomer records to avoid N+1 queries
+		$user_ids = wp_list_pluck( $users, 'ID' );
+		$pos_customers = array();
+		if ( ! empty( $user_ids ) ) {
+			$records = POSCustomer::whereIn( 'wc_customer_id', $user_ids )->get();
+			foreach ( $records as $record ) {
+				$pos_customers[ $record->wc_customer_id ] = $record;
+			}
+		}
+
 		$customers = array();
 		foreach ( $users as $user ) {
-			$customers[] = $this->format_customer( $user );
+			$customers[] = $this->format_customer( $user, $pos_customers );
 		}
 
 		return new \WP_REST_Response( $customers, 200 );
@@ -166,11 +188,11 @@ class Actions {
 		}
 
 		// Generate unique username from name or email
-		$username = ! empty( $email ) ? explode( '@', $email )[0] : strtolower( $first_name . '_' . rand( 100, 999 ) );
+		$username = ! empty( $email ) ? explode( '@', $email )[0] : strtolower( $first_name . '_' . wp_rand( 100, 999 ) );
 		$username = sanitize_user( $username );
 
 		if ( username_exists( $username ) ) {
-			$username = $username . rand( 10, 99 );
+			$username = $username . wp_rand( 10, 99 );
 		}
 
 		if ( ! empty( $email ) && email_exists( $email ) ) {
@@ -491,10 +513,16 @@ class Actions {
 	 * Helper function to format customer data.
 	 *
 	 * @param \WP_User $user WordPress User object.
+	 * @param array    $pos_customers Pre-loaded POS customer records.
 	 * @return array
 	 */
-	private function format_customer( $user ) {
-		$pos_customer = POSCustomer::where( 'wc_customer_id', $user->ID )->first();
+	private function format_customer( $user, $pos_customers = array() ) {
+		$pos_customer = null;
+		if ( isset( $pos_customers[ $user->ID ] ) ) {
+			$pos_customer = $pos_customers[ $user->ID ];
+		} else if ( empty( $pos_customers ) ) {
+			$pos_customer = POSCustomer::where( 'wc_customer_id', $user->ID )->first();
+		}
 
 		return array(
 			'id'             => $user->ID,

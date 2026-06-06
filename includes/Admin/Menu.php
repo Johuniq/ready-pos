@@ -87,6 +87,14 @@ class Menu {
 			),
 			array(
 				'parent_slug' => $this->parent_slug,
+				'page_title'  => __( 'Inventory', 'ready-pos' ),
+				'menu_title'  => __( 'Inventory', 'ready-pos' ),
+				'capability'  => 'manage_pos',
+				'menu_slug'   => $plugin_url . '/#/inventory',
+				'function'    => null,
+			),
+			array(
+				'parent_slug' => $this->parent_slug,
 				'page_title'  => __( 'Reports', 'ready-pos' ),
 				'menu_title'  => __( 'Reports', 'ready-pos' ),
 				'capability'  => 'view_pos_reports',
@@ -155,6 +163,9 @@ class Menu {
 	 * @return void
 	 */
 	public function admin_page() {
+		if ( ! current_user_can( 'use_pos' ) ) {
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'ready-pos' ) );
+		}
 		?>
 		<div id="myplugin" class="readypos-app"></div>
 		<?php

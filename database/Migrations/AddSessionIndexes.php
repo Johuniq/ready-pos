@@ -38,11 +38,10 @@ class AddSessionIndexes implements Migration {
 		$table_name = $wpdb->prefix . self::$table;
 
 		// Check if indexes already exist
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is escaped with esc_sql() before use
 		$indexes = $wpdb->get_results(
 			$wpdb->prepare(
-				'SHOW INDEX FROM %i WHERE Key_name IN (%s, %s)',
-				$table_name,
+				"SHOW INDEX FROM `" . esc_sql( $table_name ) . "` WHERE Key_name IN (%s, %s)",
 				'status',
 				'register_id'
 			),
@@ -63,23 +62,17 @@ class AddSessionIndexes implements Migration {
 
 		// Add status index if it doesn't exist
 		if ( ! $has_status_index ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Required migration for database schema setup, table name escaped with esc_sql()
 			$wpdb->query(
-				$wpdb->prepare(
-					'ALTER TABLE %i ADD INDEX status (status)',
-					$table_name
-				)
+				"ALTER TABLE `" . esc_sql( $table_name ) . "` ADD INDEX status (status)"
 			);
 		}
 
 		// Add register_id index if it doesn't exist
 		if ( ! $has_register_index ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Required migration for database schema setup, table name escaped with esc_sql()
 			$wpdb->query(
-				$wpdb->prepare(
-					'ALTER TABLE %i ADD INDEX register_id (register_id)',
-					$table_name
-				)
+				"ALTER TABLE `" . esc_sql( $table_name ) . "` ADD INDEX register_id (register_id)"
 			);
 		}
 	}
@@ -92,20 +85,14 @@ class AddSessionIndexes implements Migration {
 		$table_name = $wpdb->prefix . self::$table;
 
 		// Drop indexes if they exist
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Required migration rollback for database schema, table name escaped with esc_sql()
 		$wpdb->query(
-			$wpdb->prepare(
-				'ALTER TABLE %i DROP INDEX IF EXISTS status',
-				$table_name
-			)
+			"ALTER TABLE `" . esc_sql( $table_name ) . "` DROP INDEX IF EXISTS status"
 		);
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Required migration rollback for database schema, table name escaped with esc_sql()
 		$wpdb->query(
-			$wpdb->prepare(
-				'ALTER TABLE %i DROP INDEX IF EXISTS register_id',
-				$table_name
-			)
+			"ALTER TABLE `" . esc_sql( $table_name ) . "` DROP INDEX IF EXISTS register_id"
 		);
 	}
 }

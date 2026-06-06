@@ -23,7 +23,6 @@ import {
   Monitor,
   Printer,
   Save,
-  Settings as SettingsIcon,
   Store,
   Tags,
 } from "lucide-react";
@@ -31,8 +30,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import ReceiptBuilder from "./components/ReceiptBuilder";
 import { SettingsSidebar } from "@/components/settings/settings-sidebar";
-import { cn } from "@/lib/utils";
 import { PageHeader } from "@/admin/components/PageLayout";
+import { HardwareTestPanel } from "@/admin/components/HardwareTestPanel";
 
 const SETTINGS_SECTIONS = [
   {
@@ -48,6 +47,12 @@ const SETTINGS_SECTIONS = [
     description: "Checkout behavior and terminal features",
   },
   {
+    id: "customer-display",
+    label: "Customer Display",
+    icon: Monitor,
+    description: "Second screen display and promotional messages",
+  },
+  {
     id: "payments",
     label: "Payments",
     icon: CreditCard,
@@ -58,6 +63,12 @@ const SETTINGS_SECTIONS = [
     label: "Receipts",
     icon: Printer,
     description: "Receipt layout, text, and printing options",
+  },
+  {
+    id: "returns",
+    label: "Returns & Exchanges",
+    icon: Tags,
+    description: "Return policy and exchange settings",
   },
 ];
 
@@ -70,21 +81,43 @@ const DEFAULT_SETTINGS = {
   site_email: "",
   currency_symbol: "$",
   currency_code: "USD",
+  customer_display_enabled: "yes",
+  customer_display_message: "Welcome to our store!",
+  customer_display_idle_timeout: 30,
+  customer_display_promo_1: "Special offers available - Ask our staff!",
+  customer_display_promo_2: "Join our loyalty program and save more",
+  customer_display_promo_3: "Now open every day until 9 PM",
+  customer_display_promo_4: "Shop online and pick up in store",
   receipt_logo: "",
   receipt_header: "",
   receipt_footer: "Thank you for shopping with us!",
   receipt_paper_width: "80mm",
   print_barcode: "yes",
+  // Printer Hardware Settings
+  receipt_printing_method: "auto",
+  printer_connection_type: "serial",
+  printer_auto_reconnect: "yes",
+  printer_network_address: "",
+  star_webprnt_url: "",
   payment_cash: "yes",
   payment_card: "yes",
   pos_cash_gateway: "cod",
   pos_card_gateway: "stripe",
   keyboard_status: "yes",
   cash_drawer_pulse: "none",
-  customer_display_message: "Welcome to our store!",
   max_discount_limit: 100,
   pos_order_prefix: "",
   receipt_blocks: [],
+  // Return/Exchange Settings
+  enable_returns: "yes",
+  enable_exchanges: "yes",
+  enable_store_credit: "yes",
+  return_time_limit_days: 30,
+  require_receipt: "no",
+  restocking_fee_enabled: "no",
+  restocking_fee_type: "percentage",
+  restocking_fee_value: 10,
+  auto_restock_inventory: "yes",
 };
 
 /**
@@ -447,6 +480,123 @@ export default function Settings() {
           </div>
           )}
 
+          {/* Customer Display Section */}
+          {activeSection === "customer-display" && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                    <span>Settings</span>
+                    <ChevronRight className="h-3 w-3" />
+                    <span className="text-foreground font-medium">Customer Display</span>
+                  </div>
+                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <Monitor className="h-5 w-5 text-primary" />
+                    Customer Display Settings
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Configure the second screen display for customers
+                  </p>
+                </div>
+                <div className="grid gap-4 xl:grid-cols-2">
+              <CompactCard icon={Monitor} title="Display Configuration">
+                <div className="space-y-3">
+                  <ToggleRow
+                    title="Enable Customer Display"
+                    description="Show real-time cart updates on a second screen."
+                    checked={settings.customer_display_enabled === "yes"}
+                    onChange={(/** @type {boolean} */ checked) =>
+                      update({ customer_display_enabled: checked ? "yes" : "no" })
+                    }
+                  />
+                  <Field 
+                    label="Welcome Message" 
+                    hint="Displayed when the screen is idle or no cart is active.">
+                    <Input
+                      className="h-9 text-xs"
+                      value={settings.customer_display_message}
+                      onChange={(/** @type {any} */ e) =>
+                        update({ customer_display_message: e.target.value })
+                      }
+                      placeholder="Welcome to our store!"
+                    />
+                  </Field>
+                  <Field 
+                    label="Idle Timeout (seconds)" 
+                    hint="How long to wait before showing promotional messages.">
+                    <Input
+                      type="number"
+                      min="10"
+                      max="120"
+                      className="h-9 text-xs"
+                      value={settings.customer_display_idle_timeout}
+                      onChange={(/** @type {any} */ e) =>
+                        update({
+                          customer_display_idle_timeout: Math.min(
+                            120,
+                            Math.max(10, parseInt(e.target.value) || 30)
+                          ),
+                        })
+                      }
+                    />
+                  </Field>
+                </div>
+              </CompactCard>
+
+              <CompactCard icon={Tags} title="Promotional Messages">
+                <div className="space-y-3">
+                  <Field label="Promotion 1" hint="Rotates when display is idle.">
+                    <Textarea
+                      className="min-h-16 resize-none text-xs"
+                      value={settings.customer_display_promo_1}
+                      onChange={(/** @type {any} */ e) =>
+                        update({ customer_display_promo_1: e.target.value })
+                      }
+                      placeholder="Special offers available!"
+                    />
+                  </Field>
+                  <Field label="Promotion 2" hint="">
+                    <Textarea
+                      className="min-h-16 resize-none text-xs"
+                      value={settings.customer_display_promo_2}
+                      onChange={(/** @type {any} */ e) =>
+                        update({ customer_display_promo_2: e.target.value })
+                      }
+                      placeholder="Join our loyalty program"
+                    />
+                  </Field>
+                </div>
+              </CompactCard>
+
+              <div className="xl:col-span-2">
+                <CompactCard icon={Tags} title="Additional Promotions">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field label="Promotion 3" hint="">
+                      <Textarea
+                        className="min-h-16 resize-none text-xs"
+                        value={settings.customer_display_promo_3}
+                        onChange={(/** @type {any} */ e) =>
+                          update({ customer_display_promo_3: e.target.value })
+                        }
+                        placeholder="Extended store hours"
+                      />
+                    </Field>
+                    <Field label="Promotion 4" hint="">
+                      <Textarea
+                        className="min-h-16 resize-none text-xs"
+                        value={settings.customer_display_promo_4}
+                        onChange={(/** @type {any} */ e) =>
+                          update({ customer_display_promo_4: e.target.value })
+                        }
+                        placeholder="Shop online, pick up in store"
+                      />
+                    </Field>
+                  </div>
+                </CompactCard>
+              </div>
+            </div>
+            </div>
+            )}
+
           {/* Payments Section */}
           {activeSection === "payments" && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -577,10 +727,155 @@ export default function Settings() {
                     Configure receipt layout, text, and printing options
                   </p>
                 </div>
+
+                {/* Printing Hardware Configuration */}
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <CompactCard icon={Printer} title="Printing Method">
+                    <div className="space-y-3">
+                      <Field 
+                        label="Primary Printing Method" 
+                        hint="Choose how receipts are printed. ESC/POS thermal is recommended for retail.">
+                        <Select
+                          value={settings.receipt_printing_method || "browser"}
+                          onValueChange={(value) =>
+                            update({ receipt_printing_method: value })
+                          }>
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="auto">Auto (best available)</SelectItem>
+                            <SelectItem value="browser">Browser Print (HTML/CSS)</SelectItem>
+                            <SelectItem value="escpos-serial">ESC/POS - Web Serial</SelectItem>
+                            <SelectItem value="escpos-usb">ESC/POS - WebUSB</SelectItem>
+                            <SelectItem value="escpos-bluetooth">ESC/POS - WebBluetooth</SelectItem>
+                            <SelectItem value="epson-epos">Epson ePOS</SelectItem>
+                            <SelectItem value="star-webprnt">Star Micronics WebPRNT</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </Field>
+
+                      <div className="rounded-lg bg-blue-500/5 border border-blue-500/20 p-3 space-y-1.5">
+                        <p className="text-[10px] font-bold text-blue-600">
+                          Supported Hardware
+                        </p>
+                        <ul className="text-[10px] text-blue-600/80 space-y-0.5 ml-3">
+                          <li>• Epson TM series (TM-T20, TM-T88)</li>
+                          <li>• Star Micronics (TSP100, TSP650)</li>
+                          <li>• Sunmi thermal printers</li>
+                          <li>• Generic 58mm/80mm ESC/POS printers</li>
+                        </ul>
+                      </div>
+
+                      <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 p-3 space-y-1">
+                        <p className="text-[10px] font-bold text-amber-600">
+                          Browser Requirements
+                        </p>
+                        <p className="text-[10px] text-amber-600/80 leading-snug">
+                          Direct printer APIs require Chrome or Edge. Firefox/Safari will
+                          use standard browser printing unless a vendor SDK is available.
+                        </p>
+                      </div>
+                    </div>
+                  </CompactCard>
+
+                  <CompactCard icon={Printer} title="Printer Configuration">
+                    <div className="space-y-3">
+                      <Field label="Paper Width" hint="Standard thermal printer paper sizes.">
+                        <Select
+                          value={settings.receipt_paper_width || "80mm"}
+                          onValueChange={(value) =>
+                            update({ receipt_paper_width: value })
+                          }>
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="80mm">80mm (3.15 inch) - Standard</SelectItem>
+                            <SelectItem value="58mm">58mm (2.28 inch) - Compact</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </Field>
+
+                      <Field 
+                        label="Connection Type" 
+                        hint="How the printer connects to your POS device.">
+                        <Select
+                          value={settings.printer_connection_type || "serial"}
+                          onValueChange={(value) =>
+                            update({ printer_connection_type: value })
+                          }>
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="serial">USB Serial (Web Serial API)</SelectItem>
+                            <SelectItem value="usb">USB Device (WebUSB)</SelectItem>
+                            <SelectItem value="bluetooth">Bluetooth (WebBluetooth)</SelectItem>
+                            <SelectItem value="network">Network/Ethernet (Epson/Star)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </Field>
+
+                      {(settings.receipt_printing_method === "epson-epos" ||
+                        settings.receipt_printing_method === "star-webprnt" ||
+                        settings.printer_connection_type === "network") && (
+                        <Field
+                          label="Network Printer Address"
+                          hint="IP or host for Epson ePOS / Star network printers.">
+                          <Input
+                            className="h-9 text-xs"
+                            value={settings.printer_network_address || ""}
+                            onChange={(/** @type {any} */ e) =>
+                              update({ printer_network_address: e.target.value })
+                            }
+                            placeholder="192.168.1.50"
+                          />
+                        </Field>
+                      )}
+
+                      {settings.receipt_printing_method === "star-webprnt" && (
+                        <Field
+                          label="Star WebPRNT URL"
+                          hint="Optional full endpoint URL if your Star printer uses a custom path.">
+                          <Input
+                            className="h-9 text-xs"
+                            value={settings.star_webprnt_url || ""}
+                            onChange={(/** @type {any} */ e) =>
+                              update({ star_webprnt_url: e.target.value })
+                            }
+                            placeholder="http://192.168.1.50:8001/StarWebPRNT/SendMessage"
+                          />
+                        </Field>
+                      )}
+
+                      <Field 
+                        label="Auto-reconnect" 
+                        hint="Automatically reconnect to previously paired printer on page load.">
+                        <div className="flex items-center justify-between rounded-lg border bg-muted/5 p-3">
+                          <div className="min-w-0 space-y-0.5">
+                            <p className="text-xs font-bold text-foreground">Enable Auto-reconnect</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              Skip printer selection on reload
+                            </p>
+                          </div>
+                          <Switch 
+                            checked={settings.printer_auto_reconnect === "yes"}
+                            onCheckedChange={(/** @type {boolean} */ checked) =>
+                              update({ printer_auto_reconnect: checked ? "yes" : "no" })
+                            }
+                          />
+                        </div>
+                      </Field>
+                    </div>
+                  </CompactCard>
+                </div>
+
+                {/* Receipt Content Configuration */}
                 <div className="grid gap-4 xl:grid-cols-3">
-              <CompactCard icon={Printer} title="Receipt Defaults">
+              <CompactCard icon={Printer} title="Receipt Content">
                 <div className="space-y-3">
-                  <Field label="Receipt Logo URL" hint="">
+                  <Field label="Receipt Logo URL" hint="Appears at the top of receipts.">
                     <Input
                       className="h-9 text-xs"
                       value={settings.receipt_logo}
@@ -592,24 +887,10 @@ export default function Settings() {
                       }
                     />
                   </Field>
-                  <Field label="Paper Width" hint="">
-                    <Select
-                      value={settings.receipt_paper_width || "80mm"}
-                      onValueChange={(value) =>
-                        update({ receipt_paper_width: value })
-                      }>
-                      <SelectTrigger className="h-9 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="80mm">80mm standard</SelectItem>
-                        <SelectItem value="58mm">58mm compact</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </Field>
+
                   <ToggleRow
-                    title="Print barcode"
-                    description="Include order barcode on receipts."
+                    title="Print order barcode"
+                    description="Include scannable Code 39 barcode at receipt bottom."
                     checked={settings.print_barcode === "yes"}
                     onChange={(/** @type {boolean} */ checked) =>
                       update({ print_barcode: checked ? "yes" : "no" })
@@ -651,6 +932,152 @@ export default function Settings() {
                   paperWidth={settings.receipt_paper_width || "80mm"}
                 />
               </div>
+
+              {/* Hardware Testing Panel */}
+              <div className="xl:col-span-3">
+                <HardwareTestPanel settings={settings} />
+              </div>
+            </div>
+          </div>
+          )}
+
+          {/* Returns & Exchanges Section */}
+          {activeSection === "returns" && (
+              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                    <span>Settings</span>
+                    <ChevronRight className="h-3 w-3" />
+                    <span className="text-foreground font-medium">Returns & Exchanges</span>
+                  </div>
+                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <Tags className="h-5 w-5 text-primary" />
+                    Return Policy Settings
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Configure return and exchange policies for your store
+                  </p>
+                </div>
+                <div className="grid gap-4 xl:grid-cols-2">
+              <CompactCard icon={Tags} title="Return Options">
+                <div className="space-y-3">
+                  <ToggleRow
+                    title="Enable Returns"
+                    description="Allow customers to return purchased items for refunds."
+                    checked={settings.enable_returns === "yes"}
+                    onChange={(/** @type {boolean} */ checked) =>
+                      update({ enable_returns: checked ? "yes" : "no" })
+                    }
+                  />
+                  <ToggleRow
+                    title="Enable Exchanges"
+                    description="Allow customers to exchange items for different products."
+                    checked={settings.enable_exchanges === "yes"}
+                    onChange={(/** @type {boolean} */ checked) =>
+                      update({ enable_exchanges: checked ? "yes" : "no" })
+                    }
+                  />
+                  <ToggleRow
+                    title="Enable Store Credit"
+                    description="Issue store credit instead of cash refunds."
+                    checked={settings.enable_store_credit === "yes"}
+                    onChange={(/** @type {boolean} */ checked) =>
+                      update({ enable_store_credit: checked ? "yes" : "no" })
+                    }
+                  />
+                </div>
+              </CompactCard>
+
+              <CompactCard icon={Tags} title="Return Policy">
+                <div className="space-y-3">
+                  <Field 
+                    label="Return Time Limit (Days)" 
+                    hint="Number of days customers have to return items. Set to 0 for no time limit.">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="365"
+                      className="h-9 text-xs"
+                      value={settings.return_time_limit_days}
+                      onChange={(/** @type {any} */ e) =>
+                        update({
+                          return_time_limit_days: Math.min(
+                            365,
+                            Math.max(0, parseInt(e.target.value) || 30)
+                          ),
+                        })
+                      }
+                    />
+                  </Field>
+                  <ToggleRow
+                    title="Require Receipt"
+                    description="Only accept returns with valid receipts."
+                    checked={settings.require_receipt === "yes"}
+                    onChange={(/** @type {boolean} */ checked) =>
+                      update({ require_receipt: checked ? "yes" : "no" })
+                    }
+                  />
+                  <ToggleRow
+                    title="Auto Restock Inventory"
+                    description="Automatically add returned items back to inventory."
+                    checked={settings.auto_restock_inventory === "yes"}
+                    onChange={(/** @type {boolean} */ checked) =>
+                      update({ auto_restock_inventory: checked ? "yes" : "no" })
+                    }
+                  />
+                </div>
+              </CompactCard>
+
+              <div className="xl:col-span-2">
+                <CompactCard icon={Tags} title="Restocking Fee">
+                  <div className="space-y-3">
+                    <ToggleRow
+                      title="Enable Restocking Fee"
+                      description="Charge a fee for processing returns."
+                      checked={settings.restocking_fee_enabled === "yes"}
+                      onChange={(/** @type {boolean} */ checked) =>
+                        update({ restocking_fee_enabled: checked ? "yes" : "no" })
+                      }
+                    />
+                    {settings.restocking_fee_enabled === "yes" && (
+                      <>
+                        <Field label="Fee Type" hint="">
+                          <Select
+                            value={settings.restocking_fee_type || "percentage"}
+                            onValueChange={(value) =>
+                              update({ restocking_fee_type: value })
+                            }>
+                            <SelectTrigger className="h-9 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="percentage">Percentage (%)</SelectItem>
+                              <SelectItem value="fixed">Fixed Amount ($)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </Field>
+                        <Field 
+                          label={settings.restocking_fee_type === "percentage" ? "Fee Percentage" : "Fee Amount"} 
+                          hint={settings.restocking_fee_type === "percentage" ? "Percentage of return amount to deduct" : "Fixed dollar amount to deduct"}>
+                          <Input
+                            type="number"
+                            min="0"
+                            max={settings.restocking_fee_type === "percentage" ? "100" : "1000"}
+                            step={settings.restocking_fee_type === "percentage" ? "1" : "0.01"}
+                            className="h-9 text-xs"
+                            value={settings.restocking_fee_value}
+                            onChange={(/** @type {any} */ e) =>
+                              update({
+                                restocking_fee_value: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                          />
+                        </Field>
+                      </>
+                    )}
+                  </div>
+                </CompactCard>
+              </div>
             </div>
           </div>
           )}
@@ -659,4 +1086,3 @@ export default function Settings() {
     </div>
   );
 }
-

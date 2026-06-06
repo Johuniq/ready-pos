@@ -16,7 +16,6 @@ import {
   ScanBarcode,
   Scale,
   Wallet,
-  Wifi,
   WifiOff,
   CheckCircle2,
   AlertCircle,
@@ -469,44 +468,6 @@ export default function HardwarePage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Customer Display info */}
-      <Card className="shadow-sm border border-border/60 rounded-2xl">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-bold flex items-center gap-2">
-            <Wifi className="w-4 h-4 text-cyan-600" />
-            Customer Display (Secondary Screen)
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Show the running cart total on a customer-facing screen. Already
-            wired up.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="text-xs text-muted-foreground space-y-2">
-            <p>
-              The customer display syncs via BroadcastChannel (no extra hardware
-              setup needed).
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                window.open(
-                  window.location.origin +
-                    window.location.pathname +
-                    "#/customer-display",
-                  "_blank",
-                  "popup",
-                );
-              }}
-              className="text-xs font-bold gap-1.5">
-              <Wifi className="w-3.5 h-3.5" />
-              Open Display Window
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import Hardware from "./pages/hardware";
 import LicensePage from "./pages/license";
 import StaffPage from "./pages/staff";
 import CustomerDisplay from "./pages/terminal/components/CustomerDisplay";
+import Inventory from "./pages/inventory";
 
 export const router = createHashRouter([
   {
@@ -47,6 +48,10 @@ export const router = createHashRouter([
       {
         path: "outlets",
         element: <Outlets />,
+      },
+      {
+        path: "inventory",
+        element: <Inventory />,
       },
       {
         path: "settings",

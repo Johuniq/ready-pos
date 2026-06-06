@@ -78,7 +78,19 @@ class Config {
 
 				require_once self::$route_file;
 				Route::dispatch();
-			}
+				
+				// Log registered routes in debug mode
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_DEBUG_LOG' ) && WP_DEBUG_LOG ) {
+					$routes = Route::get_routes();
+					$count = 0;
+					foreach ( $routes as $prefix => $route_list ) {
+						$count += count( $route_list );
+					}
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional debug logging in development mode
+					error_log( sprintf( '[ReadyPOS] Registered %d API routes', $count ) );
+				}
+			},
+			10
 		);
 
 		/**

@@ -45,3 +45,24 @@ wp-config.php
 *.sql
 *.sql.gz
 *.dump
+
+# Development and AI assistant tools
+.kiro/
+.puku/
+.cursor/
+CLAUDE.md
+*.ai.md
+
+# Build and release artifacts
+release/
+dist/
+*.zip
+
+# IDE specific files
+.vscode/
+.idea/
+
+# Development scripts and documentation
+bin/
+documentation/
+tests/

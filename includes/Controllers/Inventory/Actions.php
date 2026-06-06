@@ -79,9 +79,9 @@ class Actions {
 		// SECURITY FIX #7: Use INSERT ... ON DUPLICATE KEY UPDATE for atomic operation
 		// This prevents race condition when multiple users adjust stock simultaneously
 		if ( null !== $threshold ) {
-			$result = $wpdb->query(
+			$result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$wpdb->prepare(
-					"INSERT INTO {$stock_table} 
+					"INSERT INTO `" . esc_sql( $stock_table ) . "`
 					(outlet_id, product_id, stock_quantity, low_stock_threshold, created_at, updated_at)
 					VALUES (%d, %d, %f, %d, NOW(), NOW())
 					ON DUPLICATE KEY UPDATE 
@@ -97,9 +97,9 @@ class Actions {
 				)
 			);
 		} else {
-			$result = $wpdb->query(
+			$result = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$wpdb->prepare(
-					"INSERT INTO {$stock_table} 
+					"INSERT INTO `" . esc_sql( $stock_table ) . "`
 					(outlet_id, product_id, stock_quantity, low_stock_threshold, created_at, updated_at)
 					VALUES (%d, %d, %f, 5, NOW(), NOW())
 					ON DUPLICATE KEY UPDATE 
@@ -121,6 +121,8 @@ class Actions {
 			);
 		}
 
+		wp_cache_delete( 'readypos_outlet_stock_' . absint( $outlet_id ) . '_' . absint( $product_id ), 'readypos_inventory' );
+
 		// Fetch the updated record
 		$outlet_stock = POSOutletStock::where( 'outlet_id', $outlet_id )
 			->where( 'product_id', $product_id )
@@ -128,6 +130,7 @@ class Actions {
 
 		// SECURITY FIX #7: Audit logging for inventory changes
 		$user = wp_get_current_user();
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional audit logging for security tracking
 		error_log( sprintf(
 			'ReadyPOS Inventory Adjusted: Product ID %d, Outlet ID %d, New Quantity: %.2f, User: %s (ID: %d), Reason: %s',
 			$product_id,

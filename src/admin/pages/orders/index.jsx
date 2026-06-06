@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/currency";
-import { printReceipt } from "@/lib/receipt";
+import { printManager } from "@/lib/printing/PrintManager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,6 +34,7 @@ import {
   Filter,
   X,
   Printer,
+  PackageX,
 } from "lucide-react";
 import {
   Select,
@@ -56,6 +57,10 @@ import {
   PageToolbar,
   PaginationBar,
 } from "@/admin/components/PageLayout";
+import ReturnExchangeModal from "./components/ReturnExchangeModal";
+import { useTableExport } from "@/hooks/useTableExport";
+import { ExportButton } from "@/components/export/ExportButton";
+import { formatPriceForExport, formatDateForExport } from "@/lib/export";
 
 export default function Orders() {
   const { showConfirm } = useAlert();
@@ -82,6 +87,10 @@ export default function Orders() {
   const [refundReason, setRefundReason] = useState("");
   const [refunding, setRefunding] = useState(false);
 
+  // Return/Exchange modal state
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  const [returnOrder, setReturnOrder] = useState(null);
+
   const fetchOrders = async (targetPage = 1) => {
     setLoading(true);
     setError(null);
@@ -103,6 +112,35 @@ export default function Orders() {
   useEffect(() => {
     fetchOrders(1);
   }, []);
+
+  // Export functionality
+  const { handleExportCSV, handleExportExcel, handleExportPDF } = useTableExport({
+    getHeaders: () => [
+      "Order ID",
+      "Date",
+      "Cashier",
+      "Payment Method",
+      "Subtotal",
+      "Discount",
+      "Tax",
+      "Total",
+      "Status",
+    ],
+    getRows: () =>
+      filteredOrders.map((order) => [
+        order.order_number || order.id,
+        formatDateForExport(order.date),
+        order.cashier_name || "",
+        order.payment_method || "",
+        formatPriceForExport(order.subtotal || 0),
+        formatPriceForExport(order.discount || 0),
+        formatPriceForExport(order.tax || 0),
+        formatPriceForExport(order.total || 0),
+        order.status || "",
+      ]),
+    filename: "ready_pos_orders",
+    title: "Order History",
+  });
 
   // Client-side filtering (orders are already fetched)
   const filteredOrders = orders.filter((order) => {
@@ -181,14 +219,14 @@ export default function Orders() {
     }
   };
 
-  const handlePrintReceipt = () => {
+  const handlePrintReceipt = async () => {
     if (!orderDetail) {
       toast.error("No order details available");
       return;
     }
 
     try {
-      printReceipt(orderDetail, settings);
+      await printManager.printReceipt(orderDetail, settings);
       toast.success("Receipt sent to printer");
     } catch (err) {
       toast.error("Failed to print receipt");
@@ -238,29 +276,37 @@ export default function Orders() {
             </button>
           )}
         </div>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[140px] h-9 text-xs">
-            <Filter className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="text-xs">
-              All Statuses
-            </SelectItem>
-            <SelectItem value="completed" className="text-xs">
-              Completed
-            </SelectItem>
-            <SelectItem value="processing" className="text-xs">
-              Processing
-            </SelectItem>
-            <SelectItem value="refunded" className="text-xs">
-              Refunded
-            </SelectItem>
-            <SelectItem value="on-hold" className="text-xs">
-              On Hold
-            </SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[140px] h-9 text-xs">
+              <Filter className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">
+                All Statuses
+              </SelectItem>
+              <SelectItem value="completed" className="text-xs">
+                Completed
+              </SelectItem>
+              <SelectItem value="processing" className="text-xs">
+                Processing
+              </SelectItem>
+              <SelectItem value="refunded" className="text-xs">
+                Refunded
+              </SelectItem>
+              <SelectItem value="on-hold" className="text-xs">
+                On Hold
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <ExportButton
+            onExportCSV={handleExportCSV}
+            onExportExcel={handleExportExcel}
+            onExportPDF={handleExportPDF}
+            disabled={loading || filteredOrders.length === 0}
+          />
+        </div>
       </PageToolbar>
 
       {/* Orders Table */}
@@ -596,6 +642,18 @@ export default function Orders() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => {
+                setReturnOrder(orderDetail);
+                setShowReturnModal(true);
+              }}
+              disabled={!orderDetail || loadingDetail}
+              className="font-semibold text-xs h-9 px-4 gap-1.5">
+              <PackageX className="w-3.5 h-3.5" />
+              Return / Exchange
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handlePrintReceipt}
               disabled={!orderDetail || loadingDetail}
               className="font-semibold text-xs h-9 px-4 gap-1.5">
@@ -612,6 +670,17 @@ export default function Orders() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Return/Exchange Modal */}
+      <ReturnExchangeModal
+        open={showReturnModal}
+        onClose={() => setShowReturnModal(false)}
+        order={returnOrder}
+        onSuccess={() => {
+          fetchOrders(page);
+          setShowDetailModal(false);
+        }}
+      />
     </div>
   );
 }

@@ -473,12 +473,12 @@ class Manager {
 		global $wpdb;
 
 		// Clear all ReadyPOS transients.
-		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_readypos_%' OR option_name LIKE '_transient_timeout_readypos_%'" );
+		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_readypos_%' OR option_name LIKE '_transient_timeout_readypos_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 		// Clear POS-specific runtime/user metadata without deleting users or
 		// WooCommerce records.
-		$wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE 'readypos_%'" );
-		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->postmeta} WHERE meta_key = %s", '_readypos_is_pos_order' ) );
+		$wpdb->query( "DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE 'readypos_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$wpdb->postmeta} WHERE meta_key = %s", '_readypos_is_pos_order' ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 
 		// Empty ReadyPOS custom tables so onboarding starts from a blank POS
 		// workspace even when the plugin was only deactivated or reinstalled
@@ -495,9 +495,17 @@ class Manager {
 		);
 
 		foreach ( $tables as $table ) {
-			$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+			$exists_cache_key = 'readypos_table_exists_' . md5( $table );
+			$exists           = wp_cache_get( $exists_cache_key, 'readypos_license' );
+
+			if ( false === $exists ) {
+				$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+				wp_cache_set( $exists_cache_key, $exists, 'readypos_license', MINUTE_IN_SECONDS );
+			}
+
 			if ( $exists === $table ) {
-				$wpdb->query( "TRUNCATE TABLE `{$table}`" );
+				$wpdb->query( "TRUNCATE TABLE `{$table}`" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				wp_cache_delete( $exists_cache_key, 'readypos_license' );
 			}
 		}
 

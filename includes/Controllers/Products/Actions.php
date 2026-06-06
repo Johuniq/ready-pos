@@ -84,6 +84,7 @@ class Actions {
 		}
 
 		if ( ! empty( $tax_query ) ) {
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query -- Product category filtering is an intentional POS catalog filter.
 			$query_args['tax_query'] = $tax_query;
 		}
 
@@ -97,6 +98,37 @@ class Actions {
 		$products = array();
 
 		if ( $wp_query->have_posts() ) {
+			$product_ids = wp_list_pluck( $wp_query->posts, 'ID' );
+
+			// Prime term cache in 1 query for all products
+			update_object_term_cache( $product_ids, 'product' );
+
+			// Collect all product and variation IDs to batch fetch outlet stock
+			$all_stock_ids = array();
+			foreach ( $wp_query->posts as $post ) {
+				$all_stock_ids[] = $post->ID;
+				$product = wc_get_product( $post->ID );
+				if ( $product && $product->is_type( 'variable' ) ) {
+					$children = $product->get_children();
+					if ( ! empty( $children ) ) {
+						foreach ( $children as $child_id ) {
+							$all_stock_ids[] = $child_id;
+						}
+					}
+				}
+			}
+
+			// Pre-fetch all relevant outlet stock records
+			$outlet_stocks = array();
+			if ( $outlet_id && ! empty( $all_stock_ids ) ) {
+				$stocks = POSOutletStock::where( 'outlet_id', $outlet_id )
+					->whereIn( 'product_id', $all_stock_ids )
+					->get();
+				foreach ( $stocks as $stock ) {
+					$outlet_stocks[ $stock->product_id ] = $stock;
+				}
+			}
+
 			foreach ( $wp_query->posts as $post ) {
 				$product = wc_get_product( $post->ID );
 				if ( ! $product ) {
@@ -109,7 +141,7 @@ class Actions {
 					continue;
 				}
 
-				$products[] = $this->format_product( $product, $outlet_id );
+				$products[] = $this->format_product( $product, $outlet_id, $outlet_stocks );
 			}
 		}
 
@@ -194,6 +226,7 @@ class Actions {
 			$posts = get_posts(
 				array(
 					'post_type'  => array( 'product', 'product_variation' ),
+					// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Barcode fields are merchant-defined product identifiers.
 					'meta_query' => $meta_queries,
 					'fields'     => 'ids',
 					'limit'      => 1,
@@ -221,9 +254,10 @@ class Actions {
 	 *
 	 * @param \WC_Product $product  WooCommerce product object.
 	 * @param int|null    $outlet_id Active outlet ID for stock overlay.
+	 * @param array       $outlet_stocks Pre-loaded outlet stocks mapping.
 	 * @return array
 	 */
-	private function format_product( $product, $outlet_id = null ) {
+	private function format_product( $product, $outlet_id = null, $outlet_stocks = array() ) {
 		$image_id  = $product->get_image_id();
 		$image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'medium' ) : wc_placeholder_img_src();
 
@@ -231,12 +265,18 @@ class Actions {
 		$stock_quantity      = $product->get_stock_quantity();
 		$low_stock_threshold = null;
 		if ( $outlet_id ) {
-			$outlet_stock = POSOutletStock::where( 'outlet_id', $outlet_id )
-				->where( 'product_id', $product->get_id() )
-				->first();
-			if ( $outlet_stock ) {
+			if ( isset( $outlet_stocks[ $product->get_id() ] ) ) {
+				$outlet_stock = $outlet_stocks[ $product->get_id() ];
 				$stock_quantity      = floatval( $outlet_stock->stock_quantity );
 				$low_stock_threshold = intval( $outlet_stock->low_stock_threshold );
+			} else if ( empty( $outlet_stocks ) ) {
+				$outlet_stock = POSOutletStock::where( 'outlet_id', $outlet_id )
+					->where( 'product_id', $product->get_id() )
+					->first();
+				if ( $outlet_stock ) {
+					$stock_quantity      = floatval( $outlet_stock->stock_quantity );
+					$low_stock_threshold = intval( $outlet_stock->low_stock_threshold );
+				}
 			}
 		}
 
@@ -275,12 +315,18 @@ class Actions {
 					$var_stock_quantity      = $variation->get_stock_quantity();
 					$var_low_stock_threshold = null;
 					if ( $outlet_id ) {
-						$var_outlet_stock = POSOutletStock::where( 'outlet_id', $outlet_id )
-							->where( 'product_id', $variation->get_id() )
-							->first();
-						if ( $var_outlet_stock ) {
+						if ( isset( $outlet_stocks[ $variation->get_id() ] ) ) {
+							$var_outlet_stock = $outlet_stocks[ $variation->get_id() ];
 							$var_stock_quantity      = floatval( $var_outlet_stock->stock_quantity );
 							$var_low_stock_threshold = intval( $var_outlet_stock->low_stock_threshold );
+						} else if ( empty( $outlet_stocks ) ) {
+							$var_outlet_stock = POSOutletStock::where( 'outlet_id', $outlet_id )
+								->where( 'product_id', $variation->get_id() )
+								->first();
+							if ( $var_outlet_stock ) {
+								$var_stock_quantity      = floatval( $var_outlet_stock->stock_quantity );
+								$var_low_stock_threshold = intval( $var_outlet_stock->low_stock_threshold );
+							}
 						}
 					}
 

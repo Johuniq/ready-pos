@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useAtom } from "jotai";
 import { sessionAtom, settingsAtom } from "@/admin/stores/posStore";
-import { formatPrice } from "@/lib/currency";
+import { formatPrice, getCurrencySymbol } from "@/lib/currency";
 import { api } from "@/lib/api";
 import {
   Dialog,
@@ -149,7 +149,7 @@ export default function CashAdjustModal({ open, onOpenChange }) {
                   </h3>
                 </div>
                 <span className="p-2.5 rounded-full bg-primary/10 text-primary">
-                  <DollarSign className="w-5 h-5" />
+                  <Wallet className="w-5 h-5" />
                 </span>
               </div>
 
@@ -192,8 +192,8 @@ export default function CashAdjustModal({ open, onOpenChange }) {
                   Adjustment Cash Amount
                 </label>
                 <div className="relative mt-1">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-extrabold text-muted-foreground">
-                    {settings.currency_symbol || "$"}
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-extrabold text-muted-foreground pointer-events-none">
+                    {getCurrencySymbol()}
                   </span>
                   <Input
                     type="number"
@@ -202,7 +202,7 @@ export default function CashAdjustModal({ open, onOpenChange }) {
                     placeholder="0.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="pl-8 h-11 text-sm font-bold rounded-xl"
+                    className="pl-10 h-11 text-sm font-bold rounded-xl"
                     required
                   />
                 </div>

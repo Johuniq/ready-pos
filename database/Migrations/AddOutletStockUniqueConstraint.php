@@ -38,11 +38,10 @@ class AddOutletStockUniqueConstraint implements Migration {
 		$table_name = $wpdb->prefix . self::$table;
 
 		// Check if unique constraint already exists
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$indexes = $wpdb->get_results(
 			$wpdb->prepare(
-				'SHOW INDEX FROM %i WHERE Key_name = %s',
-				$table_name,
+				"SHOW INDEX FROM `" . esc_sql( $table_name ) . "` WHERE Key_name = %s",
 				'outlet_product_unique'
 			),
 			ARRAY_A
@@ -50,22 +49,19 @@ class AddOutletStockUniqueConstraint implements Migration {
 
 		if ( empty( $indexes ) ) {
 			// First, remove any duplicate records (keep the most recent)
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$wpdb->query(
-				"DELETE t1 FROM {$table_name} t1
-				INNER JOIN {$table_name} t2 
+				"DELETE t1 FROM `" . esc_sql( $table_name ) . "` t1
+				INNER JOIN `" . esc_sql( $table_name ) . "` t2 
 				WHERE t1.id < t2.id 
 				AND t1.outlet_id = t2.outlet_id 
 				AND t1.product_id = t2.product_id"
 			);
 
 			// Add unique constraint
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Required migration for database schema setup
 			$wpdb->query(
-				$wpdb->prepare(
-					'ALTER TABLE %i ADD UNIQUE KEY outlet_product_unique (outlet_id, product_id)',
-					$table_name
-				)
+				"ALTER TABLE `" . esc_sql( $table_name ) . "` ADD UNIQUE KEY outlet_product_unique (outlet_id, product_id)"
 			);
 		}
 	}
@@ -78,12 +74,9 @@ class AddOutletStockUniqueConstraint implements Migration {
 		$table_name = $wpdb->prefix . self::$table;
 
 		// Drop unique constraint if it exists
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Required migration rollback for database schema
 		$wpdb->query(
-			$wpdb->prepare(
-				'ALTER TABLE %i DROP INDEX IF EXISTS outlet_product_unique',
-				$table_name
-			)
+			"ALTER TABLE `" . esc_sql( $table_name ) . "` DROP INDEX IF EXISTS outlet_product_unique"
 		);
 	}
 }

@@ -48,6 +48,11 @@ class Actions {
 			'receipt_paper_width' => get_option( 'readypos_receipt_paper_width', '80mm' ),
 			'print_barcode'   => get_option( 'readypos_print_barcode', 'yes' ),
 			'receipt_blocks'  => json_decode( get_option( 'readypos_receipt_blocks', '[]' ), true ),
+			'receipt_printing_method' => get_option( 'readypos_receipt_printing_method', 'auto' ),
+			'printer_connection_type' => get_option( 'readypos_printer_connection_type', 'serial' ),
+			'printer_auto_reconnect' => get_option( 'readypos_printer_auto_reconnect', 'yes' ),
+			'printer_network_address' => get_option( 'readypos_printer_network_address', '' ),
+			'star_webprnt_url' => get_option( 'readypos_star_webprnt_url', '' ),
 			// Payment Settings
 			'payment_cash'    => get_option( 'readypos_payment_cash', 'yes' ),
 			'payment_card'    => get_option( 'readypos_payment_card', 'yes' ),
@@ -59,6 +64,16 @@ class Actions {
 			'customer_display_message' => get_option( 'readypos_customer_display_message', 'Welcome to our store!' ),
 			'max_discount_limit' => intval( get_option( 'readypos_max_discount_limit', '100' ) ),
 			'pos_order_prefix' => get_option( 'readypos_pos_order_prefix', '' ),
+			// Return/Exchange Settings
+			'enable_returns'          => get_option( 'readypos_enable_returns', 'yes' ),
+			'enable_exchanges'        => get_option( 'readypos_enable_exchanges', 'yes' ),
+			'enable_store_credit'     => get_option( 'readypos_enable_store_credit', 'yes' ),
+			'return_time_limit_days'  => intval( get_option( 'readypos_return_time_limit_days', 30 ) ),
+			'require_receipt'         => get_option( 'readypos_require_receipt', 'no' ),
+			'restocking_fee_enabled'  => get_option( 'readypos_restocking_fee_enabled', 'no' ),
+			'restocking_fee_type'     => get_option( 'readypos_restocking_fee_type', 'percentage' ),
+			'restocking_fee_value'    => floatval( get_option( 'readypos_restocking_fee_value', 10 ) ),
+			'auto_restock_inventory'  => get_option( 'readypos_auto_restock_inventory', 'yes' ),
 			// Onboarding
 			'onboarding_complete' => get_option( 'readypos_onboarding_complete', 'no' ),
 		);
@@ -88,6 +103,11 @@ class Actions {
 		$receipt_paper_width = sanitize_text_field( $request->get_param( 'receipt_paper_width' ) );
 		$print_barcode   = sanitize_text_field( $request->get_param( 'print_barcode' ) );
 		$receipt_blocks  = $request->get_param( 'receipt_blocks' );
+		$receipt_printing_method = sanitize_text_field( $request->get_param( 'receipt_printing_method' ) );
+		$printer_connection_type = sanitize_text_field( $request->get_param( 'printer_connection_type' ) );
+		$printer_auto_reconnect = sanitize_text_field( $request->get_param( 'printer_auto_reconnect' ) );
+		$printer_network_address = sanitize_text_field( $request->get_param( 'printer_network_address' ) );
+		$star_webprnt_url = esc_url_raw( $request->get_param( 'star_webprnt_url' ) );
 
 		// Payment Settings
 		$payment_cash    = sanitize_text_field( $request->get_param( 'payment_cash' ) );
@@ -101,6 +121,17 @@ class Actions {
 		$customer_display_message = sanitize_text_field( $request->get_param( 'customer_display_message' ) );
 		$max_discount_limit = intval( $request->get_param( 'max_discount_limit' ) );
 		$pos_order_prefix = sanitize_text_field( $request->get_param( 'pos_order_prefix' ) );
+
+		// Return/Exchange Settings
+		$enable_returns = sanitize_text_field( $request->get_param( 'enable_returns' ) );
+		$enable_exchanges = sanitize_text_field( $request->get_param( 'enable_exchanges' ) );
+		$enable_store_credit = sanitize_text_field( $request->get_param( 'enable_store_credit' ) );
+		$return_time_limit_days = intval( $request->get_param( 'return_time_limit_days' ) );
+		$require_receipt = sanitize_text_field( $request->get_param( 'require_receipt' ) );
+		$restocking_fee_enabled = sanitize_text_field( $request->get_param( 'restocking_fee_enabled' ) );
+		$restocking_fee_type = sanitize_text_field( $request->get_param( 'restocking_fee_type' ) );
+		$restocking_fee_value = floatval( $request->get_param( 'restocking_fee_value' ) );
+		$auto_restock_inventory = sanitize_text_field( $request->get_param( 'auto_restock_inventory' ) );
 
 		// Update Site Identity
 		if ( ! empty( $site_name ) ) {
@@ -125,6 +156,11 @@ class Actions {
 		if ( is_array( $receipt_blocks ) ) {
 			update_option( 'readypos_receipt_blocks', wp_json_encode( $receipt_blocks ) );
 		}
+		update_option( 'readypos_receipt_printing_method', $receipt_printing_method ?: 'auto' );
+		update_option( 'readypos_printer_connection_type', $printer_connection_type ?: 'serial' );
+		update_option( 'readypos_printer_auto_reconnect', $printer_auto_reconnect ?: 'yes' );
+		update_option( 'readypos_printer_network_address', $printer_network_address );
+		update_option( 'readypos_star_webprnt_url', $star_webprnt_url );
 
 		// Update Payment Settings
 		update_option( 'readypos_payment_cash', $payment_cash );
@@ -138,6 +174,17 @@ class Actions {
 		update_option( 'readypos_customer_display_message', $customer_display_message ?: 'Welcome to our store!' );
 		update_option( 'readypos_max_discount_limit', $max_discount_limit ?: 100 );
 		update_option( 'readypos_pos_order_prefix', $pos_order_prefix );
+
+		// Update Return/Exchange Settings
+		update_option( 'readypos_enable_returns', $enable_returns ?: 'yes' );
+		update_option( 'readypos_enable_exchanges', $enable_exchanges ?: 'yes' );
+		update_option( 'readypos_enable_store_credit', $enable_store_credit ?: 'yes' );
+		update_option( 'readypos_return_time_limit_days', $return_time_limit_days ?: 30 );
+		update_option( 'readypos_require_receipt', $require_receipt ?: 'no' );
+		update_option( 'readypos_restocking_fee_enabled', $restocking_fee_enabled ?: 'no' );
+		update_option( 'readypos_restocking_fee_type', $restocking_fee_type ?: 'percentage' );
+		update_option( 'readypos_restocking_fee_value', $restocking_fee_value ?: 10 );
+		update_option( 'readypos_auto_restock_inventory', $auto_restock_inventory ?: 'yes' );
 
 		// Onboarding flag.
 		$onboarding_complete = sanitize_text_field( $request->get_param( 'onboarding_complete' ) );
@@ -401,5 +448,89 @@ class Actions {
 		}
 
 		return $formatted_rates;
+	}
+
+	/**
+	 * Get outlet-specific configuration.
+	 *
+	 * @param \WP_REST_Request $request REST request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function get_outlet_config( \WP_REST_Request $request ) {
+		$id = intval( $request->get_param( 'id' ) );
+
+		$outlet = POSOutlet::find( $id );
+		if ( ! $outlet ) {
+			return new \WP_Error( 'not_found', __( 'Outlet not found.', 'ready-pos' ), array( 'status' => 404 ) );
+		}
+
+		$config = array(
+			'id'              => $outlet->id,
+			'name'            => $outlet->name,
+			'pricing_config'  => $outlet->get_pricing_config(),
+			'tax_config'      => $outlet->get_tax_config(),
+			'payment_methods' => $outlet->get_payment_methods(),
+		);
+
+		return new \WP_REST_Response( $config, 200 );
+	}
+
+	/**
+	 * Update outlet-specific configuration.
+	 *
+	 * @param \WP_REST_Request $request REST request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function update_outlet_config( \WP_REST_Request $request ) {
+		$id = intval( $request->get_param( 'id' ) );
+
+		$outlet = POSOutlet::find( $id );
+		if ( ! $outlet ) {
+			return new \WP_Error( 'not_found', __( 'Outlet not found.', 'ready-pos' ), array( 'status' => 404 ) );
+		}
+
+		// Update pricing configuration
+		$pricing_config = $request->get_param( 'pricing_config' );
+		if ( is_array( $pricing_config ) ) {
+			$outlet->set_pricing_config( $pricing_config );
+		}
+
+		// Update tax configuration
+		$tax_config = $request->get_param( 'tax_config' );
+		if ( is_array( $tax_config ) ) {
+			$outlet->set_tax_config( $tax_config );
+		}
+
+		// Update payment methods
+		$payment_methods = $request->get_param( 'payment_methods' );
+		if ( is_array( $payment_methods ) ) {
+			$outlet->set_payment_methods( $payment_methods );
+		}
+
+		$outlet->updated_at = current_time( 'mysql' );
+		$outlet->save();
+
+		// Audit log
+		\Readypos\Core\AuditLog::log(
+			\Readypos\Core\AuditLog::EVENT_DATA,
+			'outlet_config_updated',
+			sprintf( 'Configuration updated for outlet: %s', $outlet->name ),
+			array(
+				'outlet_id'       => $outlet->id,
+				'outlet_name'     => $outlet->name,
+				'has_pricing'     => ! empty( $pricing_config ),
+				'has_tax_config'  => ! empty( $tax_config ),
+				'payment_methods' => $payment_methods,
+			),
+			\Readypos\Core\AuditLog::SEVERITY_INFO
+		);
+
+		return new \WP_REST_Response(
+			array(
+				'success' => true,
+				'message' => __( 'Outlet configuration updated successfully.', 'ready-pos' ),
+			),
+			200
+		);
 	}
 }

@@ -6,13 +6,13 @@ use Readypos\Traits\Base;
 use Readypos\Libs\API\Config;
 
 /**
- * Class API
+ * Class Api
  *
  * Initializes and configures the API for the Readypos.
  *
  * @package Readypos\Core
  */
-class API {
+class Api {
 
 	use Base;
 
@@ -22,7 +22,7 @@ class API {
 	 * @return void
 	 */
 	public function init() {
-		Config::set_route_file( READYPOS_DIR . '/includes/Routes/Api.php' )
+		Config::set_route_file( \READYPOS_DIR . '/includes/Routes/Api.php' )
 			->set_namespace( 'Readypos\Api' )
 			->init();
 	}

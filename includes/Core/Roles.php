@@ -181,4 +181,38 @@ class Roles {
 			$shop_manager->remove_cap( 'view_pos_reports' );
 		}
 	}
+
+	/**
+	 * Check if the current user has permission to access POS REST API.
+	 *
+	 * @param \WP_REST_Request $request REST request.
+	 * @return bool|\WP_Error True if user has access, WP_Error otherwise.
+	 */
+	public function check_pos_access( \WP_REST_Request $request ) {
+		// Run SessionSecurity validation (fingerprint, expiration, idle timeout)
+		if ( class_exists( '\Readypos\Core\SessionSecurity' ) ) {
+			$validation = \Readypos\Core\SessionSecurity::validate_request();
+			if ( is_wp_error( $validation ) ) {
+				return $validation;
+			}
+		} else {
+			if ( ! is_user_logged_in() ) {
+				return new \WP_Error(
+					'rest_forbidden',
+					__( 'You must be logged in to access the POS API.', 'ready-pos' ),
+					array( 'status' => 401 )
+				);
+			}
+		}
+
+		if ( current_user_can( 'use_pos' ) || current_user_can( 'manage_pos' ) || current_user_can( 'manage_options' ) ) {
+			return true;
+		}
+
+		return new \WP_Error(
+			'rest_forbidden',
+			__( 'You do not have permission to access the POS API.', 'ready-pos' ),
+			array( 'status' => 403 )
+		);
+	}
 }

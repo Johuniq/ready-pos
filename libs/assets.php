@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace Readypos\Libs\Assets;
 
+defined( 'ABSPATH' ) || exit;
+
 use Exception;
 use WP_HTML_Tag_Processor;
 
@@ -52,7 +54,16 @@ function get_manifest( string $manifest_dir ): object {
 		throw new Exception( esc_html( sprintf( '[Vite] No manifest found in %s.', $manifest_dir ) ) );
 	}
 
-	$manifest = wp_json_file_decode( $manifest_path );
+	// Polyfill for wp_json_file_decode() - requires WP 5.9+, but we support WP 5.8+
+	if ( function_exists( 'wp_json_file_decode' ) ) {
+		// phpcs:ignore PluginCheck.CodeAnalysis.FunctionCompatibility -- Compatibility check performed via function_exists(), fallback provided for WP 5.8
+		$manifest = wp_json_file_decode( $manifest_path );
+	} else {
+		// Fallback for WordPress < 5.9
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Required for JSON manifest decoding
+		$manifest_content = file_get_contents( $manifest_path );
+		$manifest = $manifest_content ? json_decode( $manifest_content, true ) : null;
+	}
 
 	if ( ! $manifest ) {
 		throw new Exception( esc_html( sprintf( '[Vite] Failed to read manifest file %s.', $manifest_path ) ) );
@@ -66,6 +77,7 @@ function get_manifest( string $manifest_dir ): object {
 	 * @param string $manifest_path Manifest file path.
 	 * @param bool   $is_dev        Whether this is a manifest for development assets.
 	 */
+	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Third-party Vite library hook, cannot be renamed
 	$manifest = apply_filters( 'vite_for_wp__manifest_data', $manifest, $manifest_dir, $manifest_path );
 
 	$manifests[ $manifest_path ] = (object) array(
@@ -179,13 +191,12 @@ function inject_react_refresh_preamble_script( object $manifest ): void {
 
 	$react_refresh_script_src = generate_development_asset_src( $manifest, '@react-refresh' );
 	$script_position          = 'after';
-	$script                   = <<< EOS
-import RefreshRuntime from "{$react_refresh_script_src}";
-RefreshRuntime.injectIntoGlobalHook(window);
-window.\$RefreshReg$ = () => {};
-window.\$RefreshSig$ = () => (type) => type;
-window.__vite_plugin_react_preamble_installed__ = true;
-EOS;
+	// Use standard string concatenation instead of heredoc
+	$script = 'import RefreshRuntime from "' . $react_refresh_script_src . '";' . "\n"
+		. 'RefreshRuntime.injectIntoGlobalHook(window);' . "\n"
+		. 'window.$RefreshReg$ = () => {};' . "\n"
+		. 'window.$RefreshSig$ = () => (type) => type;' . "\n"
+		. 'window.__vite_plugin_react_preamble_installed__ = true;';
 
 	wp_add_inline_script( VITE_CLIENT_SCRIPT_HANDLE, $script, $script_position );
 	add_filter(
@@ -245,6 +256,7 @@ function load_development_asset( object $manifest, string $entry, array $options
 	 * @param string $entry    Entrypoint file.
 	 * @param array  $options  Enqueue options.
 	 */
+	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Third-party Vite library hook, cannot be renamed
 	$assets = apply_filters( 'vite_for_wp__development_assets', $assets, $manifest, $entry, $options );
 
 	return $assets;
@@ -309,6 +321,7 @@ function load_production_asset( object $manifest, string $entry, array $options 
 	 * @param string $entry    Entrypoint file.
 	 * @param array  $options  Enqueue options.
 	 */
+	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Third-party Vite library hook, cannot be renamed
 	$assets = apply_filters( 'vite_for_wp__production_assets', $assets, $manifest, $entry, $options );
 
 	return $assets;

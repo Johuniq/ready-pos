@@ -1,48 +1,47 @@
-import React, { useState, useEffect } from "react";
-import { useAtom } from "jotai";
-import {
-  sessionAtom,
-  settingsAtom,
-  cartTotalAtom,
-} from "@/admin/stores/posStore";
+import { ProBadge } from "@/admin/components/ProGate";
 import { useCart } from "@/admin/hooks/useCart";
-import { api } from "@/lib/api";
-import { printReceipt } from "@/lib/receipt";
-import { formatPrice } from "@/lib/currency";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  CreditCard,
-  Banknote,
-  Delete,
-  Check,
-  Sparkles,
-  Loader2,
-  Gift,
-  Split,
-  Plus,
-  Trash2,
-} from "lucide-react";
-import { toast } from "sonner";
-import { useOfflineSync } from "@/admin/hooks/useOfflineSync";
-import { useHardware } from "@/admin/hooks/useHardware";
 import { useLicense } from "@/admin/hooks/useLicense";
 import { useMultiCart } from "@/admin/hooks/useMultiCart";
-import { ProBadge } from "@/admin/components/ProGate";
+import { useOfflineSync } from "@/admin/hooks/useOfflineSync";
+import { useRealtime } from "@/admin/hooks/useRealtime";
+import {
+    cartTotalAtom,
+    sessionAtom,
+    settingsAtom,
+} from "@/admin/stores/posStore";
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { api } from "@/lib/api";
+import { formatPrice } from "@/lib/currency";
+import { printManager } from "@/lib/printing/PrintManager";
+import { useAtom } from "jotai";
+import {
+    Banknote,
+    Check,
+    CreditCard,
+    Delete,
+    Gift,
+    Loader2,
+    Plus,
+    Sparkles,
+    Split,
+    Trash2,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import EMVReaderPanel from "./EMVReaderPanel";
 
 export default function PaymentModal({ open, onOpenChange }) {
@@ -50,6 +49,7 @@ export default function PaymentModal({ open, onOpenChange }) {
   const [settings] = useAtom(settingsAtom);
   const [total] = useAtom(cartTotalAtom);
   const { cart, customer, discount, notes, shipping, clearCart } = useCart();
+  const { broadcastOrderCreated, broadcastStockChanged } = useRealtime();
 
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [cashReceived, setCashReceived] = useState("");
@@ -82,6 +82,25 @@ export default function PaymentModal({ open, onOpenChange }) {
       setEmvTransactionResult(null);
     }
   }, [open]);
+
+  // Focus sensible input when the modal opens for keyboard-first flow
+  useEffect(() => {
+    if (!open) return;
+    const focusCash = () => {
+      const el = document.getElementById("payment-cash-input");
+      if (el) {
+        el.focus();
+        if (el.select) el.select();
+      }
+    };
+
+    // Small timeout to allow dialog to render
+    const t = setTimeout(() => {
+      if (paymentMethod === "cash") focusCash();
+    }, 60);
+
+    return () => clearTimeout(t);
+  }, [open, paymentMethod]);
 
   // Derived values
   const numTotal = parseFloat(total) || 0;
@@ -128,64 +147,20 @@ export default function PaymentModal({ open, onOpenChange }) {
   };
 
   const { saveOfflineOrder } = useOfflineSync();
-  const hw = useHardware();
   const { can, openUpgrade } = useLicense();
   const { clearActiveAfterCheckout } = useMultiCart();
 
   /**
-   * Print receipt: prefer connected thermal printer (ESC/POS), fall back to
-   * the browser-print HTML receipt window. Also kicks the drawer for cash
-   * sales when the printer is connected.
+   * Print receipt using the configured merchant printing method.
    */
   const handlePrintReceipt = async (orderDetail) => {
-    if (hw.printerConnected) {
-      try {
-        await hw.printReceipt({
-          header: settings.receipt_header || "",
-          footer: settings.receipt_footer || "",
-          orderNumber: orderDetail.order_number || orderDetail.id,
-          date: orderDetail.date || new Date().toLocaleString(),
-          cashier: orderDetail.cashier_name || "",
-          items: orderDetail.items || [],
-          subtotal: orderDetail.subtotal || 0,
-          discount: orderDetail.discount || 0,
-          tax: orderDetail.tax || 0,
-          total: orderDetail.total || 0,
-          cashReceived: orderDetail.cash_received || 0,
-          changeGiven: orderDetail.change_given || 0,
-          paymentMethod: orderDetail.payment_method || "",
-          currency: settings.currency_symbol || "$",
-          paperWidth: settings.receipt_paper_width === "58mm" ? 58 : 80,
-          kickDrawer:
-            orderDetail.payment_method === "cash" ||
-            orderDetail.payment_method === "split",
-        });
-        return;
-      } catch (err) {
-        console.warn(
-          "[Payment] thermal printer failed, falling back to browser print:",
-          err,
-        );
-        toast.warning("Thermal printer error — using browser print instead");
-      }
-    }
-    // Fallback to browser HTML receipt
-    printReceipt(orderDetail, settings);
-
-    // Independent drawer kick if printer not connected but drawer is direct
-    if (
-      (orderDetail.payment_method === "cash" ||
-        orderDetail.payment_method === "split") &&
-      settings.cash_drawer_pulse !== "none"
-    ) {
-      try {
-        if (hw.printerConnected || hw.scaleConnected) {
-          await hw.openDrawer();
-        }
-      } catch {
-        // Silent — drawer is optional
-      }
-    }
+    await printManager.printReceipt(orderDetail, {
+      ...settings,
+      kickDrawer:
+        settings.cash_drawer_pulse !== "none" &&
+        (orderDetail.payment_method === "cash" ||
+          orderDetail.payment_method === "split"),
+    });
   };
 
   const handleCheckout = async (forcedCardRef = "") => {
@@ -277,6 +252,27 @@ export default function PaymentModal({ open, onOpenChange }) {
 
         if (response.success) {
           toast.success("Transaction completed successfully!");
+
+          // Broadcast to other terminals
+          broadcastOrderCreated({
+            id: response.order_id,
+            order_number: response.order_number,
+            total: formatPrice(numTotal),
+            items: apiItems,
+          });
+
+          // Broadcast stock changes for each item
+          apiItems.forEach((item) => {
+            const cartItem = cart.find((c) => c.id === item.id);
+            if (cartItem) {
+              broadcastStockChanged(
+                item.id,
+                cartItem.name,
+                null, // We don't have old stock here
+                null, // Server will calculate
+              );
+            }
+          });
 
           // Fetch full order details to print receipt properly
           try {
@@ -510,6 +506,7 @@ export default function PaymentModal({ open, onOpenChange }) {
                     </label>
                     <Input
                       type="number"
+                      id="payment-cash-input"
                       value={cashReceived}
                       onChange={(e) => setCashReceived(e.target.value)}
                       placeholder="0.00"
@@ -896,12 +893,14 @@ export default function PaymentModal({ open, onOpenChange }) {
           {/* Actions footer */}
           <div className="flex gap-3 pt-4 border-t mt-4">
             <Button
+              id="payment-cancel-btn"
               variant="outline"
               className="flex-1 h-11 rounded-xl font-bold"
               onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button
+              id="payment-complete-btn"
               disabled={
                 loading ||
                 (paymentMethod === "cash" && !isAmountSufficient) ||

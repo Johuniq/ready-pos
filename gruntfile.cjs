@@ -2,78 +2,118 @@ const grunt = require("grunt");
 const pkg = require("./package.json");
 const config = require("./plugin-config.json");
 const loadGruntTasks = require("load-grunt-tasks");
-const { version } = require("os");
-const { default: path } = require("path");
-const { recursive } = require("replace/bin/shared-options");
 
-// Define files to include/exclude in the release package
+// Define files to include in the release package
+// CRITICAL: Order matters! Includes first, then exclusions
 const distFiles = [
-  "**",
+  // ============================================================
+  // INCLUDES - Specify exactly what to include
+  // ============================================================
+  "assets/**",
+  "config/**",
+  "database/**",
+  "includes/**",
+  "languages/**",
+  "libs/**",
+  "vendor/**",          // CRITICAL: Composer dependencies
+  "views/**",
+  "LICENSE",
+  "readme.txt",
+  "ready-pos.php",      // CRITICAL: Main plugin file
+  "plugin.php",         // CRITICAL: Plugin class file
+  "uninstall.php",
+  
+  // ============================================================
+  // EXCLUSIONS - Remove what we don't need
+  // ============================================================
+  
+  // Source files (already compiled to assets/)
+  "!src/**",
+  
+  // Development directories
   "!artworks/**",
   "!artifacts/**",
   "!bin/**",
   "!bower_components/**",
-  "!release/**",
+  "!documentation/**",
+  "!docs/**",
   "!node_modules/**",
   "!packages/**",
-  "!**/node_modules/**",
-  "!vendor/bin/**",
+  "!release/**",
   "!test-results/**",
-  "!src/**",
+  "!tests/**",
+  "!**/node_modules/**",
+  "!**/test",
+  "!**/tests/**",
+  
+  // IDE and tooling directories
+  "!.github/**",
+  "!.kiro/**",
+  "!.storybook/**",
+  "!.vscode/**",
+  "!**/.github/**",
+  "!**/.git/**",
+  
+  // Config files (not needed in production)
   "!.DS_Store",
   "!.editorconfig",
-  "!.gitignore",
-  "!.jshintrc",
   "!.env",
   "!.env.*",
-  "!wp-config.php",
-  "!wp-config-local.php",
-  "!wp-config-sample.php",
-  "!LICENSE-CREDENTIALS-SETUP.md",
-  "!UPGRADE-NOTICE.md",
-  "!SECURITY.md",
+  "!.gitignore",
+  "!.gitattributes",
+  "!.gitkeep",
+  "!.jshintrc",
+  "!.prettierignore",
+  "!.prettierrc.json",
   "!bower.json",
+  "!components.json",
   "!composer.json",
-  "!plugin-config.json",
   "!composer.lock",
-  "!contributing.md",
-  "!docs/**",
-  "!documentation/**",
   "!gruntfile.cjs",
   "!package.json",
   "!package-lock.json",
+  "!phpcs.xml.dist",
+  "!phpstan.neon.dist",
+  "!phpunit.xml.dist",
+  "!plugin-config.json",
+  "!postcss.config.js",
+  "!postcss.config.cjs",
+  "!tailwind.config.js",
+  "!tsconfig.json",
+  "!vite.admin.config.js",
+  "!vite.config.js",
+  "!vite.frontend.config.js",
+  "!webpack.config.js",
+  "!yarn.lock",
+  "!**/*~",
+  "!**/.gitkeep",
+  
+  // Documentation files
+  "!*.md",
+  "!CLAUDE.md",
+  "!contributing.md",
+  "!LICENSE-CREDENTIALS-SETUP.md",
   "!readme.md",
   "!ROADMAP.md",
-  "!CLAUDE.md",
-  "!phpcs.xml.dist",
-  "!phpunit.xml.dist",
-  "!phpstan.neon.dist",
-  "!webpack.config.js",
-  "!vite.admin.config.js",
-  "!vite.frontend.config.js",
-  "!**/*~",
-  "!tests/**",
-  "!**/test",
-  "!.github/**",
-  "!**/.github/**",
-  "!**/.git/**",
-  "!**/.gitattributes",
-  "!**/.gitkeep",
-  "!.storybook/**",
-  "!.kiro/**",
-  "!.vscode/**",
-  "!vite.config.js",
-  "!tsconfig.json",
-  "!tailwind.config.js",
-  "!npm/**",
-  "!yarn.lock",
-  "!postcss.config.js",
-  "!components.json",
-  "!.prettierrc.json",
-  "!.prettierignore",
-  "!js/dist/assets/**/*.js.map",
+  "!SECURITY.md",
+  "!UPGRADE-NOTICE.md",
+  
+  // WordPress config files (never include these)
+  "!wp-config.php",
+  "!wp-config-local.php",
+  "!wp-config-sample.php",
+  
+  // Map files (not needed in production)
+  "!**/*.js.map",
+  "!**/*.css.map",
+  "!assets/**/*.js.map",
+  "!assets/**/*.css.map",
   "!assets/admin/dist/**/*.js.map",
   "!assets/frontend/dist/**/*.js.map",
+  "!js/dist/assets/**/*.js.map",
+  
+  // Vendor development files
+  "!vendor/bin/**",
 ];
 
 // Replace functionality
@@ -379,6 +419,7 @@ grunt.registerTask("rename", [
 ]);
 
 grunt.registerTask("change-text-domain", ["checktextdomain"]);
+
 // Set linefeed style to Unix (LF)
 grunt.util.linefeed = "\n";
 

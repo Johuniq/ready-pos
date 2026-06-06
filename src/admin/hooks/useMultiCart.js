@@ -13,6 +13,7 @@ import {
   cartCouponsAtom,
   orderNotesAtom,
 } from "@/admin/stores/posStore";
+import { api } from "@/lib/api";
 
 /**
  * Hook for managing multiple simultaneous carts.
@@ -175,6 +176,65 @@ export function useMultiCart() {
     }
   }, [sessions, activeId, removeCart, setSessions, loadSession]);
 
+  /**
+   * Transfer a cart to another cashier.
+   */
+  const transferCart = useCallback(
+    (targetId, targetCashierId, targetCashierName) => {
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === targetId
+            ? { ...s, ownerId: targetCashierId, ownerName: targetCashierName }
+            : s,
+        ),
+      );
+    },
+    [setSessions],
+  );
+
+  /**
+   * Save a cart to server for persistence (unlimited carts).
+   */
+  const saveCartToServer = useCallback(
+    async (cartData) => {
+      try {
+        const response = await api.post("/carts/save", {
+          cart: cartData,
+        });
+        return response;
+      } catch (error) {
+        console.error("Failed to save cart:", error);
+        throw error;
+      }
+    },
+    [],
+  );
+
+  /**
+   * Load all saved carts from server.
+   */
+  const loadCartsFromServer = useCallback(async () => {
+    try {
+      const response = await api.get("/carts/list");
+      return response.carts || [];
+    } catch (error) {
+      console.error("Failed to load carts:", error);
+      return [];
+    }
+  }, []);
+
+  /**
+   * Delete a cart from server.
+   */
+  const deleteCartFromServer = useCallback(async (cartId) => {
+    try {
+      await api.delete(`/carts/delete/${cartId}`);
+    } catch (error) {
+      console.error("Failed to delete cart:", error);
+      throw error;
+    }
+  }, []);
+
   return {
     sessions,
     activeId,
@@ -186,5 +246,9 @@ export function useMultiCart() {
     renameCart,
     saveCurrentToSession,
     clearActiveAfterCheckout,
+    transferCart,
+    saveCartToServer,
+    loadCartsFromServer,
+    deleteCartFromServer,
   };
 }

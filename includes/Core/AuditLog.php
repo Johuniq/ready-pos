@@ -30,6 +30,7 @@ class AuditLog {
 	const EVENT_SECURITY = 'security';
 	const EVENT_FINANCIAL = 'financial';
 	const EVENT_SYSTEM = 'system';
+	const EVENT_CART = 'cart';
 
 	/**
 	 * Severity levels
@@ -96,11 +97,16 @@ class AuditLog {
 
 		$table_name = $wpdb->prefix . 'readypos_audit_log';
 		
-		// Insert into custom audit log table
-		$result = $wpdb->insert( $table_name, $log_entry );
+		// Insert into custom audit log table.
+		$result = $wpdb->insert( $table_name, $log_entry ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
+
+		if ( false !== $result ) {
+			self::bump_cache_version();
+		}
 
 		// Also log to WordPress error log for critical events
 		if ( in_array( $severity, array( self::SEVERITY_ERROR, self::SEVERITY_CRITICAL ), true ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional security audit logging for critical events
 			error_log( sprintf(
 				'[ReadyPOS Audit] %s | %s | %s | User: %s (ID: %d) | IP: %s',
 				strtoupper( $severity ),
@@ -417,6 +423,12 @@ class AuditLog {
 
 		$args = wp_parse_args( $args, $defaults );
 		$table_name = $wpdb->prefix . 'readypos_audit_log';
+		$cache_key  = 'readypos_audit_logs_' . self::get_cache_version() . '_' . md5( wp_json_encode( $args ) );
+		$cached     = wp_cache_get( $cache_key, 'readypos_audit_log' );
+
+		if ( false !== $cached ) {
+			return $cached;
+		}
 
 		$where = array( '1=1' );
 		$prepare_values = array();
@@ -450,22 +462,28 @@ class AuditLog {
 		$orderby = in_array( $args['orderby'], array( 'id', 'created_at', 'severity' ), true ) ? $args['orderby'] : 'created_at';
 		$order = 'ASC' === strtoupper( $args['order'] ) ? 'ASC' : 'DESC';
 
+		// Build the final query with safe identifiers
+		$query = sprintf(
+			"SELECT * FROM `%s` WHERE %s ORDER BY %s %s LIMIT %%d OFFSET %%d",
+			esc_sql( $table_name ),
+			$where_clause,
+			esc_sql( $orderby ),
+			esc_sql( $order )
+		);
+
 		$prepare_values[] = (int) $args['limit'];
 		$prepare_values[] = (int) $args['offset'];
 
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$query = $wpdb->prepare(
-			"SELECT * FROM {$table_name} WHERE {$where_clause} ORDER BY {$orderby} {$order} LIMIT %d OFFSET %d",
-			$prepare_values
-		);
+		$query = $wpdb->prepare( $query, $prepare_values ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 
-		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-		$results = $wpdb->get_results( $query, ARRAY_A );
+		$results = $wpdb->get_results( $query, ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Query is properly prepared with esc_sql() on line 464
 
 		// Decode metadata JSON
 		foreach ( $results as &$result ) {
 			$result['metadata'] = json_decode( $result['metadata'], true );
 		}
+
+		wp_cache_set( $cache_key, $results, 'readypos_audit_log', MINUTE_IN_SECONDS );
 
 		return $results;
 	}
@@ -482,13 +500,19 @@ class AuditLog {
 		$table_name = $wpdb->prefix . 'readypos_audit_log';
 		$cutoff_date = gmdate( 'Y-m-d H:i:s', strtotime( "-{$days} days" ) );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-		$deleted = $wpdb->query(
-			$wpdb->prepare(
-				"DELETE FROM {$table_name} WHERE created_at < %s",
-				$cutoff_date
-			)
+		$query = sprintf(
+			"DELETE FROM `%s` WHERE created_at < %%s",
+			esc_sql( $table_name )
 		);
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Table name is properly escaped with esc_sql() on line 501
+		$deleted = $wpdb->query(
+			$wpdb->prepare( $query, $cutoff_date ) // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- Query is properly prepared with esc_sql() on line 502
+		);
+
+		if ( false !== $deleted ) {
+			self::bump_cache_version();
+		}
 
 		self::log(
 			self::EVENT_SYSTEM,
@@ -502,6 +526,32 @@ class AuditLog {
 		);
 
 		return $deleted;
+	}
+
+	/**
+	 * Get audit log cache version.
+	 *
+	 * @return int Cache version.
+	 */
+	private static function get_cache_version() {
+		$version = wp_cache_get( 'readypos_audit_log_cache_version', 'readypos_audit_log' );
+
+		if ( false === $version ) {
+			$version = 1;
+			wp_cache_set( 'readypos_audit_log_cache_version', $version, 'readypos_audit_log' );
+		}
+
+		return (int) $version;
+	}
+
+	/**
+	 * Rotate audit log cache keys after writes.
+	 *
+	 * @return void
+	 */
+	private static function bump_cache_version() {
+		$version = self::get_cache_version() + 1;
+		wp_cache_set( 'readypos_audit_log_cache_version', $version, 'readypos_audit_log' );
 	}
 }
 

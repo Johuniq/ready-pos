@@ -38,7 +38,9 @@ import {
   Printer,
   ScanBarcode,
   Crown,
+  Monitor,
 } from "lucide-react";
+import { CustomerDisplayGuide, useCustomerDisplayGuide } from "./CustomerDisplayGuide";
 
 export default function POSHeader({
   onOpenCloseSession,
@@ -65,6 +67,7 @@ export default function POSHeader({
   const [cashAdjustOpen, setCashAdjustOpen] = useState(false);
   const [failedOrdersOpen, setFailedOrdersOpen] = useState(false);
   const [failedOrders, setFailedOrders] = useState([]);
+  const { showGuide, setShowGuide, checkAndShowGuide } = useCustomerDisplayGuide();
 
   const handleOpenFailedOrders = async () => {
     const orders = await getFailedOrders();
@@ -96,6 +99,36 @@ export default function POSHeader({
       ? readyPosAdmin.userInfo.roles.join(", ")
       : "Staff";
 
+  const handleOpenCustomerDisplay = () => {
+    // Check if user needs to see the guide first
+    const needsGuide = checkAndShowGuide();
+    if (needsGuide) {
+      return; // Guide modal will show, user clicks "Got It" to proceed
+    }
+
+    // Open customer display in a new window (for second monitor)
+    openCustomerDisplayWindow();
+  };
+
+  const openCustomerDisplayWindow = () => {
+    const width = 1920;
+    const height = 1080;
+    const left = window.screen.width - width;
+    const top = 0;
+    
+    const customerDisplayWindow = window.open(
+      `#/customer-display`,
+      "CustomerDisplay",
+      `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no`
+    );
+
+    if (customerDisplayWindow) {
+      customerDisplayWindow.focus();
+    } else {
+      toast.error("Please allow pop-ups to open customer display");
+    }
+  };
+
   return (
     <header className="h-16 border-b bg-card text-card-foreground flex items-center justify-between gap-4 px-4 lg:px-6 shadow-sm select-none">
       {/* ==================================================
@@ -105,9 +138,11 @@ export default function POSHeader({
         <a
           href="#/dashboard"
           className="flex items-center gap-2 font-bold text-base text-primary shrink-0">
-          <span className="bg-primary text-primary-foreground px-2 py-0.5 rounded-md text-sm">
-            R
-          </span>
+          <img 
+            src={typeof readyPosAdmin !== 'undefined' ? `${readyPosAdmin.pluginUrl}/assets/images/pos.png` : '/wp-content/plugins/ready-pos/assets/images/pos.png'}
+            alt="Ready POS"
+            className="w-7 h-7 object-contain"
+          />
           <span className="hidden sm:inline">Ready POS</span>
         </a>
 
@@ -242,6 +277,16 @@ export default function POSHeader({
           <Button
             variant="ghost"
             size="sm"
+            onClick={handleOpenCustomerDisplay}
+            className="h-8 gap-1.5 text-xs font-semibold hover:bg-background"
+            title="Open Customer Display (Second Screen)">
+            <Monitor className="w-3.5 h-3.5" />
+            <span className="hidden xl:inline">Display</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onOpenHeldCarts}
             className="h-8 gap-1.5 text-xs font-semibold hover:bg-background">
             <Layers className="w-3.5 h-3.5" />
@@ -327,6 +372,21 @@ export default function POSHeader({
       </div>
 
       <CashAdjustModal open={cashAdjustOpen} onOpenChange={setCashAdjustOpen} />
+
+      {/* Customer Display Setup Guide */}
+      <CustomerDisplayGuide 
+        open={showGuide} 
+        onOpenChange={(open) => {
+          setShowGuide(open);
+          // If guide is being closed and user clicked "Got It", open the display
+          if (!open && !localStorage.getItem("readypos_cfd_guide_seen")) {
+            // User cancelled, don't open
+          } else if (!open && localStorage.getItem("readypos_cfd_guide_seen")) {
+            // User clicked "Got It", open display
+            setTimeout(openCustomerDisplayWindow, 100);
+          }
+        }} 
+      />
 
       {/* Failed Offline Orders Modal */}
       <Dialog open={failedOrdersOpen} onOpenChange={setFailedOrdersOpen}>

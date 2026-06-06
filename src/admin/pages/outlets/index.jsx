@@ -31,8 +31,10 @@ import {
   MapPin,
   RefreshCw,
   Crown,
+  Settings2,
 } from "lucide-react";
 import InventoryTakeModal from "./components/InventoryTakeModal";
+import { OutletConfigurationModal } from "./components/OutletConfigurationModal";
 import { useLicense } from "@/admin/hooks/useLicense";
 import { ProBadge } from "@/admin/components/ProGate";
 import { OutletsSkeleton } from "@/components/loading/PageSkeleton";
@@ -53,6 +55,10 @@ export default function Outlets() {
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [selectedOutletForInventory, setSelectedOutletForInventory] =
     useState(null);
+
+  // Configuration modal state
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [selectedOutletForConfig, setSelectedOutletForConfig] = useState(null);
 
   // Form fields
   const [currentId, setCurrentId] = useState(null);
@@ -403,6 +409,22 @@ export default function Outlets() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="text-[10px] h-8 font-bold flex items-center gap-1.5 hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/30 transition-all duration-150"
+                  onClick={() => {
+                    if (!license.isPro) {
+                      license.requireFeature("outlet_configuration");
+                      return;
+                    }
+                    setSelectedOutletForConfig(outlet);
+                    setShowConfigModal(true);
+                  }}>
+                  <Settings2 className="w-3.5 h-3.5" />
+                  <span>Configure Outlet</span>
+                  {!license.isPro && <ProBadge className="ml-1 scale-75" />}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="text-[10px] h-8 font-bold flex items-center gap-1.5 hover:bg-primary/5 hover:text-primary transition-all duration-150"
                   onClick={() => {
                     setSelectedOutletForInventory(outlet);
@@ -583,6 +605,14 @@ export default function Outlets() {
         open={showInventoryModal}
         onOpenChange={setShowInventoryModal}
         outlet={selectedOutletForInventory}
+        onComplete={fetchOutlets}
+      />
+
+      {/* Outlet Configuration Dialog */}
+      <OutletConfigurationModal
+        open={showConfigModal}
+        onOpenChange={setShowConfigModal}
+        outlet={selectedOutletForConfig}
         onComplete={fetchOutlets}
       />
     </div>

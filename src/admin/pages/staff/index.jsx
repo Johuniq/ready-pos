@@ -43,6 +43,8 @@ import { StaffSkeleton, ListSkeleton } from "@/components/loading/PageSkeleton";
 import { handleError } from "@/lib/errorHandler";
 import { DataPanel, PageHeader, PageToolbar } from "@/admin/components/PageLayout";
 import { useAlert } from "@/components/ui/alert-provider";
+import { useTableExport } from "@/hooks/useTableExport";
+import { ExportButton } from "@/components/export/ExportButton";
 
 const ROLE_LABELS = {
   pos_manager: {
@@ -76,6 +78,29 @@ export default function StaffPage() {
     if (pinFilter === "pin" && !user.has_pin) return false;
     if (pinFilter === "nopin" && user.has_pin) return false;
     return true;
+  });
+
+  // Export functionality
+  const { handleExportCSV, handleExportExcel, handleExportPDF } = useTableExport({
+    getHeaders: () => [
+      "Name",
+      "Email",
+      "Role",
+      "PIN Status",
+    ],
+    getRows: () =>
+      filteredStaff.map((user) => {
+        const roleKey = user.role.split(",")[0].trim();
+        const roleCfg = ROLE_LABELS[roleKey] || ROLE_LABELS.pos_cashier;
+        return [
+          user.name || "",
+          user.email || "",
+          roleCfg.label || "",
+          user.has_pin ? "PIN Set" : "No PIN",
+        ];
+      }),
+    filename: "ready_pos_staff",
+    title: "Staff Directory",
   });
 
   // Add/Edit modal
@@ -266,6 +291,13 @@ export default function StaffPage() {
             </SelectItem>
           </SelectContent>
         </Select>
+        
+        <ExportButton
+          onExportCSV={handleExportCSV}
+          onExportExcel={handleExportExcel}
+          onExportPDF={handleExportPDF}
+          disabled={loading || filteredStaff.length === 0}
+        />
       </PageToolbar>
 
       {/* Staff list */}

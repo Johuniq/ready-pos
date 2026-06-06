@@ -57,6 +57,45 @@ class Admin {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_script' ) );
 		add_filter( 'admin_footer_text', array( $this, 'custom_footer' ) );
 		add_filter( 'update_footer', array( $this, 'custom_footer_version' ), 99 );
+		add_action( 'admin_notices', array( $this, 'show_cache_notice' ) );
+	}
+
+	/**
+	 * Show admin notice when cache is cleared.
+	 *
+	 * @return void
+	 */
+	public function show_cache_notice() {
+		// Only show on Ready POS pages
+		$screen = get_current_screen();
+		if ( ! $screen || ! in_array( $screen->id, $this->allowed_screens, true ) ) {
+			return;
+		}
+
+		// Check if cache was just cleared
+		if ( isset( $_GET['readypos_cache_cleared'] ) && '1' === $_GET['readypos_cache_cleared'] ) {
+			?>
+			<div class="notice notice-success is-dismissible">
+				<p>
+					<strong><?php esc_html_e( 'Ready POS:', 'ready-pos' ); ?></strong>
+					<?php esc_html_e( 'All caches have been cleared successfully. Please refresh your browser (Ctrl+Shift+R or Cmd+Shift+R) to see the latest changes.', 'ready-pos' ); ?>
+				</p>
+			</div>
+			<?php
+		}
+
+		// Check if plugin was just activated
+		if ( get_transient( 'readypos_activated' ) ) {
+			delete_transient( 'readypos_activated' );
+			?>
+			<div class="notice notice-info is-dismissible">
+				<p>
+					<strong><?php esc_html_e( 'Ready POS Activated:', 'ready-pos' ); ?></strong>
+					<?php esc_html_e( 'All caches have been cleared. If you experience any issues, try hard refreshing your browser (Ctrl+Shift+R).', 'ready-pos' ); ?>
+				</p>
+			</div>
+			<?php
+		}
 	}
 
 	/**
@@ -68,7 +107,7 @@ class Admin {
 	public function enqueue_script( $screen ) {
 		if ( in_array( $screen, $this->allowed_screens, true ) ) {
 			Assets\enqueue_asset(
-				READYPOS_DIR . '/assets/admin/dist',
+				\READYPOS_DIR . '/assets/admin/dist',
 				self::DEV_SCRIPT,
 				$this->get_config()
 			);

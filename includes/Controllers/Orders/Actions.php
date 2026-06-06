@@ -70,6 +70,7 @@ class Actions {
 
 				if ( ! $product || ! $product->is_purchasable() ) {
 					// Log warning for invalid product
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional security logging for invalid product attempts
 					error_log( sprintf( 
 						'ReadyPOS: Attempted to add invalid/non-purchasable product ID %d to order', 
 						$product_id 
@@ -341,13 +342,19 @@ class Actions {
 				
 				$sessions_table = $wpdb->prefix . 'readypos_sessions';
 				
-				// Check session exists and is open
-				$session = $wpdb->get_row(
-					$wpdb->prepare(
-						"SELECT id, status, outlet_id FROM {$sessions_table} WHERE id = %d AND status = 'open'",
-						$session_id
-					)
-				);
+				// Check session exists and is open.
+				$session_cache_key = 'readypos_open_session_' . absint( $session_id );
+				$session           = wp_cache_get( $session_cache_key, 'readypos_sessions' );
+
+				if ( false === $session ) {
+					$session = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						$wpdb->prepare(
+							"SELECT id, status, outlet_id FROM `" . esc_sql( $sessions_table ) . "` WHERE id = %d AND status = 'open'",
+							$session_id
+						)
+					);
+					wp_cache_set( $session_cache_key, $session, 'readypos_sessions', MINUTE_IN_SECONDS );
+				}
 				
 				if ( $session ) {
 					// Calculate payment method totals
@@ -369,10 +376,10 @@ class Actions {
 						}
 					}
 					
-					// Atomic update - prevents race condition on concurrent orders
-					$wpdb->query(
+					// Atomic update - prevents race condition on concurrent orders.
+					$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 						$wpdb->prepare(
-							"UPDATE {$sessions_table} 
+							"UPDATE `" . esc_sql( $sessions_table ) . "`
 							SET total_sales = total_sales + %f,
 								total_orders = total_orders + 1,
 								cash_total = cash_total + %f,
@@ -384,6 +391,7 @@ class Actions {
 							$session_id
 						)
 					);
+					wp_cache_delete( $session_cache_key, 'readypos_sessions' );
 
 					// SECURITY FIX #7: Use atomic SQL updates for inventory to prevent overselling
 					if ( $session->outlet_id ) {
@@ -393,10 +401,10 @@ class Actions {
 							$product_id = intval( $validated_item['id'] );
 							$quantity   = intval( $validated_item['quantity'] );
 
-							// Atomic decrement with lower bound protection
-							$wpdb->query(
+							// Atomic decrement with lower bound protection.
+							$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 								$wpdb->prepare(
-									"UPDATE {$stock_table} 
+									"UPDATE `" . esc_sql( $stock_table ) . "`
 									SET stock_quantity = GREATEST(0, stock_quantity - %d)
 									WHERE outlet_id = %d 
 									AND product_id = %d",
@@ -405,6 +413,7 @@ class Actions {
 									$product_id
 								)
 							);
+							wp_cache_delete( 'readypos_outlet_stock_' . absint( $session->outlet_id ) . '_' . absint( $product_id ), 'readypos_inventory' );
 						}
 					}
 				}
@@ -459,6 +468,7 @@ class Actions {
 			'paginate'   => true,
 			'orderby'    => 'date',
 			'order'      => 'DESC',
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required WooCommerce order flag lookup for POS history.
 			'meta_query' => array(
 				array(
 					'key'     => '_readypos_is_pos_order',
@@ -472,8 +482,23 @@ class Actions {
 
 		$orders = array();
 		if ( $results && isset( $results->orders ) ) {
+			// Pre-fetch all relevant POSOrderMeta records to avoid N+1 queries
+			$order_ids = array();
 			foreach ( $results->orders as $wc_order ) {
-				$pos_meta    = POSOrderMeta::where( 'wc_order_id', $wc_order->get_id() )->first();
+				$order_ids[] = $wc_order->get_id();
+			}
+
+			$pos_metas = array();
+			if ( ! empty( $order_ids ) ) {
+				$metas = POSOrderMeta::whereIn( 'wc_order_id', $order_ids )->get();
+				foreach ( $metas as $meta ) {
+					$pos_metas[ $meta->wc_order_id ] = $meta;
+				}
+			}
+
+			foreach ( $results->orders as $wc_order ) {
+				$order_id    = $wc_order->get_id();
+				$pos_meta    = isset( $pos_metas[ $order_id ] ) ? $pos_metas[ $order_id ] : null;
 				$cashier_id  = $pos_meta ? $pos_meta->cashier_id : intval( $wc_order->get_meta( '_readypos_cashier_id' ) );
 				$cashier     = $cashier_id ? get_userdata( $cashier_id ) : null;
 				$payment     = $pos_meta ? $pos_meta->payment_method : ( $wc_order->get_payment_method() ?: 'unknown' );

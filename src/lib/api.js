@@ -46,9 +46,49 @@ class ApiError extends Error {
 export const api = {
   async request(endpoint, options = {}) {
     const config = getApiConfig();
-    const base = config.url.replace(/\/+$/, "");
-    const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
-    const url = `${base}${path}`;
+    const baseUrl = config.url;
+    const [endpointPath, endpointQuery] = endpoint.split("?");
+    const cleanEndpointPath = endpointPath.replace(/^\/+/, "");
+
+    let url;
+    if (baseUrl.includes("?")) {
+      const [baseLeft, baseQuery] = baseUrl.split("?");
+      const params = new URLSearchParams(baseQuery);
+      const restRoute = params.get("rest_route");
+
+      if (restRoute) {
+        const cleanRestRoute = restRoute.replace(/\/+$/, "") + "/" + cleanEndpointPath;
+        params.set("rest_route", cleanRestRoute);
+      }
+
+      if (endpointQuery) {
+        const endpointParams = new URLSearchParams(endpointQuery);
+        endpointParams.forEach((value, key) => {
+          params.set(key, value);
+        });
+      }
+
+      const queryParts = [];
+      params.forEach((value, key) => {
+        if (key === "rest_route") {
+          const encodedValue = value
+            .split("/")
+            .map((segment) => encodeURIComponent(segment))
+            .join("/");
+          queryParts.push(`${key}=${encodedValue}`);
+        } else {
+          queryParts.push(`${key}=${encodeURIComponent(value)}`);
+        }
+      });
+
+      url = `${baseLeft.replace(/\/+$/, "")}?${queryParts.join("&")}`;
+    } else {
+      const base = baseUrl.replace(/\/+$/, "");
+      url = `${base}/${cleanEndpointPath}`;
+      if (endpointQuery) {
+        url += `?${endpointQuery}`;
+      }
+    }
 
     const headers = {
       "Content-Type": "application/json",

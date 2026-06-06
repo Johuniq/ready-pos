@@ -9,6 +9,8 @@
 .kiro
 .puku
 .vscode
+.cursor
+.wordpress-org
 
 # Node and package management
 node_modules
@@ -17,6 +19,7 @@ package.json
 npm-debug.log
 yarn.lock
 yarn-error.log
+pnpm-lock.yaml
 
 # Source files (pre-compiled)
 src
@@ -28,15 +31,19 @@ tailwind.config.js
 tsconfig.json
 components.json
 gruntfile.cjs
-next.config.js
 
 # Documentation and tests
 tests
 documentation
-CLAUDE.md
-README.md
-phpunit.xml
-.phpunit.result.cache
+bin
+*.md
+!readme.txt
+DEPLOYMENT.md
+TROUBLESHOOTING.md
+
+# Markdown files (keep readme.txt only)
+*.md
+!README.md
 
 # Release artifacts
 release
@@ -51,5 +58,9 @@ Thumbs.db
 *.swo
 *~
 
-# Composer dev dependencies (keep vendor for autoload)
-# Note: WordPress.org will run composer install --no-dev
+# Composer dev dependencies
+# Note: vendor/ is NOT excluded - it must be included in distribution
+# Run 'composer install --no-dev' before building the release package
+# The 'npm run release' command handles this automatically
+# composer.json is INCLUDED so users can see dependency information
+composer.lock

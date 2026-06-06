@@ -42,6 +42,7 @@ class Actions {
 			'limit'        => -1,
 			'status'       => array( 'completed', 'processing', 'on-hold', 'refunded' ),
 			'date_created' => $start . '...' . $end,
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required to filter POS orders, indexed by WooCommerce HPOS
 			'meta_query'   => array(
 				array(
 					'key'     => '_readypos_is_pos_order',
@@ -166,16 +167,22 @@ class Actions {
 		$days = $request->get_param( 'days' ) ? intval( $request->get_param( 'days' ) ) : 30;
 		$days = max( 1, $days );
 
+		$cache_key = 'readypos_report_sales_summary_pro_' . $days;
+		$cached = get_transient( $cache_key );
+		if ( false !== $cached ) {
+			return new \WP_REST_Response( $cached, 200 );
+		}
+
 		$now = current_time( 'timestamp' );
 
 		// Current period
-		$current_start = date( 'Y-m-d 00:00:00', strtotime( "-{$days} days", $now ) );
-		$current_end   = date( 'Y-m-d 23:59:59', $now );
+		$current_start = wp_date( 'Y-m-d 00:00:00', strtotime( "-{$days} days", $now ) );
+		$current_end   = wp_date( 'Y-m-d 23:59:59', $now );
 
 		// Previous equivalent period (the days before current period started)
 		$prev_days     = $days * 2;
-		$previous_start = date( 'Y-m-d 00:00:00', strtotime( "-{$prev_days} days", $now ) );
-		$previous_end   = date( 'Y-m-d 23:59:59', strtotime( "-{$days} days -1 day", $now ) );
+		$previous_start = wp_date( 'Y-m-d 00:00:00', strtotime( "-{$prev_days} days", $now ) );
+		$previous_end   = wp_date( 'Y-m-d 23:59:59', strtotime( "-{$days} days -1 day", $now ) );
 
 		$current_orders  = $this->fetch_pos_orders( $current_start, $current_end );
 		$previous_orders = $this->fetch_pos_orders( $previous_start, $previous_end );
@@ -196,7 +203,7 @@ class Actions {
 		// Daily chart for current period
 		$daily_chart = array();
 		for ( $i = $days; $i >= 0; $i-- ) {
-			$date                    = date( 'Y-m-d', strtotime( "-{$i} days", $now ) );
+			$date                    = wp_date( 'Y-m-d', strtotime( "-{$i} days", $now ) );
 			$daily_chart[ $date ]    = 0;
 		}
 
@@ -214,20 +221,21 @@ class Actions {
 		$chart_data = array();
 		foreach ( $daily_chart as $date => $amount ) {
 			$chart_data[] = array(
-				'date'  => date( 'M d', strtotime( $date ) ),
+				'date'  => wp_date( 'M d', strtotime( $date ) ),
 				'sales' => round( $amount, 2 ),
 			);
 		}
 
-		return new \WP_REST_Response(
-			array(
-				'summary'  => $current_summary,
-				'previous' => $previous_summary,
-				'growth'   => $growth,
-				'chart'    => $chart_data,
-			),
-			200
+		$response_data = array(
+			'summary'  => $current_summary,
+			'previous' => $previous_summary,
+			'growth'   => $growth,
+			'chart'    => $chart_data,
 		);
+
+		set_transient( $cache_key, $response_data, HOUR_IN_SECONDS );
+
+		return new \WP_REST_Response( $response_data, 200 );
 	}
 
 	/**
@@ -248,8 +256,14 @@ class Actions {
 		$days = $request->get_param( 'days' ) ? intval( $request->get_param( 'days' ) ) : 30;
 		$days = max( 1, $days );
 
-		$start = date( 'Y-m-d 00:00:00', strtotime( "-{$days} days" ) );
-		$end   = date( 'Y-m-d 23:59:59' );
+		$cache_key = 'readypos_report_product_perf_pro_' . $days;
+		$cached = get_transient( $cache_key );
+		if ( false !== $cached ) {
+			return new \WP_REST_Response( $cached, 200 );
+		}
+
+		$start = wp_date( 'Y-m-d 00:00:00', strtotime( "-{$days} days" ) );
+		$end   = wp_date( 'Y-m-d 23:59:59' );
 
 		$orders   = $this->fetch_pos_orders( $start, $end );
 		$products = array();
@@ -290,6 +304,8 @@ class Actions {
 			$p['total'] = round( $p['total'], 2 );
 		}
 
+		set_transient( $cache_key, $products, HOUR_IN_SECONDS );
+
 		return new \WP_REST_Response( $products, 200 );
 	}
 
@@ -311,8 +327,14 @@ class Actions {
 		$days = $request->get_param( 'days' ) ? intval( $request->get_param( 'days' ) ) : 30;
 		$days = max( 1, $days );
 
-		$start = date( 'Y-m-d 00:00:00', strtotime( "-{$days} days" ) );
-		$end   = date( 'Y-m-d 23:59:59' );
+		$cache_key = 'readypos_report_cashier_perf_pro_' . $days;
+		$cached = get_transient( $cache_key );
+		if ( false !== $cached ) {
+			return new \WP_REST_Response( $cached, 200 );
+		}
+
+		$start = wp_date( 'Y-m-d 00:00:00', strtotime( "-{$days} days" ) );
+		$end   = wp_date( 'Y-m-d 23:59:59' );
 
 		$orders   = $this->fetch_pos_orders( $start, $end );
 		$cashiers = array();
@@ -350,6 +372,8 @@ class Actions {
 			$c['sales'] = round( $c['sales'], 2 );
 		}
 
+		set_transient( $cache_key, $cashiers, HOUR_IN_SECONDS );
+
 		return new \WP_REST_Response( $cashiers, 200 );
 	}
 
@@ -371,16 +395,37 @@ class Actions {
 		$days = $request->get_param( 'days' ) ? intval( $request->get_param( 'days' ) ) : 30;
 		$days = max( 1, $days );
 
-		$start = date( 'Y-m-d 00:00:00', strtotime( "-{$days} days" ) );
-		$end   = date( 'Y-m-d 23:59:59' );
+		$cache_key = 'readypos_report_payment_methods_pro_' . $days;
+		$cached = get_transient( $cache_key );
+		if ( false !== $cached ) {
+			return new \WP_REST_Response( $cached, 200 );
+		}
+
+		$start = wp_date( 'Y-m-d 00:00:00', strtotime( "-{$days} days" ) );
+		$end   = wp_date( 'Y-m-d 23:59:59' );
 
 		$orders  = $this->fetch_pos_orders( $start, $end );
 		$methods = array();
 
+		// Pre-fetch all relevant POSOrderMeta records to avoid N+1 queries
+		$order_ids = array();
 		foreach ( $orders as $order ) {
-			// Prefer the readypos meta record for accurate method (handles split orders),
-			// fallback to WC payment method.
-			$pos_meta = POSOrderMeta::where( 'wc_order_id', $order->get_id() )->first();
+			if ( $order ) {
+				$order_ids[] = $order->get_id();
+			}
+		}
+
+		$pos_metas = array();
+		if ( ! empty( $order_ids ) ) {
+			$metas = POSOrderMeta::whereIn( 'wc_order_id', $order_ids )->get();
+			foreach ( $metas as $meta ) {
+				$pos_metas[ $meta->wc_order_id ] = $meta;
+			}
+		}
+
+		foreach ( $orders as $order ) {
+			$order_id = $order->get_id();
+			$pos_meta = isset( $pos_metas[ $order_id ] ) ? $pos_metas[ $order_id ] : null;
 			$method   = $pos_meta && ! empty( $pos_meta->payment_method )
 				? $pos_meta->payment_method
 				: ( $order->get_payment_method() ?: 'unknown' );
@@ -402,6 +447,8 @@ class Actions {
 		foreach ( $methods as &$m ) {
 			$m['sales'] = round( $m['sales'], 2 );
 		}
+
+		set_transient( $cache_key, $methods, HOUR_IN_SECONDS );
 
 		return new \WP_REST_Response( $methods, 200 );
 	}
@@ -468,16 +515,22 @@ class Actions {
 		$days = $request->get_param( 'days' ) ? intval( $request->get_param( 'days' ) ) : 30;
 		$days = max( 1, $days );
 
+		$cache_key = 'readypos_report_sales_summary_free_' . $days;
+		$cached = get_transient( $cache_key );
+		if ( false !== $cached ) {
+			return new \WP_REST_Response( $cached, 200 );
+		}
+
 		$now = current_time( 'timestamp' );
 
 		// Current period
-		$current_start = date( 'Y-m-d 00:00:00', strtotime( "-{$days} days", $now ) );
-		$current_end   = date( 'Y-m-d 23:59:59', $now );
+		$current_start = wp_date( 'Y-m-d 00:00:00', strtotime( "-{$days} days", $now ) );
+		$current_end   = wp_date( 'Y-m-d 23:59:59', $now );
 
 		// Previous equivalent period
 		$prev_days     = $days * 2;
-		$previous_start = date( 'Y-m-d 00:00:00', strtotime( "-{$prev_days} days", $now ) );
-		$previous_end   = date( 'Y-m-d 23:59:59', strtotime( "-{$days} days -1 day", $now ) );
+		$previous_start = wp_date( 'Y-m-d 00:00:00', strtotime( "-{$prev_days} days", $now ) );
+		$previous_end   = wp_date( 'Y-m-d 23:59:59', strtotime( "-{$days} days -1 day", $now ) );
 
 		$current_orders  = $this->fetch_pos_orders( $current_start, $current_end );
 		$previous_orders = $this->fetch_pos_orders( $previous_start, $previous_end );
@@ -498,7 +551,7 @@ class Actions {
 		// Daily chart for current period
 		$daily_chart = array();
 		for ( $i = $days; $i >= 0; $i-- ) {
-			$date                    = date( 'Y-m-d', strtotime( "-{$i} days", $now ) );
+			$date                    = wp_date( 'Y-m-d', strtotime( "-{$i} days", $now ) );
 			$daily_chart[ $date ]    = 0;
 		}
 
@@ -516,20 +569,21 @@ class Actions {
 		$chart_data = array();
 		foreach ( $daily_chart as $date => $amount ) {
 			$chart_data[] = array(
-				'date'  => date( 'M d', strtotime( $date ) ),
+				'date'  => wp_date( 'M d', strtotime( $date ) ),
 				'sales' => round( $amount, 2 ),
 			);
 		}
 
-		return new \WP_REST_Response(
-			array(
-				'summary'  => $current_summary,
-				'previous' => $previous_summary,
-				'growth'   => $growth,
-				'chart'    => $chart_data,
-			),
-			200
+		$response_data = array(
+			'summary'  => $current_summary,
+			'previous' => $previous_summary,
+			'growth'   => $growth,
+			'chart'    => $chart_data,
 		);
+
+		set_transient( $cache_key, $response_data, HOUR_IN_SECONDS );
+
+		return new \WP_REST_Response( $response_data, 200 );
 	}
 
 	/**
@@ -542,8 +596,14 @@ class Actions {
 		$days = $request->get_param( 'days' ) ? intval( $request->get_param( 'days' ) ) : 30;
 		$days = max( 1, $days );
 
-		$start = date( 'Y-m-d 00:00:00', strtotime( "-{$days} days" ) );
-		$end   = date( 'Y-m-d 23:59:59' );
+		$cache_key = 'readypos_report_product_perf_free_' . $days;
+		$cached = get_transient( $cache_key );
+		if ( false !== $cached ) {
+			return new \WP_REST_Response( $cached, 200 );
+		}
+
+		$start = wp_date( 'Y-m-d 00:00:00', strtotime( "-{$days} days" ) );
+		$end   = wp_date( 'Y-m-d 23:59:59' );
 
 		$orders   = $this->fetch_pos_orders( $start, $end );
 		$products = array();
@@ -583,6 +643,8 @@ class Actions {
 			$p['total'] = round( $p['total'], 2 );
 		}
 
+		set_transient( $cache_key, $products, HOUR_IN_SECONDS );
+
 		return new \WP_REST_Response( $products, 200 );
 	}
 
@@ -596,8 +658,14 @@ class Actions {
 		$days = $request->get_param( 'days' ) ? intval( $request->get_param( 'days' ) ) : 30;
 		$days = max( 1, $days );
 
-		$start = date( 'Y-m-d 00:00:00', strtotime( "-{$days} days" ) );
-		$end   = date( 'Y-m-d 23:59:59' );
+		$cache_key = 'readypos_report_cashier_perf_free_' . $days;
+		$cached = get_transient( $cache_key );
+		if ( false !== $cached ) {
+			return new \WP_REST_Response( $cached, 200 );
+		}
+
+		$start = wp_date( 'Y-m-d 00:00:00', strtotime( "-{$days} days" ) );
+		$end   = wp_date( 'Y-m-d 23:59:59' );
 
 		$orders   = $this->fetch_pos_orders( $start, $end );
 		$cashiers = array();
@@ -635,6 +703,8 @@ class Actions {
 			$c['sales'] = round( $c['sales'], 2 );
 		}
 
+		set_transient( $cache_key, $cashiers, HOUR_IN_SECONDS );
+
 		return new \WP_REST_Response( $cashiers, 200 );
 	}
 
@@ -648,14 +718,37 @@ class Actions {
 		$days = $request->get_param( 'days' ) ? intval( $request->get_param( 'days' ) ) : 30;
 		$days = max( 1, $days );
 
-		$start = date( 'Y-m-d 00:00:00', strtotime( "-{$days} days" ) );
-		$end   = date( 'Y-m-d 23:59:59' );
+		$cache_key = 'readypos_report_payment_methods_free_' . $days;
+		$cached = get_transient( $cache_key );
+		if ( false !== $cached ) {
+			return new \WP_REST_Response( $cached, 200 );
+		}
+
+		$start = wp_date( 'Y-m-d 00:00:00', strtotime( "-{$days} days" ) );
+		$end   = wp_date( 'Y-m-d 23:59:59' );
 
 		$orders  = $this->fetch_pos_orders( $start, $end );
 		$methods = array();
 
+		// Pre-fetch all relevant POSOrderMeta records to avoid N+1 queries
+		$order_ids = array();
 		foreach ( $orders as $order ) {
-			$pos_meta = POSOrderMeta::where( 'wc_order_id', $order->get_id() )->first();
+			if ( $order ) {
+				$order_ids[] = $order->get_id();
+			}
+		}
+
+		$pos_metas = array();
+		if ( ! empty( $order_ids ) ) {
+			$metas = POSOrderMeta::whereIn( 'wc_order_id', $order_ids )->get();
+			foreach ( $metas as $meta ) {
+				$pos_metas[ $meta->wc_order_id ] = $meta;
+			}
+		}
+
+		foreach ( $orders as $order ) {
+			$order_id = $order->get_id();
+			$pos_meta = isset( $pos_metas[ $order_id ] ) ? $pos_metas[ $order_id ] : null;
 			$method   = $pos_meta && ! empty( $pos_meta->payment_method )
 				? $pos_meta->payment_method
 				: ( $order->get_payment_method() ?: 'unknown' );
@@ -678,6 +771,185 @@ class Actions {
 			$m['sales'] = round( $m['sales'], 2 );
 		}
 
+		set_transient( $cache_key, $methods, HOUR_IN_SECONDS );
+
 		return new \WP_REST_Response( $methods, 200 );
+	}
+
+	/**
+	 * Outlet Analytics - PRO FEATURE
+	 *
+	 * Provides comprehensive outlet performance comparison including:
+	 * - Sales by outlet
+	 * - Best performing outlets
+	 * - Outlet profitability analysis
+	 * - Location comparison metrics
+	 *
+	 * @param \WP_REST_Request $request REST request.
+	 * @return \WP_REST_Response|\WP_Error
+	 */
+	public function outlet_analytics( \WP_REST_Request $request ) {
+		$gate = $this->verify_gated_access();
+		if ( is_wp_error( $gate ) ) {
+			return $gate;
+		}
+
+		$days = $request->get_param( 'days' ) ? intval( $request->get_param( 'days' ) ) : 30;
+		$days = max( 1, $days );
+
+		$cache_key = 'readypos_report_outlet_analytics_' . $days;
+		$cached    = get_transient( $cache_key );
+		if ( false !== $cached ) {
+			return new \WP_REST_Response( $cached, 200 );
+		}
+
+		$start = wp_date( 'Y-m-d 00:00:00', strtotime( "-{$days} days" ) );
+		$end   = wp_date( 'Y-m-d 23:59:59' );
+
+		// Fetch all POS orders for the period
+		$orders = $this->fetch_pos_orders( $start, $end );
+
+		// Get all outlets
+		$outlets_data = \Readypos\Models\POSOutlet::where( 'status', 'active' )->get();
+		$outlets_map  = array();
+		foreach ( $outlets_data as $outlet ) {
+			$outlets_map[ $outlet->id ] = array(
+				'id'           => $outlet->id,
+				'name'         => $outlet->name,
+				'address'      => $outlet->address,
+				'city'         => $outlet->city,
+				'state'        => $outlet->state,
+				'sales'        => 0.0,
+				'orders'       => 0,
+				'tax'          => 0.0,
+				'discounts'    => 0.0,
+				'net_revenue'  => 0.0,
+				'avg_order'    => 0.0,
+				'unique_customers' => array(),
+				'cashiers_count'   => array(),
+			);
+		}
+
+		// Aggregate order data by outlet
+		foreach ( $orders as $order ) {
+			$outlet_id = intval( $order->get_meta( '_readypos_outlet_id' ) );
+			
+			if ( ! $outlet_id || ! isset( $outlets_map[ $outlet_id ] ) ) {
+				continue; // Skip orders without outlet assignment
+			}
+
+			$total    = floatval( $order->get_total() );
+			$tax      = floatval( $order->get_total_tax() );
+			$discount = floatval( $order->get_discount_total() );
+
+			$outlets_map[ $outlet_id ]['sales']     += $total;
+			$outlets_map[ $outlet_id ]['orders']    += 1;
+			$outlets_map[ $outlet_id ]['tax']       += $tax;
+			$outlets_map[ $outlet_id ]['discounts'] += $discount;
+			$outlets_map[ $outlet_id ]['net_revenue'] += ( $total - $tax );
+
+			// Track unique customers
+			$customer_id = $order->get_customer_id();
+			if ( $customer_id ) {
+				$outlets_map[ $outlet_id ]['unique_customers'][ $customer_id ] = true;
+			}
+
+			// Track unique cashiers
+			$cashier_id = intval( $order->get_meta( '_readypos_cashier_id' ) );
+			if ( $cashier_id ) {
+				$outlets_map[ $outlet_id ]['cashiers_count'][ $cashier_id ] = true;
+			}
+		}
+
+		// Calculate derived metrics and format data
+		$outlets = array();
+		$total_sales = 0.0;
+		
+		foreach ( $outlets_map as $outlet_data ) {
+			$total_sales += $outlet_data['sales'];
+		}
+
+		foreach ( $outlets_map as $outlet_data ) {
+			// Calculate average order value
+			$outlet_data['avg_order'] = $outlet_data['orders'] > 0
+				? round( $outlet_data['sales'] / $outlet_data['orders'], 2 )
+				: 0;
+
+			// Count unique customers and cashiers
+			$outlet_data['unique_customers_count'] = count( $outlet_data['unique_customers'] );
+			$outlet_data['unique_cashiers_count']  = count( $outlet_data['cashiers_count'] );
+			unset( $outlet_data['unique_customers'], $outlet_data['cashiers_count'] );
+
+			// Calculate market share percentage
+			$outlet_data['market_share'] = $total_sales > 0
+				? round( ( $outlet_data['sales'] / $total_sales ) * 100, 1 )
+				: 0;
+
+			// Estimate profitability (simplified: net_revenue - 40% assumed costs)
+			$outlet_data['estimated_profit'] = round( $outlet_data['net_revenue'] * 0.6, 2 );
+			$outlet_data['profit_margin']    = $outlet_data['sales'] > 0
+				? round( ( $outlet_data['estimated_profit'] / $outlet_data['sales'] ) * 100, 1 )
+				: 0;
+
+			// Round values
+			$outlet_data['sales']        = round( $outlet_data['sales'], 2 );
+			$outlet_data['tax']          = round( $outlet_data['tax'], 2 );
+			$outlet_data['discounts']    = round( $outlet_data['discounts'], 2 );
+			$outlet_data['net_revenue']  = round( $outlet_data['net_revenue'], 2 );
+
+			$outlets[] = $outlet_data;
+		}
+
+		// Sort by sales (highest first)
+		usort( $outlets, function ( $a, $b ) {
+			return $b['sales'] <=> $a['sales'];
+		} );
+
+		// Identify best performing outlet
+		$best_outlet = count( $outlets ) > 0 ? $outlets[0] : null;
+
+		// Calculate comparison metrics
+		$avg_sales_per_outlet = $total_sales > 0 && count( $outlets ) > 0
+			? round( $total_sales / count( $outlets ), 2 )
+			: 0;
+
+		$total_orders = array_sum( array_column( $outlets, 'orders' ) );
+		$avg_orders_per_outlet = $total_orders > 0 && count( $outlets ) > 0
+			? round( $total_orders / count( $outlets ), 0 )
+			: 0;
+
+		// Prepare chart data for visualization
+		$chart_data = array();
+		foreach ( $outlets as $outlet ) {
+			$chart_data[] = array(
+				'name'  => $outlet['name'],
+				'sales' => $outlet['sales'],
+				'orders' => $outlet['orders'],
+				'profit' => $outlet['estimated_profit'],
+			);
+		}
+
+		$response_data = array(
+			'outlets'                => $outlets,
+			'best_performing_outlet' => $best_outlet,
+			'total_sales'            => round( $total_sales, 2 ),
+			'total_orders'           => $total_orders,
+			'avg_sales_per_outlet'   => $avg_sales_per_outlet,
+			'avg_orders_per_outlet'  => $avg_orders_per_outlet,
+			'outlets_count'          => count( $outlets ),
+			'chart_data'             => $chart_data,
+		);
+
+		set_transient( $cache_key, $response_data, HOUR_IN_SECONDS );
+
+		return new \WP_REST_Response( $response_data, 200 );
+	}
+
+	/**
+	 * Clear all cached reports transients.
+	 */
+	public static function clear_reports_cache() {
+		global $wpdb;
+		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_readypos_report_%' OR option_name LIKE '_transient_timeout_readypos_report_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 	}
 }

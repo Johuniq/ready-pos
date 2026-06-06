@@ -7,6 +7,8 @@
  * @package Readypos
  */
 
+defined( 'ABSPATH' ) || exit;
+
 use Readypos\Assets\Frontend;
 
 
@@ -17,7 +19,7 @@ use Readypos\Assets\Frontend;
  * @return void
  * @since 1.0.0
  */
-function wordpress_plugin_boilerplate_remove_unwanted_scripts_and_styles() {
+function readypos_remove_unwanted_scripts_and_styles() {
 	global $wp_scripts, $wp_styles;
 
 	// Loop through all scripts.
@@ -44,7 +46,7 @@ function wordpress_plugin_boilerplate_remove_unwanted_scripts_and_styles() {
 
 <?php
 // Template specific deregistration of scripts and styles.
-add_action( 'wp_enqueue_scripts', 'wordpress_plugin_boilerplate_remove_unwanted_scripts_and_styles', 100 );
+add_action( 'wp_enqueue_scripts', 'readypos_remove_unwanted_scripts_and_styles', 100 );
 
 wp_head();
 

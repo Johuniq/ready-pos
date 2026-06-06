@@ -1,6 +1,6 @@
 // IndexedDB Promise-based wrapper for offline POS operations
 const DB_NAME = "ready_pos_offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Incremented for schema changes
 const LOCAL_STORAGE_KEYS = ["ready_pos_favorites"];
 
 export const openDB = () => {
@@ -18,10 +18,14 @@ export const openDB = () => {
 
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
+      const oldVersion = event.oldVersion;
 
       // Store 1: Products catalog
       if (!db.objectStoreNames.contains("products")) {
-        db.createObjectStore("products", { keyPath: "id" });
+        const productStore = db.createObjectStore("products", { keyPath: "id" });
+        productStore.createIndex("sku", "sku", { unique: false });
+        productStore.createIndex("barcode", "barcode", { unique: false });
+        productStore.createIndex("category", "category_id", { unique: false });
       }
 
       // Store 2: Categories catalog
@@ -31,12 +35,57 @@ export const openDB = () => {
 
       // Store 3: Customers catalog
       if (!db.objectStoreNames.contains("customers")) {
-        db.createObjectStore("customers", { keyPath: "id" });
+        const customerStore = db.createObjectStore("customers", { keyPath: "id" });
+        customerStore.createIndex("email", "email", { unique: false });
+        customerStore.createIndex("phone", "phone", { unique: false });
       }
 
       // Store 4: Offline Orders Queue
       if (!db.objectStoreNames.contains("offline_orders")) {
-        db.createObjectStore("offline_orders", { keyPath: "localId" });
+        const orderStore = db.createObjectStore("offline_orders", {
+          keyPath: "localId",
+        });
+        orderStore.createIndex("syncStatus", "_syncStatus", { unique: false });
+        orderStore.createIndex("createdAt", "_createdAt", { unique: false });
+      }
+
+      // Store 5: Offline Inventory (NEW in v2)
+      if (!db.objectStoreNames.contains("offline_inventory")) {
+        const inventoryStore = db.createObjectStore("offline_inventory", {
+          keyPath: "product_id",
+        });
+        inventoryStore.createIndex("pendingSync", "_pendingSync", {
+          unique: false,
+        });
+        inventoryStore.createIndex("lastUpdate", "_lastUpdate", {
+          unique: false,
+        });
+      }
+
+      // Store 6: Sync Queue for non-order operations (NEW in v2)
+      if (!db.objectStoreNames.contains("sync_queue")) {
+        const queueStore = db.createObjectStore("sync_queue", {
+          keyPath: "id",
+          autoIncrement: true,
+        });
+        queueStore.createIndex("timestamp", "timestamp", { unique: false });
+        queueStore.createIndex("retries", "retries", { unique: false });
+      }
+
+      // Store 7: Sync History (NEW in v2)
+      if (!db.objectStoreNames.contains("sync_history")) {
+        const historyStore = db.createObjectStore("sync_history", {
+          keyPath: "id",
+          autoIncrement: true,
+        });
+        historyStore.createIndex("timestamp", "timestamp", { unique: false });
+        historyStore.createIndex("type", "type", { unique: false });
+      }
+
+      // Migration logic for existing data
+      if (oldVersion < 2) {
+        console.log("[DB] Migrating from version", oldVersion, "to version 2");
+        // Add any migration logic here if needed
       }
     };
   });
@@ -122,6 +171,54 @@ export const dbOperations = {
       request.onsuccess = () => resolve(true);
       request.onerror = () => reject(request.error);
     });
+  },
+
+  // Query by index
+  async getByIndex(storeName, indexName, value) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(storeName, "readonly");
+      const store = transaction.objectStore(storeName);
+      const index = store.index(indexName);
+      const request = index.getAll(value);
+
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  },
+
+  // Count items in store
+  async count(storeName) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(storeName, "readonly");
+      const store = transaction.objectStore(storeName);
+      const request = store.count();
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  },
+
+  // Add sync history entry
+  async logSync(type, data) {
+    const entry = {
+      type, // 'order', 'inventory', 'queue', 'manual'
+      timestamp: Date.now(),
+      success: data.success || false,
+      itemCount: data.itemCount || 0,
+      errors: data.errors || [],
+      details: data.details || null,
+    };
+    return this.put("sync_history", entry);
+  },
+
+  // Get recent sync history
+  async getSyncHistory(limit = 50) {
+    const all = await this.getAll("sync_history");
+    return all
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, limit);
   },
 };
 

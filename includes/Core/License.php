@@ -315,6 +315,7 @@ class License {
 
 		return new \WP_Error(
 			'pro_feature_required',
+			/* translators: %s: feature name */
 			sprintf( __( 'This feature (%s) requires a Pro license.', 'ready-pos' ), $feature ),
 			array(
 				'status'  => 402,

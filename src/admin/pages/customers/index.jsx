@@ -57,6 +57,9 @@ import {
   TableSkeleton,
 } from "@/components/loading/PageSkeleton";
 import { handleError } from "@/lib/errorHandler";
+import { useTableExport } from "@/hooks/useTableExport";
+import { ExportButton } from "@/components/export/ExportButton";
+import { formatPriceForExport } from "@/lib/export";
 
 const PAGE_LIMIT = 20;
 
@@ -198,6 +201,31 @@ export default function Customers() {
     return `Showing ${start}-${end} of ${total}`;
   }, [loading, total, page]);
 
+  // Export functionality
+  const { handleExportCSV, handleExportExcel, handleExportPDF } = useTableExport({
+    getHeaders: () => [
+      "Customer Name",
+      "Username",
+      "Email",
+      "Phone",
+      "Visits",
+      "Total Spent",
+      "Loyalty Points",
+    ],
+    getRows: () =>
+      sortedCustomers.map((c) => [
+        `${c.first_name || ""} ${c.last_name || ""}`.trim(),
+        c.username || "",
+        c.email || "",
+        c.phone || "",
+        c.visit_count || 0,
+        formatPriceForExport(c.total_spent || 0),
+        c.loyalty_points || 0,
+      ]),
+    filename: "ready_pos_customers",
+    title: "Customer List",
+  });
+
   if (loading && customers.length === 0) {
     return <CustomersSkeleton />;
   }
@@ -272,6 +300,12 @@ export default function Customers() {
               </SelectItem>
             </SelectContent>
           </Select>
+          <ExportButton
+            onExportCSV={handleExportCSV}
+            onExportExcel={handleExportExcel}
+            onExportPDF={handleExportPDF}
+            disabled={loading || customers.length === 0}
+          />
         </div>
       </PageToolbar>
 

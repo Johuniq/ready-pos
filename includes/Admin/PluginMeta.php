@@ -9,7 +9,7 @@
 namespace Readypos\Admin;
 
 use Readypos\Traits\Base;
-use Readypos\Core\License\Manager;
+use Readypos\Core\License;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -22,26 +22,99 @@ class PluginMeta {
 
 	use Base;
 
+	// -------------------------------------------------------------------------
+	// SVG icon library — inline, theme-neutral, no external dependencies.
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Return a named SVG icon string.
+	 *
+	 * @param string $name   Icon key.
+	 * @param string $size   Width / height attribute value (default '16').
+	 * @param string $color  Fill / stroke colour (default 'currentColor').
+	 * @return string SVG markup.
+	 */
+	private function icon( string $name, string $size = '16', string $color = 'currentColor' ): string {
+		$icons = array(
+
+			// Settings / cog
+			'settings' => '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+
+			// Lightning bolt / upgrade
+			'bolt' => '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="{color}" aria-hidden="true"><path d="M13 2L4.09 12.47A1 1 0 0 0 5 14h5.5l-1 8L19.91 11.53A1 1 0 0 0 19 10h-5.5L13 2z"/></svg>',
+
+			// Crown / pro badge
+			'crown' => '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="{color}" aria-hidden="true"><path d="M2 20h20v2H2v-2zM3.5 8l3.5 4 5-8 5 8 3.5-4L22 18H2L3.5 8z"/></svg>',
+
+			// Check mark
+			'check' => '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>',
+
+			// Close / X
+			'close' => '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+
+			// Arrow right
+			'arrow-right' => '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
+
+			// Store / outlet
+			'store' => '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l1-5h16l1 5"/><path d="M21 9v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9"/><path d="M9 9v6"/><path d="M15 9v6"/><path d="M3 9h18"/></svg>',
+
+			// Bar chart / analytics
+			'chart' => '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+
+			// Printer / hardware
+			'printer' => '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>',
+
+			// Gift card
+			'gift' => '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>',
+
+			// Support / headset
+			'support' => '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>',
+
+			// Tag / coupon
+			'tag' => '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>',
+
+			// Star / pro active
+			'star' => '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="{color}" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+
+			// Info / lightbulb tip
+			'info' => '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+
+			// External link
+			'external' => '<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
+		);
+
+		if ( ! isset( $icons[ $name ] ) ) {
+			return '';
+		}
+
+		return str_replace(
+			array( '{size}', '{color}' ),
+			array( $size, $color ),
+			$icons[ $name ]
+		);
+	}
+
+	// -------------------------------------------------------------------------
+	// Hook registration
+	// -------------------------------------------------------------------------
+
 	/**
 	 * Initialize hooks.
 	 *
 	 * @return void
 	 */
-	public function init() {
+	public function init(): void {
 		$plugin_basename = plugin_basename( READYPOS_PLUGIN_FILE );
 
-		// Add custom action links (left side - Activate, Deactivate, etc.).
 		add_filter( "plugin_action_links_{$plugin_basename}", array( $this, 'add_action_links' ) );
-
-		// Add custom row meta links (right side - View details, etc.).
 		add_filter( 'plugin_row_meta', array( $this, 'add_row_meta' ), 10, 2 );
-
-		// Add custom plugin information in the "View details" modal.
 		add_filter( 'plugins_api', array( $this, 'custom_plugin_info' ), 20, 3 );
-
-		// Add upgrade banner after plugin row (only for free users).
 		add_action( "after_plugin_row_{$plugin_basename}", array( $this, 'add_upgrade_banner' ), 10, 2 );
 	}
+
+	// -------------------------------------------------------------------------
+	// Action links (left column)
+	// -------------------------------------------------------------------------
 
 	/**
 	 * Add custom action links to the plugin (left side).
@@ -49,30 +122,37 @@ class PluginMeta {
 	 * @param array $links Existing plugin action links.
 	 * @return array Modified links.
 	 */
-	public function add_action_links( $links ) {
-		$license_manager = Manager::get_instance();
-		$is_pro          = $license_manager->is_pro();
+	public function add_action_links( array $links ): array {
+		$is_pro = License::get_instance()->is_pro();
 
-		$custom_links = array();
+		$settings_icon = $this->icon( 'settings', '13' );
 
-		// Settings link.
-		$custom_links['settings'] = sprintf(
-			'<a href="%s" style="font-weight: 600; color: #2271b1;">%s</a>',
-			admin_url( 'admin.php?page=ready-pos#/settings' ),
-			__( 'Settings', 'ready-pos' )
+		$custom_links = array(
+			'settings' => sprintf(
+				'<a href="%s" style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:#2271b1;">%s %s</a>',
+				esc_url( admin_url( 'admin.php?page=ready-pos#/settings' ) ),
+				$settings_icon,
+				esc_html__( 'Settings', 'ready-pos' )
+			),
 		);
 
-		// Pro upgrade link (only show if not Pro).
 		if ( ! $is_pro ) {
+			$bolt_icon = $this->icon( 'bolt', '13', '#d63638' );
+
 			$custom_links['upgrade'] = sprintf(
-				'<a href="%s" style="font-weight: 700; color: #fff; background: #d63638; padding: 4px 10px; border-radius: 4px; display: inline-block; box-shadow: 0 1px 2px rgba(0,0,0,0.15); margin-left: 2px; text-decoration: none;">%s</a>',
-				admin_url( 'admin.php?page=ready-pos#/license' ),
-				__( '⚡ Upgrade to Pro', 'ready-pos' )
+				'<a href="%s" style="display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#d63638;">%s %s</a>',
+				esc_url( admin_url( 'admin.php?page=ready-pos#/license' ) ),
+				$bolt_icon,
+				esc_html__( 'Upgrade to Pro', 'ready-pos' )
 			);
 		}
 
 		return array_merge( $custom_links, $links );
 	}
+
+	// -------------------------------------------------------------------------
+	// Row meta links (right column)
+	// -------------------------------------------------------------------------
 
 	/**
 	 * Add custom row meta links to the plugin (right side).
@@ -81,49 +161,40 @@ class PluginMeta {
 	 * @param string $file  Plugin file path.
 	 * @return array Modified links.
 	 */
-	public function add_row_meta( $links, $file ) {
-		$plugin_basename = plugin_basename( READYPOS_PLUGIN_FILE );
-
-		if ( $file !== $plugin_basename ) {
+	public function add_row_meta( array $links, string $file ): array {
+		if ( $file !== plugin_basename( READYPOS_PLUGIN_FILE ) ) {
 			return $links;
 		}
 
-		$license_manager = Manager::get_instance();
-		$is_pro          = $license_manager->is_pro();
+		$is_pro = License::get_instance()->is_pro();
 
-		$custom_links = array();
-
-		// Documentation link.
-		$custom_links[] = sprintf(
-			'<a href="%s" target="_blank" rel="noopener noreferrer" style="color: #2271b1;">%s</a>',
-			'https://readypos.io/docs',
-			__( '📚 Documentation', 'ready-pos' )
-		);
-
-		// Support link.
-		$custom_links[] = sprintf(
-			'<a href="%s" target="_blank" rel="noopener noreferrer" style="color: #2271b1;">%s</a>',
-			'https://readypos.io/support',
-			__( '💬 Support', 'ready-pos' )
-		);
-
-		// Pro features link (only show if not Pro).
-		if ( ! $is_pro ) {
-			$custom_links[] = sprintf(
-				'<a href="%s" target="_blank" rel="noopener noreferrer" style="font-weight: 700; color: #d63638;">%s</a>',
-				'https://readypos.io/pro',
-				__( '⚡ Pro Features', 'ready-pos' )
+		if ( $is_pro ) {
+			$star_icon    = $this->icon( 'star', '13', '#00a32a' );
+			$custom_links = array(
+				sprintf(
+					'<span style="display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#00a32a;">%s %s</span>',
+					$star_icon,
+					esc_html__( 'Pro Active', 'ready-pos' )
+				),
 			);
 		} else {
-			// Show Pro badge if already Pro.
-			$custom_links[] = sprintf(
-				'<span style="font-weight: 700; color: #00a32a;">%s</span>',
-				__( '✓ Pro Active', 'ready-pos' )
+			$bolt_icon    = $this->icon( 'bolt', '13', '#d63638' );
+			$custom_links = array(
+				sprintf(
+					'<a href="%s" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#d63638;">%s %s</a>',
+					esc_url( 'https://readypos.johuniq.tech/' ),
+					$bolt_icon,
+					esc_html__( 'Pro Features', 'ready-pos' )
+				),
 			);
 		}
 
 		return array_merge( $links, $custom_links );
 	}
+
+	// -------------------------------------------------------------------------
+	// "View details" modal
+	// -------------------------------------------------------------------------
 
 	/**
 	 * Customize plugin information in the "View details" modal.
@@ -133,131 +204,159 @@ class PluginMeta {
 	 * @param object             $args   Plugin API arguments.
 	 * @return false|object|array Modified result.
 	 */
-	public function custom_plugin_info( $result, $action, $args ) {
-		// Only modify if requesting plugin information for our plugin.
+	public function custom_plugin_info( $result, string $action, object $args ) {
 		if ( 'plugin_information' !== $action || empty( $args->slug ) || 'ready-pos' !== $args->slug ) {
 			return $result;
 		}
 
-		$license_manager = Manager::get_instance();
-		$is_pro          = $license_manager->is_pro();
+		$is_pro = License::get_instance()->is_pro();
 
-		// Create custom plugin info object.
-		$plugin_info = new \stdClass();
+		$plugin_info                = new \stdClass();
+		$plugin_info->name          = 'Ready POS';
+		$plugin_info->slug          = 'ready-pos';
+		$plugin_info->version       = READYPOS_VERSION;
+		$plugin_info->author        = '<a href="https://johuniq.tech" target="_blank" rel="noopener noreferrer">Johuniq</a>';
+		$plugin_info->homepage      = 'https://readypos.io';
+		$plugin_info->requires      = '5.8';
+		$plugin_info->tested        = '6.7';
+		$plugin_info->requires_php  = '7.4';
+		$plugin_info->last_updated  = gmdate( 'Y-m-d' );
+		$plugin_info->download_link = '';
 
-		$plugin_info->name        = 'Ready POS';
-		$plugin_info->slug        = 'ready-pos';
-		$plugin_info->version     = READYPOS_VERSION;
-		$plugin_info->author      = '<a href="https://johuniq.tech" target="_blank">Johuniq</a>';
-		$plugin_info->homepage    = 'https://readypos.io';
-		$plugin_info->requires    = '5.8';
-		$plugin_info->tested      = '6.7';
-		$plugin_info->requires_php = '7.4';
-		$plugin_info->last_updated = gmdate( 'Y-m-d' );
-		$plugin_info->sections    = array(
+		$plugin_info->sections = array(
 			'description' => $this->get_description_section( $is_pro ),
 			'features'    => $this->get_features_section( $is_pro ),
-			'pro_upgrade' => $is_pro ? '' : $this->get_pro_upgrade_section(),
 			'changelog'   => $this->get_changelog_section(),
 		);
+
+		if ( ! $is_pro ) {
+			$plugin_info->sections['pro_upgrade'] = $this->get_pro_upgrade_section();
+		}
 
 		$plugin_info->banners = array(
 			'high' => READYPOS_ASSETS_URL . '/images/banner-1544x500.png',
 			'low'  => READYPOS_ASSETS_URL . '/images/banner-772x250.png',
 		);
 
-		$plugin_info->download_link = '';
-
 		return $plugin_info;
 	}
 
+	// -------------------------------------------------------------------------
+	// Modal section builders
+	// -------------------------------------------------------------------------
+
 	/**
-	 * Get the description section content.
+	 * Get the description section HTML.
 	 *
-	 * @param bool $is_pro Whether the user has Pro license.
+	 * @param bool $is_pro Whether the user has a Pro licence.
 	 * @return string HTML content.
 	 */
-	private function get_description_section( $is_pro ) {
-		$status_badge = $is_pro
-			? '<span style="display: inline-block; background: #00a32a; color: white; padding: 4px 12px; border-radius: 4px; font-weight: 700; font-size: 12px; margin-left: 8px;">✓ PRO ACTIVE</span>'
-			: '<span style="display: inline-block; background: #d63638; color: white; padding: 4px 12px; border-radius: 4px; font-weight: 700; font-size: 12px; margin-left: 8px;">FREE VERSION</span>';
+	private function get_description_section( bool $is_pro ): string {
+		if ( $is_pro ) {
+			$badge = sprintf(
+				'<span style="display:inline-flex;align-items:center;gap:5px;background:#00a32a;color:#fff;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.04em;vertical-align:middle;margin-left:8px;">%s PRO ACTIVE</span>',
+				$this->icon( 'star', '11', '#fff' )
+			);
+		} else {
+			$badge = '<span style="display:inline-flex;align-items:center;gap:5px;background:#d63638;color:#fff;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.04em;vertical-align:middle;margin-left:8px;">FREE VERSION</span>';
+		}
+
+		$check = $this->icon( 'check', '14', '#2271b1' );
 
 		return sprintf(
-			'<h3>Ready POS - Modern Point of Sale for WooCommerce %s</h3>
-			<p><strong>Transform your WooCommerce store into a powerful Point of Sale system.</strong></p>
-			<p>Ready POS is a complete, modern POS solution that seamlessly integrates with WooCommerce. Perfect for retail stores, restaurants, cafes, and any business that needs fast, reliable in-person sales.</p>
-			<ul style="list-style: disc; margin-left: 20px;">
-				<li><strong>Lightning-fast checkout</strong> - Process sales in seconds with an intuitive interface</li>
-				<li><strong>Multi-outlet support</strong> - Manage multiple locations from one dashboard</li>
-				<li><strong>Real-time inventory</strong> - Track stock across all outlets automatically</li>
-				<li><strong>Cashier management</strong> - Create staff accounts with role-based permissions</li>
-				<li><strong>Session tracking</strong> - Monitor cash drawer activity and shift reports</li>
-				<li><strong>Customer management</strong> - Build customer profiles and track purchase history</li>
+			'<h3 style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">Ready POS — Modern Point of Sale for WooCommerce %s</h3>
+			<p><strong>Transform your WooCommerce store into a powerful, integrated Point of Sale system.</strong></p>
+			<p>Ready POS is a complete, production-ready POS solution built natively on WooCommerce. Designed for retail stores, restaurants, cafes, and any business that demands fast, reliable, and scalable in-person sales.</p>
+			<ul style="list-style:none;margin:16px 0;padding:0;">
+				<li style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;">%s <span><strong>Lightning-fast checkout</strong> — Process sales in seconds with a streamlined, touch-friendly interface.</span></li>
+				<li style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;">%s <span><strong>Multi-outlet support</strong> — Operate and manage multiple locations from a single dashboard.</span></li>
+				<li style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;">%s <span><strong>Real-time inventory</strong> — Stock levels sync automatically across all outlets and registers.</span></li>
+				<li style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;">%s <span><strong>Cashier management</strong> — Create staff accounts with granular, role-based permissions.</span></li>
+				<li style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;">%s <span><strong>Session tracking</strong> — Monitor cash drawer activity, open/close shifts, and daily summaries.</span></li>
+				<li style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;">%s <span><strong>Customer management</strong> — Build customer profiles and track full purchase history.</span></li>
 			</ul>',
-			$status_badge
+			$badge,
+			$check, $check, $check, $check, $check, $check
 		);
 	}
 
 	/**
-	 * Get the features section content.
+	 * Get the features section HTML.
 	 *
-	 * @param bool $is_pro Whether the user has Pro license.
+	 * @param bool $is_pro Whether the user has a Pro licence.
 	 * @return string HTML content.
 	 */
-	private function get_features_section( $is_pro ) {
+	private function get_features_section( bool $is_pro ): string {
+		$check_free = $this->icon( 'check', '14', '#50575e' );
+		$check_pro  = $this->icon( 'check', '14', '#2271b1' );
+
 		$free_features = array(
-			'1 outlet, 1 register',
+			'1 outlet & 1 register',
 			'Up to 2 cashier accounts',
 			'Up to 50 customers',
 			'Unlimited products',
-			'Cash & manual card payments',
+			'Cash &amp; manual card payments',
 			'Basic sales reporting',
-			'Session management',
+			'Session open &amp; close management',
 		);
 
 		$pro_features = array(
-			'<strong>Unlimited outlets & registers</strong>',
-			'<strong>Unlimited cashiers & customers</strong>',
-			'<strong>Split payment</strong> - Multiple payment methods per order',
-			'<strong>Gift cards & store credit</strong> - Issue and redeem balances',
-			'<strong>Loyalty points</strong> - Reward customers and let them redeem at checkout',
-			'<strong>Customer purchase history</strong> - Full lifetime order timeline',
-			'<strong>Advanced reports</strong> - Sales, profit, tax, and inventory analytics',
-			'<strong>Cashier performance</strong> - Track individual staff metrics',
-			'<strong>Product performance</strong> - Best sellers and inventory insights',
-			'<strong>Hardware integration</strong> - Thermal printer, cash drawer, weight scale, USB scanner',
-			'<strong>EMV card reader</strong> - Integrated chip-card payment terminal',
-			'<strong>Priority support</strong> - Get help when you need it',
+			array( 'store',   '<strong>Unlimited outlets &amp; registers</strong> — Scale without restriction.' ),
+			array( 'bolt',    '<strong>Unlimited cashiers &amp; customers</strong> — No seat limits.' ),
+			array( 'bolt',    '<strong>Split payment</strong> — Accept multiple payment methods per order.' ),
+			array( 'gift',    '<strong>Gift cards &amp; store credit</strong> — Issue, track, and redeem balances at checkout.' ),
+			array( 'star',    '<strong>Loyalty points</strong> — Reward customers and allow point redemption at POS.' ),
+			array( 'chart',   '<strong>Advanced analytics</strong> — Sales, profit, tax, and inventory reporting dashboards.' ),
+			array( 'chart',   '<strong>Cashier performance</strong> — Track and compare individual staff metrics.' ),
+			array( 'printer', '<strong>Hardware integration</strong> — Thermal printers, cash drawers, weight scales &amp; barcode scanners.' ),
+			array( 'bolt',    '<strong>EMV card reader</strong> — Integrated chip-card payment terminal support.' ),
+			array( 'support', '<strong>Priority support</strong> — Direct access to the Ready POS team.' ),
 		);
 
-		$free_list = '<ul style="list-style: disc; margin-left: 20px;">';
+		$free_list = '<ul style="list-style:none;margin:0;padding:0;">';
 		foreach ( $free_features as $feature ) {
-			$free_list .= "<li>{$feature}</li>";
+			$free_list .= sprintf(
+				'<li style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f0f1;font-size:13px;">%s <span>%s</span></li>',
+				$check_free,
+				$feature
+			);
 		}
 		$free_list .= '</ul>';
 
-		$pro_list = '<ul style="list-style: disc; margin-left: 20px;">';
+		$pro_list = '<ul style="list-style:none;margin:0;padding:0;">';
 		foreach ( $pro_features as $feature ) {
-			$pro_list .= "<li>{$feature}</li>";
+			$pro_list .= sprintf(
+				'<li style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid #f0f0f1;font-size:13px;">%s <span>%s</span></li>',
+				$check_pro,
+				$feature[1]
+			);
 		}
 		$pro_list .= '</ul>';
 
-		$upgrade_cta = $is_pro
-			? ''
-			: sprintf(
-				'<div style="background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; padding: 24px; border-radius: 8px; margin-top: 24px; text-align: center;">
-					<h3 style="color: white; margin-top: 0;">🚀 Upgrade to Pro Today!</h3>
-					<p style="font-size: 16px; margin: 12px 0;">Unlock all premium features and take your POS to the next level.</p>
-					<a href="%s" style="display: inline-block; background: white; color: #667eea; padding: 12px 32px; border-radius: 6px; font-weight: 700; text-decoration: none; margin-top: 8px;">View Pro Plans →</a>
+		$upgrade_cta = '';
+		if ( ! $is_pro ) {
+			$upgrade_cta = sprintf(
+				'<div style="margin-top:24px;background:#f0f6fc;border:1px solid #c3d4e4;border-radius:8px;padding:20px 24px;text-align:center;">
+					<p style="margin:0 0 14px;font-size:15px;font-weight:600;color:#1d2327;">Ready to grow beyond the free tier?</p>
+					<p style="margin:0 0 16px;color:#50575e;font-size:13px;">Upgrade to Pro and unlock every feature Ready POS has to offer — no hidden fees, cancel anytime.</p>
+					<a href="%s" style="display:inline-flex;align-items:center;gap:8px;background:#2271b1;color:#fff;padding:10px 22px;border-radius:6px;font-weight:700;text-decoration:none;font-size:13px;">%s View Pro Plans</a>
 				</div>',
-				admin_url( 'admin.php?page=ready-pos#/license' )
+				esc_url( admin_url( 'admin.php?page=ready-pos#/license' ) ),
+				$this->icon( 'bolt', '14', '#fff' )
 			);
+		}
 
 		return sprintf(
-			'<h3>Free Version Includes:</h3>
-			%s
-			<h3 style="margin-top: 24px;">Pro Version Includes:</h3>
-			%s
+			'<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;">
+				<div>
+					<h3 style="margin-top:0;">Free Plan</h3>
+					%s
+				</div>
+				<div>
+					<h3 style="margin-top:0;color:#2271b1;">Pro Plan</h3>
+					%s
+				</div>
+			</div>
 			%s',
 			$free_list,
 			$pro_list,
@@ -266,163 +365,296 @@ class PluginMeta {
 	}
 
 	/**
-	 * Get the Pro upgrade section content.
+	 * Get the Pro upgrade section HTML.
 	 *
 	 * @return string HTML content.
 	 */
-	private function get_pro_upgrade_section() {
+	private function get_pro_upgrade_section(): string {
+		$reasons = array(
+			array( 'store',   'Scale without limits', 'Unlimited outlets, registers, cashiers, and customers.' ),
+			array( 'bolt',    'Advanced payment flows', 'Split payments, gift cards, store credit, and EMV chip readers.' ),
+			array( 'star',    'Built-in loyalty engine', 'Issue points, track redemptions, and view full purchase histories.' ),
+			array( 'chart',   'Deep business insights', 'Revenue, profit, tax, and inventory analytics in one place.' ),
+			array( 'printer', 'Full hardware support', 'Thermal printers, cash drawers, barcode scanners, and weight scales.' ),
+			array( 'support', 'Priority support', 'Direct access to the Ready POS team — real humans, fast responses.' ),
+		);
+
+		$items_html = '';
+		foreach ( $reasons as $reason ) {
+			$items_html .= sprintf(
+				'<div style="display:flex;gap:12px;margin-bottom:14px;">
+					<div style="flex-shrink:0;width:36px;height:36px;background:#f0f6fc;border-radius:8px;display:flex;align-items:center;justify-content:center;">%s</div>
+					<div>
+						<p style="margin:0 0 2px;font-weight:600;font-size:13px;color:#1d2327;">%s</p>
+						<p style="margin:0;font-size:12px;color:#50575e;line-height:1.5;">%s</p>
+					</div>
+				</div>',
+				$this->icon( $reason[0], '18', '#2271b1' ),
+				esc_html( $reason[1] ),
+				esc_html( $reason[2] )
+			);
+		}
+
 		return sprintf(
-			'<div style="background: #f0f0f1; padding: 24px; border-radius: 8px; border-left: 4px solid #d63638;">
-				<h3 style="margin-top: 0; color: #d63638;">⚡ Why Upgrade to Pro?</h3>
-				<p><strong>The free version is great for getting started, but Pro unlocks the full potential of Ready POS:</strong></p>
-				<ul style="list-style: disc; margin-left: 20px;">
-					<li><strong>Scale your business</strong> - No limits on outlets, registers, cashiers, or customers</li>
-					<li><strong>Advanced payments</strong> - Split payments, gift cards, store credit, and EMV readers</li>
-					<li><strong>Customer loyalty</strong> - Build repeat business with points and purchase history</li>
-					<li><strong>Better insights</strong> - Advanced reports for sales, profit, tax, and inventory</li>
-					<li><strong>Hardware support</strong> - Thermal printers, cash drawers, scales, and scanners</li>
-					<li><strong>Priority support</strong> - Get expert help when you need it most</li>
-				</ul>
-				<p style="margin-top: 20px;">
-					<a href="%s" style="display: inline-block; background: #d63638; color: white; padding: 12px 24px; border-radius: 6px; font-weight: 700; text-decoration: none;">View Pro Plans & Pricing →</a>
-				</p>
+			'<div style="border:1px solid #c3d4e4;border-radius:8px;overflow:hidden;">
+				<div style="background:#2271b1;padding:18px 24px;">
+					<h3 style="margin:0;color:#fff;font-size:16px;">Why upgrade to Pro?</h3>
+					<p style="margin:4px 0 0;color:rgba(255,255,255,0.8);font-size:13px;">Everything you need to run a professional, scalable retail operation.</p>
+				</div>
+				<div style="padding:24px;">
+					%s
+					<p style="margin-top:20px;margin-bottom:0;">
+						<a href="%s" style="display:inline-flex;align-items:center;gap:8px;background:#2271b1;color:#fff;padding:10px 22px;border-radius:6px;font-weight:700;text-decoration:none;font-size:13px;">%s View Plans &amp; Pricing</a>
+					</p>
+				</div>
 			</div>',
-			admin_url( 'admin.php?page=ready-pos#/license' )
+			$items_html,
+			esc_url( admin_url( 'admin.php?page=ready-pos#/license' ) ),
+			$this->icon( 'arrow-right', '14', '#fff' )
 		);
 	}
 
 	/**
-	 * Get the changelog section content.
+	 * Get the changelog section HTML.
 	 *
 	 * @return string HTML content.
 	 */
-	private function get_changelog_section() {
+	private function get_changelog_section(): string {
 		return '<h4>Version 1.0.0</h4>
-		<ul style="list-style: disc; margin-left: 20px;">
-			<li>Initial release</li>
-			<li>Complete POS terminal with fast checkout</li>
-			<li>Multi-outlet and register management</li>
-			<li>Cashier accounts and permissions</li>
-			<li>Session tracking and reporting</li>
-			<li>Customer management</li>
-			<li>Real-time inventory sync</li>
-			<li>WooCommerce integration</li>
+		<ul style="list-style:disc;margin-left:20px;font-size:13px;line-height:1.8;">
+			<li>Initial public release.</li>
+			<li>Full POS terminal with optimised, touch-friendly checkout flow.</li>
+			<li>Multi-outlet and multi-register management.</li>
+			<li>Cashier account creation with role-based permission controls.</li>
+			<li>Session open / close tracking and daily summary reports.</li>
+			<li>Customer profile management with purchase history.</li>
+			<li>Real-time inventory synchronisation with WooCommerce stock.</li>
+			<li>Native WooCommerce order and product integration.</li>
 		</ul>';
 	}
 
+	// -------------------------------------------------------------------------
+	// Upgrade banner (after_plugin_row)
+	// -------------------------------------------------------------------------
+
 	/**
-	 * Add upgrade banner after plugin row on plugins page.
+	 * Add a dismissible upgrade banner after the plugin row (free users only).
 	 *
 	 * @param string $plugin_file Path to the plugin file relative to the plugins directory.
 	 * @param array  $plugin_data An array of plugin data.
 	 * @return void
 	 */
-	public function add_upgrade_banner( $plugin_file, $plugin_data ) {
-		$license_manager = Manager::get_instance();
-		$is_pro          = $license_manager->is_pro();
-
-		// Only show banner for free users.
-		if ( $is_pro ) {
+	public function add_upgrade_banner( string $plugin_file, array $plugin_data ): void {
+		if ( License::get_instance()->is_pro() ) {
 			return;
 		}
 
-		// Get the number of columns in the plugins table.
 		$wp_list_table = _get_list_table( 'WP_Plugins_List_Table' );
 		$columns_count = $wp_list_table->get_column_count();
+		$upgrade_url   = esc_url( admin_url( 'admin.php?page=ready-pos#/license' ) );
+		$pricing_url   = esc_url( 'https://readypos.johuniq.tech/' );
+
+		// Feature cards: [ icon_name, label, description ]
+		$features = array(
+			array( 'store',   __( 'Unlimited Outlets', 'ready-pos' ),     __( 'No cap on locations or registers.', 'ready-pos' ) ),
+			array( 'chart',   __( 'Advanced Analytics', 'ready-pos' ),    __( 'Sales, profit, and inventory reports.', 'ready-pos' ) ),
+			array( 'printer', __( 'Hardware Support', 'ready-pos' ),      __( 'Printers, drawers, scanners & scales.', 'ready-pos' ) ),
+			array( 'gift',    __( 'Gift Cards & Loyalty', 'ready-pos' ),  __( 'Issue cards and reward points.', 'ready-pos' ) ),
+		);
 
 		?>
-		<tr class="plugin-update-tr active" id="ready-pos-upgrade-banner">
-			<td colspan="<?php echo esc_attr( $columns_count ); ?>" class="plugin-update colspanchange">
-				<div class="update-message notice inline notice-warning notice-alt" style="margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-left: 4px solid #5568d3; padding: 0; overflow: hidden;">
-					<div style="display: flex; align-items: center; gap: 20px; padding: 16px 20px;">
-						<!-- Icon Section -->
-						<div style="flex-shrink: 0;">
-							<div style="width: 56px; height: 56px; background: rgba(255, 255, 255, 0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(10px);">
-								<span style="font-size: 28px;">👑</span>
-							</div>
+		<tr id="readypos-upgrade-banner-row" class="readypos-upgrade-banner-row" role="presentation">
+			<td colspan="<?php echo esc_attr( $columns_count ); ?>" style="padding: 12px 20px 24px; background: #f6f7f7 !important; border-top: none;">
+
+				<div class="readypos-upgrade-card" style="
+					background: #0f172a;
+					border: 1px solid rgba(255, 255, 255, 0.08);
+					border-radius: 12px;
+					padding: 24px 30px;
+					display: flex;
+					align-items: center;
+					justify-content: space-between;
+					gap: 32px;
+					flex-wrap: wrap;
+					position: relative;
+					box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+					overflow: hidden;
+				">
+					<!-- Ambient Gradient Background Glow -->
+					<div style="
+						position: absolute;
+						top: -100px; right: -100px;
+						width: 250px; height: 250px;
+						background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(6, 182, 212, 0) 70%);
+						pointer-events: none;
+					"></div>
+
+					<!-- Dismiss button -->
+					<button type="button"
+							id="readypos-dismiss-banner"
+							aria-label="<?php esc_attr_e( 'Dismiss upgrade notice', 'ready-pos' ); ?>"
+							style="
+								position: absolute;
+								top: 16px; right: 16px;
+								background: rgba(255, 255, 255, 0.04);
+								border: 1px solid rgba(255, 255, 255, 0.08);
+								border-radius: 50%;
+								width: 28px; height: 28px;
+								display: inline-flex; align-items: center; justify-content: center;
+								color: #94a3b8;
+								cursor: pointer;
+								padding: 0;
+								transition: all 0.2s ease;
+							">
+						<?php echo $this->icon( 'close', '12', 'currentColor' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+					</button>
+
+					<!-- Content Wrapper (Left & Middle Info) -->
+					<div style="display: flex; align-items: center; gap: 24px; flex: 1; min-width: 280px;">
+						<!-- Modernized Crown Icon Box -->
+						<div style="
+							flex-shrink: 0;
+							width: 54px; height: 54px;
+							background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+							border-radius: 12px;
+							display: flex; align-items: center; justify-content: center;
+							box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.4);
+						">
+							<?php echo $this->icon( 'crown', '28', '#ffffff' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 						</div>
 
-						<!-- Content Section -->
-						<div style="flex: 1; min-width: 0;">
-							<h3 style="margin: 0 0 6px 0; color: #ffffff; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
-								<span>Unlock the Full Power of Ready POS</span>
-								<span style="background: rgba(255, 255, 255, 0.25); color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 800; letter-spacing: 0.5px;">PRO</span>
-							</h3>
-							<p style="margin: 0 0 12px 0; color: rgba(255, 255, 255, 0.95); font-size: 14px; line-height: 1.5;">
-								You're using the <strong>Free version</strong>. Upgrade to Pro and unlock unlimited outlets, advanced reports, hardware integration, gift cards, loyalty points, and priority support.
+						<!-- Text and Info -->
+						<div style="flex: 1;">
+							<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap;">
+								<h4 style="margin: 0; font-size: 16px; font-weight: 700; color: #ffffff; letter-spacing: -0.01em;">
+									<?php esc_html_e( 'Unlock Professional Store Features', 'ready-pos' ); ?>
+								</h4>
+								<span style="
+									display: inline-flex; align-items: center; gap: 4px;
+									background: rgba(99, 102, 241, 0.15);
+									border: 1px solid rgba(99, 102, 241, 0.3);
+									color: #a5b4fc;
+									padding: 2px 8px;
+									border-radius: 4px;
+									font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+									text-transform: uppercase;
+								">
+									<?php echo $this->icon( 'bolt', '10', 'currentColor' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+									PRO
+								</span>
+							</div>
+
+							<p style="margin: 0 0 12px; color: #94a3b8; font-size: 13px; line-height: 1.5; max-width: 720px;">
+								<?php
+								printf(
+									/* translators: %s: free plan emphasis label */
+									esc_html__( 'Expand your %s with multi-outlet operations, split cash/card payments, gift cards, advanced cashier shifts, customizable thermal receipts, and barcode scales.', 'ready-pos' ),
+									'<span style="color: #cbd5e1; font-weight: 600;">' . esc_html__( 'Free Plan', 'ready-pos' ) . '</span>'
+								);
+								?>
 							</p>
-							
-							<!-- Features Grid -->
-							<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin-bottom: 12px;">
-								<div style="display: flex; align-items: center; gap: 6px; color: rgba(255, 255, 255, 0.95); font-size: 13px;">
-									<span style="font-size: 16px;">✓</span>
-									<span><strong>Unlimited</strong> outlets & registers</span>
-								</div>
-								<div style="display: flex; align-items: center; gap: 6px; color: rgba(255, 255, 255, 0.95); font-size: 13px;">
-									<span style="font-size: 16px;">✓</span>
-									<span><strong>Advanced</strong> reports & analytics</span>
-								</div>
-								<div style="display: flex; align-items: center; gap: 6px; color: rgba(255, 255, 255, 0.95); font-size: 13px;">
-									<span style="font-size: 16px;">✓</span>
-									<span><strong>Hardware</strong> integration</span>
-								</div>
-								<div style="display: flex; align-items: center; gap: 6px; color: rgba(255, 255, 255, 0.95); font-size: 13px;">
-									<span style="font-size: 16px;">✓</span>
-									<span><strong>Gift cards</strong> & loyalty points</span>
-								</div>
+
+							<!-- Minimal inline features list -->
+							<div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 11px; color: #cbd5e1;">
+								<span style="display: inline-flex; align-items: center; gap: 4px;">
+									<span style="display: inline-block; width: 6px; height: 6px; background: #06b6d4; border-radius: 50%;"></span>
+									<?php esc_html_e( 'Unlimited registers & outlets', 'ready-pos' ); ?>
+								</span>
+								<span style="display: inline-flex; align-items: center; gap: 4px;">
+									<span style="display: inline-block; width: 6px; height: 6px; background: #06b6d4; border-radius: 50%;"></span>
+									<?php esc_html_e( 'Thermal printing (ESC/POS)', 'ready-pos' ); ?>
+								</span>
+								<span style="display: inline-flex; align-items: center; gap: 4px;">
+									<span style="display: inline-block; width: 6px; height: 6px; background: #06b6d4; border-radius: 50%;"></span>
+									<?php esc_html_e( 'Store credit & split-payments', 'ready-pos' ); ?>
+								</span>
 							</div>
 						</div>
-
-						<!-- CTA Section -->
-						<div style="flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
-							<a href="<?php echo esc_url( admin_url( 'admin.php?page=ready-pos#/license' ) ); ?>" 
-							   class="button button-primary" 
-							   style="background: #ffffff; color: #667eea; border: none; padding: 10px 24px; font-size: 14px; font-weight: 700; border-radius: 6px; text-decoration: none; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;">
-								<span style="font-size: 16px;">⚡</span>
-								<span>Upgrade to Pro</span>
-							</a>
-							<a href="https://readypos.io/pro" 
-							   target="_blank" 
-							   rel="noopener noreferrer"
-							   style="color: rgba(255, 255, 255, 0.9); font-size: 12px; text-decoration: underline; white-space: nowrap;">
-								View pricing & features →
-							</a>
-						</div>
 					</div>
 
-					<!-- Dismissible Option -->
-					<div style="background: rgba(0, 0, 0, 0.1); padding: 8px 20px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
-						<p style="margin: 0; color: rgba(255, 255, 255, 0.8); font-size: 11px; display: flex; align-items: center; justify-content: space-between;">
-							<span>💡 <strong>Limited Time:</strong> Get 20% off your first year with code <strong style="background: rgba(255, 255, 255, 0.2); padding: 2px 6px; border-radius: 3px; font-family: monospace;">WELCOME20</strong></span>
-							<button type="button" 
-									class="notice-dismiss" 
-									onclick="this.closest('tr').style.display='none';"
-									style="position: relative; float: none; margin: 0; padding: 0; background: transparent; border: none; cursor: pointer; color: rgba(255, 255, 255, 0.7);">
-								<span class="screen-reader-text">Dismiss this notice.</span>
-							</button>
-						</p>
+					<!-- Premium CTA Right-Aligned Column -->
+					<div style="
+						flex-shrink: 0;
+						display: flex;
+						flex-direction: column;
+						align-items: stretch;
+						gap: 10px;
+						min-width: 180px;
+					">
+						<!-- Vibrant Premium Button -->
+						<a href="<?php echo esc_url( $upgrade_url ); ?>"
+						   class="readypos-btn-upgrade"
+						   style="
+								display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+								background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
+								color: #ffffff;
+								padding: 10px 20px;
+								border-radius: 8px;
+								font-size: 13px; font-weight: 700;
+								text-decoration: none;
+								text-align: center;
+								box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+								transition: all 0.2s ease;
+								border: none;
+								cursor: pointer;
+						   ">
+							<?php echo $this->icon( 'bolt', '14', '#ffffff' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+							<?php esc_html_e( 'Upgrade to Pro', 'ready-pos' ); ?>
+						</a>
 					</div>
-				</div>
+
+				</div><!-- .readypos-upgrade-card -->
 			</td>
 		</tr>
-		<style>
-			#ready-pos-upgrade-banner .update-message:hover {
-				box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+
+		<style id="readypos-banner-styles">
+			.readypos-upgrade-banner-row td { background: #f6f7f7 !important; }
+			.readypos-btn-upgrade:hover {
+				transform: translateY(-1px);
+				box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4) !important;
+				background: linear-gradient(135deg, #4338ca 0%, #2563eb 100%) !important;
 			}
-			#ready-pos-upgrade-banner .button-primary:hover {
-				transform: translateY(-2px);
-				box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+			.readypos-btn-pricing:hover {
+				background: rgba(255, 255, 255, 0.08) !important;
+				color: #ffffff !important;
+				border-color: rgba(255, 255, 255, 0.16) !important;
 			}
-			@media screen and (max-width: 782px) {
-				#ready-pos-upgrade-banner .update-message > div:first-child {
-					flex-direction: column;
-					text-align: center;
-				}
-				#ready-pos-upgrade-banner .update-message > div:first-child > div:last-child {
-					align-items: center;
-				}
+			#readypos-dismiss-banner:hover {
+				background: rgba(255, 255, 255, 0.08) !important;
+				color: #ffffff !important;
+				border-color: rgba(255, 255, 255, 0.16) !important;
 			}
 		</style>
+
+		<script id="readypos-banner-script">
+		(function () {
+			var DISMISSED_KEY = 'readypos_banner_dismissed';
+
+			function dismissBanner() {
+				var row = document.getElementById( 'readypos-upgrade-banner-row' );
+				if ( row ) {
+					row.style.transition = 'opacity .25s ease';
+					row.style.opacity    = '0';
+					setTimeout( function () { row.style.display = 'none'; }, 250 );
+				}
+
+				try { sessionStorage.setItem( DISMISSED_KEY, '1' ); } catch (e) {}
+			}
+
+			// Restore dismissed state within the same browser session.
+			try {
+				if ( sessionStorage.getItem( DISMISSED_KEY ) ) {
+					var row = document.getElementById( 'readypos-upgrade-banner-row' );
+					if ( row ) { row.style.display = 'none'; }
+				}
+			} catch (e) {}
+
+			var btn = document.getElementById( 'readypos-dismiss-banner' );
+			if ( btn ) {
+				btn.addEventListener( 'click', dismissBanner );
+			}
+		})();
+		</script>
 		<?php
 	}
 }

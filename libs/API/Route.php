@@ -72,7 +72,7 @@ class Route {
 	 * @param string $name function name.
 	 * @param array  $arguments arguments.
 	 *
-	 * @return self
+	 * @return self|void
 	 */
 	public static function __callStatic( $name, $arguments ) {
 		$self  = new self();
@@ -80,10 +80,12 @@ class Route {
 
 		if ( 'get' === $name && in_array( $count, array( 3, 4 ), true ) ) {
 			$self->get_with_namespace( ...$arguments );
+			return $self;
 		}
 
 		if ( 'post' === $name && in_array( $count, array( 3, 4 ), true ) ) {
 			$self->post_with_namespace( ...$arguments );
+			return $self;
 		}
 
 		if ( 'prefix' === $name && 1 === $count ) {
@@ -93,6 +95,8 @@ class Route {
 		if ( 'prefix' === $name && 2 === $count ) {
 			return $self->prefix_two( ...$arguments );
 		}
+
+		return $self;
 	}
 
 	/**
@@ -367,36 +371,35 @@ class Route {
 	public static function dispatch() {
 		foreach ( self::$routes as $prefix ) {
 			foreach ( $prefix as $route ) {
-				try {
-					$route = (object) $route;
+				$route = (object) $route;
 
-					// Use lazy callback to defer class instantiation until the route is called.
-					$callback = self::prepare_lazy_callback( $route->callback );
-					$auth     = self::prepare_callback( $route->auth );
+				// Use lazy callback to defer class instantiation until the route is called.
+				$callback = self::prepare_lazy_callback( $route->callback );
+				
+				// Prepare auth callback with error handling
+				$auth = self::prepare_auth_callback( $route->auth );
 
-					$args = array(
-						'methods'             => $route->method,
-						'permission_callback' => $auth,
-						'callback'            => $callback,
-					);
+				$args = array(
+					'methods'             => $route->method,
+					'permission_callback' => $auth,
+					'callback'            => $callback,
+				);
 
-					if ( false === $route->auth ) {
-						$args['permission_callback'] = '__return_true';
-					}
-
-					if ( ! isset( $route->prefix ) ) {
-						throw new ApiRouteException( "{$route->endpoint} must have a prefix" );
-					}
-
-					$endpoint = self::convert_to_regex( $route->endpoint );
-
-					register_rest_route( $route->prefix, $endpoint, $args );
-				} catch ( \Throwable $e ) {
-					// Log the error but continue registering remaining routes.
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-						error_log( sprintf( '[ReadyPOS] Failed to register route %s: %s', $route->endpoint ?? 'unknown', $e->getMessage() ) );
-					}
+				if ( false === $route->auth ) {
+					$args['permission_callback'] = '__return_true';
 				}
+
+				if ( ! isset( $route->prefix ) ) {
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional debug logging in development mode
+						error_log( sprintf( '[ReadyPOS] Route %s must have a prefix', $route->endpoint ?? 'unknown' ) );
+					}
+					continue;
+				}
+
+				$endpoint = self::convert_to_regex( $route->endpoint );
+
+				register_rest_route( $route->prefix, $endpoint, $args );
 			}
 		}
 	}
@@ -426,13 +429,114 @@ class Route {
 			}
 
 			return function ( \WP_REST_Request $request ) use ( $class, $method ) {
-				$instance = new $class();
-				return $instance->{$method}( $request );
+				try {
+					if ( ! class_exists( $class ) ) {
+						return new \WP_Error(
+							'rest_no_route',
+							/* translators: %s: controller class name */
+							sprintf( __( 'Controller class %s not found.', 'ready-pos' ), $class ),
+							array( 'status' => 404 )
+						);
+					}
+
+					$instance = new $class();
+					
+					if ( ! method_exists( $instance, $method ) ) {
+						return new \WP_Error(
+							'rest_no_route',
+							/* translators: 1: method name, 2: controller class name */
+							sprintf( __( 'Method %1$s not found in controller %2$s.', 'ready-pos' ), $method, $class ),
+							array( 'status' => 404 )
+						);
+					}
+
+					return $instance->{$method}( $request );
+				} catch ( \Throwable $e ) {
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional debug logging in development mode
+						error_log( sprintf( '[ReadyPOS] Route callback error: %s', $e->getMessage() ) );
+					}
+					return new \WP_Error(
+						'rest_callback_error',
+						__( 'Internal server error.', 'ready-pos' ),
+						array( 'status' => 500 )
+					);
+				}
 			};
 		}
 
 		// Fall back to eager preparation for non-string callbacks.
 		return self::prepare_callback( $callback );
+	}
+
+	/**
+	 * Prepare auth callback for permission checking.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param mixed $callback callback.
+	 *
+	 * @return mixed
+	 */
+	private static function prepare_auth_callback( $callback ) {
+		if ( false === $callback || true === $callback ) {
+			return $callback ? '__return_true' : '__return_false';
+		}
+
+		if ( is_callable( $callback ) && ! is_string( $callback ) ) {
+			return $callback;
+		}
+
+		if ( is_string( $callback ) && self::str_has( $callback, '@' ) ) {
+			$arr    = explode( '@', $callback, 2 );
+			$class  = $arr[0];
+			$method = $arr[1];
+
+			if ( ! empty( self::$namespace ) && ! self::str_has( $class, '\\' ) ) {
+				$class = self::$namespace . '\\' . $class;
+			}
+
+			return function ( \WP_REST_Request $request ) use ( $class, $method ) {
+				try {
+					if ( ! class_exists( $class ) ) {
+						return new \WP_Error(
+							'rest_forbidden',
+							__( 'Auth handler not found.', 'ready-pos' ),
+							array( 'status' => 403 )
+						);
+					}
+
+					$instance = new $class();
+					
+					if ( ! method_exists( $instance, $method ) ) {
+						return new \WP_Error(
+							'rest_forbidden',
+							__( 'Auth method not found.', 'ready-pos' ),
+							array( 'status' => 403 )
+						);
+					}
+
+					return $instance->{$method}( $request );
+				} catch ( \Throwable $e ) {
+					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional debug logging in development mode
+						error_log( sprintf( '[ReadyPOS] Auth callback error: %s', $e->getMessage() ) );
+					}
+					return false;
+				}
+			};
+		}
+
+		// For other types, try to use prepare_callback
+		try {
+			return self::prepare_callback( $callback );
+		} catch ( \Throwable $e ) {
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional debug logging in development mode
+				error_log( sprintf( '[ReadyPOS] Invalid auth callback: %s', $e->getMessage() ) );
+			}
+			return '__return_false';
+		}
 	}
 
 	/**

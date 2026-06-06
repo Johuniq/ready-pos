@@ -2,9 +2,34 @@
  * Currency utility to format prices according to WooCommerce configuration.
  */
 
+/**
+ * Decode HTML entities in currency symbol
+ * Note: The symbol is already decoded by PHP (html_entity_decode in Admin.php)
+ * but this provides a fallback for any edge cases
+ */
+const decodeHtmlEntities = (text) => {
+  if (typeof text !== 'string') return text;
+  
+  // Create a temporary element to decode HTML entities
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = text;
+  return textarea.value;
+};
+
 const getCurrencyConfig = () => {
   if (typeof readyPosAdmin !== "undefined" && readyPosAdmin.currency) {
-    return readyPosAdmin.currency;
+    // The symbol is already decoded by PHP, but decode again as fallback
+    const config = { ...readyPosAdmin.currency };
+    config.symbol = decodeHtmlEntities(config.symbol);
+    
+    // Debug log to see what we're getting
+    console.log('[ReadyPOS Currency]', {
+      symbol: config.symbol,
+      position: config.position,
+      originalSymbol: readyPosAdmin.currency.symbol
+    });
+    
+    return config;
   }
 
   return {
@@ -38,18 +63,20 @@ export const formatPrice = (amount) => {
 
   const joinedNum = parts.join(config.decimal);
 
-  // Position symbol
+  // Position symbol with proper spacing for better UX
   switch (config.position) {
     case "left":
-      return `${config.symbol}${joinedNum}`;
+      // Add space after symbol for better readability (e.g., "৳ 500" instead of "৳500")
+      return `${config.symbol} ${joinedNum}`;
     case "right":
-      return `${joinedNum}${config.symbol}`;
+      // Add space before symbol for better readability (e.g., "500 ৳" instead of "500৳")
+      return `${joinedNum} ${config.symbol}`;
     case "left_space":
       return `${config.symbol} ${joinedNum}`;
     case "right_space":
       return `${joinedNum} ${config.symbol}`;
     default:
-      return `${config.symbol}${joinedNum}`;
+      return `${config.symbol} ${joinedNum}`;
   }
 };
 

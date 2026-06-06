@@ -29,48 +29,60 @@ final class Readypos {
 	use Base;
 
 	/**
-	 * Constructor setup constants.
-	 */
-	public function __construct() {
-		define( 'READYPOS_VERSION', '1.0.0' );
-		define( 'READYPOS_PLUGIN_FILE', dirname( __FILE__ ) . '/ready-pos.php' );
-		define( 'READYPOS_DIR', plugin_dir_path( __FILE__ ) );
-		define( 'READYPOS_URL', plugin_dir_url( __FILE__ ) );
-		define( 'READYPOS_ASSETS_URL', READYPOS_URL . '/assets' );
-		define( 'READYPOS_ROUTE_PREFIX', 'ready-pos/v1' );
-	}
-
-	/**
 	 * Fire up the plugin.
 	 *
 	 * @return void
 	 */
 	public function init() {
+		// Boot Eloquent ORM FIRST before anything else
+		if ( function_exists( 'Readypos\Libs\DatabaseConnection\boot_eloquent' ) ) {
+			\Readypos\Libs\DatabaseConnection\boot_eloquent();
+		}
+
 		// Initialize dependency checker.
 		WooCommerceChecker::get_instance()->init();
+
+		// Initialize REST API routes early
+		Api::get_instance()->init();
 
 		if ( is_admin() ) {
 			Menu::get_instance()->init();
 			Admin::get_instance()->bootstrap();
 			PluginMeta::get_instance()->init();
+			\Readypos\Admin\Tools::get_instance()->init();
 		}
 
 		// Initialize core modules.
 		Frontend::get_instance()->bootstrap();
-		API::get_instance()->init();
 		Template::get_instance()->init();
 		License::get_instance()->init();
 		Roles::get_instance()->init();
 
 		add_action( 'init', array( $this, 'i18n' ) );
+
+		// Initialize real-time sync system (if class exists)
+		if ( class_exists( '\Readypos\Realtime\WebSocketServer' ) ) {
+			\Readypos\Realtime\WebSocketServer::init();
+		}
+
+		// Register hooks to clear reports transients on order changes
+		add_action( 'woocommerce_new_order', array( '\Readypos\Controllers\Reports\Actions', 'clear_reports_cache' ) );
+		add_action( 'woocommerce_update_order', array( '\Readypos\Controllers\Reports\Actions', 'clear_reports_cache' ) );
+		add_action( 'woocommerce_trash_order', array( '\Readypos\Controllers\Reports\Actions', 'clear_reports_cache' ) );
+		add_action( 'woocommerce_delete_order', array( '\Readypos\Controllers\Reports\Actions', 'clear_reports_cache' ) );
 	}
 
 	/**
 	 * Initialize text domain for translation.
 	 *
+	 * Note: As of WordPress 4.6+, translations are automatically loaded from
+	 * WordPress.org for plugins hosted there. This call is kept for backwards
+	 * compatibility and for local development/testing with custom translations.
+	 *
 	 * @return void
 	 */
 	public function i18n() {
+		// phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomain -- Kept for backwards compatibility with WP < 4.6 and local development with custom translations
 		load_plugin_textdomain( 'ready-pos', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/' );
 	}
 }

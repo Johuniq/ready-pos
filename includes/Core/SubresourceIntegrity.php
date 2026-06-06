@@ -29,13 +29,9 @@ class SubresourceIntegrity {
 	 * @var array
 	 */
 	private static $known_hashes = array(
-		// React (if ever loaded from CDN)
+		// React (if loaded from CDN)
 		'https://unpkg.com/react@18.2.0/umd/react.production.min.js' => 'sha384-/S8G8L2qeid4rFY/hHYo8kxZOmKuR+3rYPE0lDqFJ0qFjjqcH9CqGOJdOlH9F6KQ',
 		'https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js' => 'sha384-j8/fZ/dQS3rF8yM/ZsGZNjqVqHWvhL5dQqT6lTEqLhiNdCk6rX6pXr1eLQcDj/Gj',
-		
-		// Common CDNs (examples - update with actual URLs used)
-		'https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js' => 'sha384-example',
-		'https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js' => 'sha384-example',
 	);
 
 	/**
@@ -349,12 +345,17 @@ class SubresourceIntegrity {
 		$hash = self::generate_integrity_hash( $url );
 		
 		if ( $hash ) {
-			echo "URL: {$url}\n";
-			echo "Hash: {$hash}\n";
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- CLI output, not web output
+			echo 'URL: ' . $url . "\n";
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- CLI output, not web output
+			echo 'Hash: ' . $hash . "\n";
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- CLI output, not web output
 			echo "\nAdd to your code:\n";
-			echo "SubresourceIntegrity::register_hash('{$url}', '{$hash}');\n";
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- CLI output, not web output
+			echo "SubresourceIntegrity::register_hash('" . $url . "', '" . $hash . "');\n";
 		} else {
-			echo "Failed to generate hash for: {$url}\n";
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- CLI output, not web output
+			echo 'Failed to generate hash for: ' . $url . "\n";
 		}
 	}
 }

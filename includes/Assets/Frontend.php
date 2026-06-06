@@ -74,7 +74,7 @@ class Frontend {
 
 		if ( in_array( $current_screen, $this->allowed_screens, true ) ) {
 			Assets\enqueue_asset(
-				READYPOS_DIR . '/assets/frontend/dist',
+				\READYPOS_DIR . '/assets/frontend/dist',
 				self::DEV_SCRIPT,
 				$this->get_config()
 			);

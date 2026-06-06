@@ -661,7 +661,6 @@ function ReceiptPreview({ blocks, paperWidth }) {
   const is80mm = paperWidth === "80mm";
   const width = is80mm ? 310 : 240;
 
-  // Sample data for preview
   const sample = {
     orderNumber: "RP-1042",
     date: new Date().toLocaleString(),
@@ -702,7 +701,7 @@ function ReceiptPreview({ blocks, paperWidth }) {
           </div>
         ) : (
           <div className="text-center py-1 text-[9px] text-muted-foreground italic">
-            [Logo placeholder]
+            No logo configured
           </div>
         );
 

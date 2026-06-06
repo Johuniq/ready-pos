@@ -332,7 +332,7 @@ class SessionSecurity {
 				sprintf( 'API request fingerprint mismatch for user ID %d', $user_id ),
 				array(
 					'user_id'  => $user_id,
-					'endpoint' => $_SERVER['REQUEST_URI'] ?? 'unknown',
+					'endpoint' => isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : 'unknown',
 				),
 				AuditLog::SEVERITY_WARNING
 			);

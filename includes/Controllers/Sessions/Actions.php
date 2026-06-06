@@ -68,6 +68,9 @@ class Actions {
 
 		// Update register status
 		POSRegister::where( 'id', $register_id )->update( array( 'status' => 'open' ) );
+		wp_cache_delete( 'readypos_open_session_' . absint( $session->id ), 'readypos_sessions' );
+		wp_cache_delete( 'readypos_cash_session_' . absint( $session->id ), 'readypos_sessions' );
+		wp_cache_delete( 'readypos_cash_session_updated_' . absint( $session->id ), 'readypos_sessions' );
 
 		// SECURITY FIX #17: Log session opened
 		\Readypos\Core\AuditLog::log(
@@ -114,6 +117,9 @@ class Actions {
 		$session->notes        = empty( $notes ) ? $session->notes : $session->notes . "\nClose notes: " . $notes;
 		$session->closed_at    = current_time( 'mysql' );
 		$session->save();
+		wp_cache_delete( 'readypos_open_session_' . absint( $session_id ), 'readypos_sessions' );
+		wp_cache_delete( 'readypos_cash_session_' . absint( $session_id ), 'readypos_sessions' );
+		wp_cache_delete( 'readypos_cash_session_updated_' . absint( $session_id ), 'readypos_sessions' );
 
 		// Update register status
 		POSRegister::where( 'id', $session->register_id )->update( array( 'status' => 'closed' ) );
@@ -235,13 +241,19 @@ class Actions {
 		global $wpdb;
 		$sessions_table = $wpdb->prefix . 'readypos_sessions';
 
-		// Verify session exists and is open
-		$session = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT id, cash_total, notes FROM {$sessions_table} WHERE id = %d AND status = 'open'",
-				$session_id
-			)
-		);
+		// Verify session exists and is open.
+		$session_cache_key = 'readypos_cash_session_' . absint( $session_id );
+		$session           = wp_cache_get( $session_cache_key, 'readypos_sessions' );
+
+		if ( false === $session ) {
+			$session = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->prepare(
+					"SELECT id, cash_total, notes FROM `" . esc_sql( $sessions_table ) . "` WHERE id = %d AND status = 'open'",
+					$session_id
+				)
+			);
+			wp_cache_set( $session_cache_key, $session, 'readypos_sessions', MINUTE_IN_SECONDS );
+		}
 
 		if ( ! $session ) {
 			return new \WP_Error( 'invalid_session', __( 'Active session not found.', 'ready-pos' ), array( 'status' => 400 ) );
@@ -265,10 +277,10 @@ class Actions {
 
 		$new_notes = empty( $session->notes ) ? $log_entry : $session->notes . "\n" . $log_entry;
 
-		// SECURITY FIX #6: Atomic update to prevent race condition
-		$updated = $wpdb->query(
+		// SECURITY FIX #6: Atomic update to prevent race condition.
+		$updated = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 			$wpdb->prepare(
-				"UPDATE {$sessions_table} 
+				"UPDATE `" . esc_sql( $sessions_table ) . "`
 				SET cash_total = cash_total + %f,
 					notes = %s
 				WHERE id = %d AND status = 'open'",
@@ -282,13 +294,23 @@ class Actions {
 			return new \WP_Error( 'update_failed', __( 'Failed to update session. Session may have been closed.', 'ready-pos' ), array( 'status' => 500 ) );
 		}
 
-		// Fetch updated cash total
-		$updated_session = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT cash_total, notes FROM {$sessions_table} WHERE id = %d",
-				$session_id
-			)
-		);
+		wp_cache_delete( $session_cache_key, 'readypos_sessions' );
+
+		// Fetch updated cash total.
+		$updated_session_cache_key = 'readypos_cash_session_updated_' . absint( $session_id );
+		wp_cache_delete( $updated_session_cache_key, 'readypos_sessions' );
+
+		$updated_session           = wp_cache_get( $updated_session_cache_key, 'readypos_sessions' );
+
+		if ( false === $updated_session ) {
+			$updated_session = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->prepare(
+					"SELECT cash_total, notes FROM `" . esc_sql( $sessions_table ) . "` WHERE id = %d",
+					$session_id
+				)
+			);
+			wp_cache_set( $updated_session_cache_key, $updated_session, 'readypos_sessions', MINUTE_IN_SECONDS );
+		}
 
 		return new \WP_REST_Response(
 			array(
@@ -344,7 +366,7 @@ class Actions {
 		// SECURITY FIX #3: Log drawer open event for audit trail
 		$cashier_id = get_current_user_id();
 		$cashier = get_userdata( $cashier_id );
-		$ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+		$ip_address = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? 'unknown' ) );
 		$time = current_time( 'mysql' );
 
 		$log_entry = sprintf(
@@ -359,8 +381,12 @@ class Actions {
 		// Append to session notes
 		$session->notes = empty( $session->notes ) ? $log_entry : $session->notes . "\n" . $log_entry;
 		$session->save();
+		wp_cache_delete( 'readypos_open_session_' . absint( $session_id ), 'readypos_sessions' );
+		wp_cache_delete( 'readypos_cash_session_' . absint( $session_id ), 'readypos_sessions' );
+		wp_cache_delete( 'readypos_cash_session_updated_' . absint( $session_id ), 'readypos_sessions' );
 
 		// SECURITY FIX #3: Log to WordPress error log for security monitoring
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional security audit logging for cash drawer access
 		error_log( sprintf(
 			'ReadyPOS Cash Drawer Opened: Session ID %d, Cashier ID %d (%s), Register ID %d, Reason: %s, IP: %s',
 			$session_id,

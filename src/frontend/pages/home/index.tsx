@@ -146,7 +146,7 @@ export default function ReadyPOSLanding() {
                   variant="outline"
                   className="font-bold text-base px-8">
                   <BarChart3 className="mr-2 h-5 w-5" />
-                  View Demo
+                  Get Started
                 </Button>
               </div>
 

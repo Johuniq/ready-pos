@@ -1,33 +1,32 @@
-import React, { useState, useEffect } from "react";
-import { useAtom, useSetAtom } from "jotai";
-import {
-  sessionAtom,
-  settingsAtom,
-  heldOrdersCountAtom,
-  cartAtom,
-  customerAtom,
-  cartDiscountAmountAtom,
-  cartTaxAmountAtom,
-  cartSubtotalAtom,
-  cartTotalAtom,
-  cartCouponsAtom,
-} from "@/admin/stores/posStore";
-import { api } from "@/lib/api";
-import POSHeader from "./components/POSHeader";
-import ProductGrid from "./components/ProductGrid";
-import CartPanel from "./components/CartPanel";
-import CartTabs from "./components/CartTabs";
-import PaymentModal from "./components/PaymentModal";
-import HeldCartsModal from "./components/HeldCartsModal";
-import RegisterSessionModal from "./components/RegisterSessionModal";
-import ShiftTrackerModal from "./components/ShiftTrackerModal";
-import CashierLoginPanel from "./components/CashierLoginPanel";
 import { useCart } from "@/admin/hooks/useCart";
-import { dbOperations } from "@/admin/lib/db";
-import { toast } from "sonner";
+import {
+    cartAtom,
+    cartCouponsAtom,
+    cartDiscountAmountAtom,
+    cartSubtotalAtom,
+    cartTaxAmountAtom,
+    cartTotalAtom,
+    customerAtom,
+    heldOrdersCountAtom,
+    sessionAtom,
+    settingsAtom,
+} from "@/admin/stores/posStore";
 import { ErrorState } from "@/components/error/ErrorState";
 import { TerminalSkeleton } from "@/components/loading/TerminalSkeleton";
+import { api } from "@/lib/api";
 import { handleError } from "@/lib/errorHandler";
+import { useAtom, useSetAtom } from "jotai";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import CartPanel from "./components/CartPanel";
+import CartTabs from "./components/CartTabs";
+import CashierLoginPanel from "./components/CashierLoginPanel";
+import HeldCartsModal from "./components/HeldCartsModal";
+import PaymentModal from "./components/PaymentModal";
+import POSHeader from "./components/POSHeader";
+import ProductGrid from "./components/ProductGrid";
+import RegisterSessionModal from "./components/RegisterSessionModal";
+import ShiftTrackerModal from "./components/ShiftTrackerModal";
 
 export default function Terminal() {
   const [session, setSession] = useAtom(sessionAtom);
@@ -214,6 +213,86 @@ export default function Terminal() {
       setShowSessionModal(true);
     }
   }, [activeShift, session?.has_active, initializing]);
+
+  // Global keyboard shortcuts for keyboard-first workflow:
+  // F1 -> focus product search, F2 -> focus customer search,
+  // F3 -> open payment, Enter -> complete (when payment open), Esc -> cancel/close
+  useEffect(() => {
+    const handler = (e) => {
+      // Ignore when modifier keys are held
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      // F1: focus product search
+      if (e.key === "F1") {
+        e.preventDefault();
+        const prod = document.getElementById("search-input");
+        if (prod) {
+          prod.focus();
+          if (prod.select) prod.select();
+        }
+        return;
+      }
+
+      // F2: focus customer search
+      if (e.key === "F2") {
+        e.preventDefault();
+        const cust = document.getElementById("customer-search-input");
+        if (cust) {
+          cust.focus();
+          if (cust.select) cust.select();
+        }
+        return;
+      }
+
+      // F3: open payment modal
+      if (e.key === "F3") {
+        e.preventDefault();
+        if (!cart || cart.length === 0) {
+          toast.info("Cart is empty");
+          return;
+        }
+        setShowPaymentModal(true);
+        return;
+      }
+
+      // Enter: when payment modal open, trigger complete action
+      if (e.key === "Enter") {
+        if (showPaymentModal) {
+          e.preventDefault();
+          const btn = document.getElementById("payment-complete-btn");
+          if (btn) btn.click();
+        }
+        return;
+      }
+
+      // Escape: close active modals or forward Escape
+      if (e.key === "Escape") {
+        if (showPaymentModal) {
+          setShowPaymentModal(false);
+          return;
+        }
+        if (showHeldCartsModal) {
+          setShowHeldCartsModal(false);
+          return;
+        }
+        if (showSessionModal) {
+          setShowSessionModal(false);
+          return;
+        }
+        if (showShiftModal) {
+          setShowShiftModal(false);
+          return;
+        }
+
+        // Let other components handle Escape (e.g. product variation dialog)
+        const ev = new KeyboardEvent("keydown", { key: "Escape" });
+        document.dispatchEvent(ev);
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [showPaymentModal, showHeldCartsModal, showSessionModal, showShiftModal, cart]);
 
   // Handle session button click in Header
   const handleOpenCloseSession = () => {
