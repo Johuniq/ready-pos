@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import { saveAs } from "file-saver";
 import { toast } from "sonner";
 
@@ -41,7 +41,7 @@ export const exportToCSV = (headers, rows, filename) => {
     toast.success(`Exported to CSV successfully!`);
     return true;
   } catch (error) {
-    console.error("CSV Export Error:", error);
+    
     toast.error("Failed to export CSV");
     return false;
   }
@@ -85,7 +85,7 @@ export const exportToExcel = (headers, rows, filename, sheetName = "Sheet1") => 
     toast.success(`Exported to Excel successfully!`);
     return true;
   } catch (error) {
-    console.error("Excel Export Error:", error);
+    
     toast.error("Failed to export Excel");
     return false;
   }
@@ -100,53 +100,73 @@ export const exportToExcel = (headers, rows, filename, sheetName = "Sheet1") => 
  */
 export const exportToPDF = (headers, rows, filename, title = "Report") => {
   try {
+    // Determine orientation based on number of columns
+    const orientation = headers.length > 6 ? "landscape" : "portrait";
+    
     const doc = new jsPDF({
-      orientation: headers.length > 6 ? "landscape" : "portrait",
+      orientation,
       unit: "mm",
       format: "a4",
     });
 
     // Add title
     doc.setFontSize(16);
-    doc.setFont(undefined, "bold");
+    doc.setFont("helvetica", "bold");
     doc.text(title, 14, 15);
 
     // Add timestamp
     doc.setFontSize(9);
-    doc.setFont(undefined, "normal");
+    doc.setFont("helvetica", "normal");
     doc.text(
       `Generated: ${new Date().toLocaleString()}`,
       14,
       22
     );
 
-    // Add table
-    doc.autoTable({
+    // Convert rows to ensure all values are strings or numbers
+    const sanitizedRows = rows.map(row => 
+      row.map(cell => {
+        if (cell === null || cell === undefined) return '';
+        return String(cell);
+      })
+    );
+
+    // Add table using autoTable
+    autoTable(doc, {
       head: [headers],
-      body: rows,
+      body: sanitizedRows,
       startY: 28,
       theme: "grid",
       styles: {
         fontSize: 8,
         cellPadding: 2,
+        overflow: "linebreak",
       },
       headStyles: {
         fillColor: [41, 128, 185],
-        textColor: 255,
+        textColor: [255, 255, 255],
         fontStyle: "bold",
+        halign: "left",
       },
       alternateRowStyles: {
         fillColor: [245, 245, 245],
       },
       margin: { top: 28, left: 14, right: 14 },
+      didParseCell: function (data) {
+        // Ensure proper text alignment
+        if (data.section === 'body') {
+          data.cell.styles.halign = 'left';
+        }
+      },
     });
 
+    // Save the PDF
     doc.save(`${filename}.pdf`);
     toast.success(`Exported to PDF successfully!`);
     return true;
   } catch (error) {
-    console.error("PDF Export Error:", error);
-    toast.error("Failed to export PDF");
+    
+    toast.error(`Failed to export PDF: ${error.message}`);
     return false;
   }
 };

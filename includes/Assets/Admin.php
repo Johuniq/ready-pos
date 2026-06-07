@@ -83,19 +83,6 @@ class Admin {
 			</div>
 			<?php
 		}
-
-		// Check if plugin was just activated
-		if ( get_transient( 'readypos_activated' ) ) {
-			delete_transient( 'readypos_activated' );
-			?>
-			<div class="notice notice-info is-dismissible">
-				<p>
-					<strong><?php esc_html_e( 'Ready POS Activated:', 'ready-pos' ); ?></strong>
-					<?php esc_html_e( 'All caches have been cleared. If you experience any issues, try hard refreshing your browser (Ctrl+Shift+R).', 'ready-pos' ); ?>
-				</p>
-			</div>
-			<?php
-		}
 	}
 
 	/**
@@ -136,8 +123,8 @@ class Admin {
 					if ('serviceWorker' in navigator) {
 						window.addEventListener('load', function() {
 							navigator.serviceWorker.register('<?php echo esc_url( $sw_url ); ?>?v=<?php echo esc_js( $cache_version ); ?>', { scope: '/wp-admin/' })
-								.then(function(reg) { console.log('[ReadyPOS] SW registered:', reg.scope); })
-								.catch(function(err) { console.warn('[ReadyPOS] SW registration failed:', err); });
+								.then(function(reg) { /* SW registered */ })
+								.catch(function(err) { /* SW registration failed */ });
 						});
 					}
 					</script>

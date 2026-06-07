@@ -107,7 +107,7 @@ export default function ShippingModal({ open, onOpenChange }) {
         toast.warning("No shipping methods available for this address");
       }
     } catch (err) {
-      console.error("Failed to fetch shipping methods:", err);
+      
       toast.error(err.message || "Failed to load shipping methods");
       setShippingMethods([]);
     } finally {

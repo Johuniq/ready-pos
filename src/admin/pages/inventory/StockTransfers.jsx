@@ -110,12 +110,8 @@ export default function StockTransfers() {
       setTotalTransfers(data?.total || 0);
       setPage(targetPage);
     } catch (err) {
-      console.error("Stock transfers fetch error:", err);
-      console.error("Error details:", {
-        status: err.status,
-        message: err.message,
-        data: err.data
-      });
+      
+      
       
       const appError = handleError(err, { showToast: false });
       setError(appError);
@@ -127,9 +123,9 @@ export default function StockTransfers() {
   const fetchOutlets = async () => {
     try {
       const data = await api.get("/settings/outlets");
-      setOutlets(data?.outlets || []);
+      setOutlets(data || []);
     } catch (err) {
-      console.error("Failed to load outlets:", err);
+      
     }
   };
 
@@ -143,7 +139,7 @@ export default function StockTransfers() {
       const data = await api.get(`/products/search?search=${encodeURIComponent(query)}`);
       setProducts(data?.products || []);
     } catch (err) {
-      console.error("Failed to search products:", err);
+      
     }
   };
 
@@ -480,7 +476,7 @@ export default function StockTransfers() {
                   <SelectContent className="z-[100000]">
                     {outlets.map((outlet) => (
                       <SelectItem key={outlet.id} value={outlet.id.toString()} className="text-xs">
-                        {outlet.outlet_name}
+                        {outlet.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -500,7 +496,7 @@ export default function StockTransfers() {
                   <SelectContent className="z-[100000]">
                     {outlets.map((outlet) => (
                       <SelectItem key={outlet.id} value={outlet.id.toString()} className="text-xs">
-                        {outlet.outlet_name}
+                        {outlet.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

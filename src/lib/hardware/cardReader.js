@@ -150,7 +150,7 @@ class EMVCardReader {
       this.emit("connected", { type: "serial", info: this.deviceInfo });
       return true;
     } catch (err) {
-      console.error("[CardReader] Serial connection failed:", err);
+      
       throw new Error(`Failed to connect to card reader: ${err.message}`);
     }
   }
@@ -204,7 +204,7 @@ class EMVCardReader {
       this.emit("connected", { type: "usb", info: this.deviceInfo });
       return true;
     } catch (err) {
-      console.error("[CardReader] USB connection failed:", err);
+      
       throw new Error(`Failed to connect to card reader: ${err.message}`);
     }
   }
@@ -241,7 +241,7 @@ class EMVCardReader {
           return true;
         }
       } catch (err) {
-        console.warn("[CardReader] Serial auto-connect failed:", err);
+        
       }
     }
 
@@ -271,7 +271,7 @@ class EMVCardReader {
           return true;
         }
       } catch (err) {
-        console.warn("[CardReader] USB auto-connect failed:", err);
+        
       }
     }
 
@@ -309,7 +309,7 @@ class EMVCardReader {
 
       this.emit("disconnected");
     } catch (err) {
-      console.warn("[CardReader] Disconnect error:", err);
+      
     } finally {
       this.connectionType = null;
       this.transactionInProgress = false;
@@ -336,7 +336,7 @@ class EMVCardReader {
 
       return true;
     } catch (err) {
-      console.warn("[CardReader] Initialization warning:", err);
+      
       // Continue even if init fails - some readers don't need explicit init
       return true;
     }
@@ -429,7 +429,7 @@ class EMVCardReader {
       await this.sendCommand(cancelCmd);
       this.emit("transaction_cancelled");
     } catch (err) {
-      console.error("[CardReader] Cancel failed:", err);
+      
     } finally {
       this.transactionInProgress = false;
     }
@@ -578,7 +578,7 @@ class EMVCardReader {
       // Wait for response
       return await this.waitForResponse(5000);
     } catch (err) {
-      console.error("[CardReader] Command failed:", err);
+      
       throw err;
     }
   }
@@ -614,7 +614,7 @@ class EMVCardReader {
       }
     } catch (err) {
       if (this.connected) {
-        console.error("[CardReader] Read error:", err);
+        
         this.emit("error", err);
       }
     }
@@ -634,7 +634,7 @@ class EMVCardReader {
       }
     } catch (err) {
       if (this.connected) {
-        console.error("[CardReader] USB read error:", err);
+        
         this.emit("error", err);
       }
     }
@@ -658,7 +658,7 @@ class EMVCardReader {
         this.processMessage(message);
       }
     } catch (err) {
-      console.error("[CardReader] Data handling error:", err);
+      
     }
   }
 
@@ -761,7 +761,7 @@ class EMVCardReader {
         try {
           callback(data);
         } catch (err) {
-          console.error(`[CardReader] Event handler error for ${event}:`, err);
+          
         }
       });
     }

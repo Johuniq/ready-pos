@@ -51,11 +51,8 @@ export const useRealtime = (config = {}) => {
     const outletId = settings?.outlet_id;
 
     if (!registerId) {
-      console.warn("[Realtime] No register ID, skipping WebSocket connection");
       return;
     }
-
-    console.log("[Realtime] Connecting...", { registerId, outletId });
 
     wsManager.connect({ registerId, outletId });
 
@@ -86,7 +83,6 @@ export const useRealtime = (config = {}) => {
     if (onInventoryUpdate) {
       unsubscribers.push(
         wsManager.on(WS_EVENTS.INVENTORY_UPDATED, (data) => {
-          console.log("[Realtime] Inventory updated:", data);
           if (showNotifications) {
             toast.info(
               `Inventory updated: ${data.productName || "Product"} (${data.quantity} units)`,
@@ -102,7 +98,6 @@ export const useRealtime = (config = {}) => {
     if (onStockChanged) {
       unsubscribers.push(
         wsManager.on(WS_EVENTS.STOCK_CHANGED, (data) => {
-          console.log("[Realtime] Stock changed:", data);
           if (showNotifications && data.registerId !== session?.register?.id) {
             toast.info(
               `${data.productName || "Product"}: ${data.oldStock} → ${data.newStock}`,
@@ -118,7 +113,6 @@ export const useRealtime = (config = {}) => {
     if (onOrderCreated) {
       unsubscribers.push(
         wsManager.on(WS_EVENTS.ORDER_CREATED, (data) => {
-          console.log("[Realtime] Order created:", data);
           if (showNotifications && data.registerId !== session?.register?.id) {
             toast.success(
               `New order #${data.orderId} - ${data.total}`,
@@ -134,7 +128,6 @@ export const useRealtime = (config = {}) => {
     if (onCartTransferred) {
       unsubscribers.push(
         wsManager.on(WS_EVENTS.CART_TRANSFERRED, (data) => {
-          console.log("[Realtime] Cart transferred:", data);
           if (showNotifications && data.toRegisterId === session?.register?.id) {
             toast.info(
               `Cart transferred to you from ${data.fromCashierName}`,
@@ -150,7 +143,6 @@ export const useRealtime = (config = {}) => {
     if (onSessionOpened) {
       unsubscribers.push(
         wsManager.on(WS_EVENTS.SESSION_OPENED, (data) => {
-          console.log("[Realtime] Session opened:", data);
           if (showNotifications && data.registerId !== session?.register?.id) {
             toast.info(
               `${data.cashierName} opened session at ${data.registerName}`,
@@ -164,7 +156,6 @@ export const useRealtime = (config = {}) => {
     if (onSessionClosed) {
       unsubscribers.push(
         wsManager.on(WS_EVENTS.SESSION_CLOSED, (data) => {
-          console.log("[Realtime] Session closed:", data);
           if (showNotifications && data.registerId !== session?.register?.id) {
             toast.info(
               `${data.cashierName} closed session at ${data.registerName}`,
@@ -179,7 +170,6 @@ export const useRealtime = (config = {}) => {
     if (onRegisterOnline) {
       unsubscribers.push(
         wsManager.on(WS_EVENTS.REGISTER_ONLINE, (data) => {
-          console.log("[Realtime] Register online:", data);
           if (showNotifications) {
             toast.success(`${data.registerName} is now online`);
           }
@@ -191,7 +181,6 @@ export const useRealtime = (config = {}) => {
     if (onRegisterOffline) {
       unsubscribers.push(
         wsManager.on(WS_EVENTS.REGISTER_OFFLINE, (data) => {
-          console.log("[Realtime] Register offline:", data);
           if (showNotifications) {
             toast.warning(`${data.registerName} went offline`);
           }

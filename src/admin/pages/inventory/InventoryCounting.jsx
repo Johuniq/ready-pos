@@ -94,9 +94,9 @@ export default function InventoryCounting() {
   const fetchOutlets = async () => {
     try {
       const data = await api.get("/settings/outlets");
-      setOutlets(data?.outlets || []);
-      if (data?.outlets && data.outlets.length > 0) {
-        setCurrentOutlet(data.outlets[0].id.toString());
+      setOutlets(data || []);
+      if (data && data.length > 0) {
+        setCurrentOutlet(data[0].id.toString());
       }
     } catch (err) {
       handleError(err, { showToast: true });
@@ -295,7 +295,7 @@ export default function InventoryCounting() {
             <SelectContent className="z-[100000]">
               {outlets.map((outlet) => (
                 <SelectItem key={outlet.id} value={outlet.id.toString()}>
-                  {outlet.outlet_name}
+                  {outlet.name}
                 </SelectItem>
               ))}
             </SelectContent>

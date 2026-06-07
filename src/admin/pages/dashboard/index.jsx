@@ -145,10 +145,7 @@ export default function DashboardPage() {
       if (failures.length > 0) {
         // Surface details to the console for debugging
         failures.forEach((f) => {
-          console.warn(
-            `[Dashboard] ${f.endpoint.url} failed:`,
-            f.reason?.message || f.reason,
-          );
+          
         });
 
         if (failures.length < results.length) {
@@ -179,7 +176,7 @@ export default function DashboardPage() {
       const data = await api.get("/inventory/low-stock");
       setLowStockList(data || []);
     } catch (err) {
-      console.error("Failed to refresh low stock alerts:", err);
+      
     }
   };
 

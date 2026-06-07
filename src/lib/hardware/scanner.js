@@ -124,7 +124,7 @@ class BarcodeScanner {
         }
       }
     } catch (err) {
-      console.warn("[Scanner] serial read error:", err);
+      
     }
   }
 
@@ -142,7 +142,7 @@ class BarcodeScanner {
         this.serialPort = null;
       }
     } catch (err) {
-      console.warn("[Scanner] disconnect error:", err);
+      
     } finally {
       this.device = null;
       this.mode = null;
@@ -161,7 +161,7 @@ class BarcodeScanner {
       try {
         cb(code);
       } catch (err) {
-        console.warn("[Scanner] listener error:", err);
+        
       }
     }
   }

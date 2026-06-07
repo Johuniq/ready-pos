@@ -71,7 +71,7 @@ export default function InventoryHistory() {
   const fetchOutlets = async () => {
     try {
       const data = await api.get("/settings/outlets");
-      setOutlets(data?.outlets || []);
+      setOutlets(data || []);
     } catch (err) {
       handleError(err, { showToast: true });
     }
@@ -87,7 +87,7 @@ export default function InventoryHistory() {
       const data = await api.get(`/products/search?search=${encodeURIComponent(query)}`);
       setProducts(data?.products || []);
     } catch (err) {
-      console.error("Failed to search products:", err);
+      
     }
   };
 
@@ -140,7 +140,7 @@ export default function InventoryHistory() {
       const data = await api.get("/inventory/history/summary", { params });
       setSummary(data);
     } catch (err) {
-      console.error("Failed to load summary:", err);
+      
     }
   };
 
@@ -242,7 +242,7 @@ export default function InventoryHistory() {
               <SelectItem value="all">All Outlets</SelectItem>
               {outlets.map((outlet) => (
                 <SelectItem key={outlet.id} value={outlet.id.toString()}>
-                  {outlet.outlet_name}
+                  {outlet.name}
                 </SelectItem>
               ))}
             </SelectContent>

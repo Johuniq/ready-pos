@@ -281,10 +281,7 @@ export default function PaymentModal({ open, onOpenChange }) {
             );
             await handlePrintReceipt(orderDetail);
           } catch (receiptErr) {
-            console.error(
-              "Failed to load receipt details, printing backup template",
-              receiptErr,
-            );
+            
             // Backup print structure
             await handlePrintReceipt({
               id: response.order_id,

@@ -106,7 +106,7 @@ class CashDrawer {
         "No cash drawer or printer available. Connect hardware first.",
       );
     } catch (error) {
-      console.error("[Drawer] Authorization failed:", error);
+      
       throw error;
     }
   }
@@ -122,7 +122,7 @@ class CashDrawer {
         this.directPort = null;
       }
     } catch (err) {
-      console.warn("[Drawer] disconnect error:", err);
+      
     }
   }
 

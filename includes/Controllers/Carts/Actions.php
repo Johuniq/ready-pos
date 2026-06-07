@@ -263,7 +263,11 @@ class Actions {
 		$cart = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table_name} WHERE id = %d", $cart_id ) );
 
 		if ( ! $cart ) {
-			return new \WP_Error( 'cart_not_found', __( 'Cart not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error(
+				'cart_not_found',
+				__( 'Cart not found. Empty carts are not saved to the database. Add items to the cart before transferring.', 'ready-pos' ),
+				array( 'status' => 404 )
+			);
 		}
 
 		// Update cart owner

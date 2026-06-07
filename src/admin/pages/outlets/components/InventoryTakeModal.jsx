@@ -52,7 +52,7 @@ export default function InventoryTakeModal({
       const data = await api.get("/products/get", params);
       setProducts(data.products || []);
     } catch (err) {
-      console.error("Failed to load products for inventory take", err);
+      
     } finally {
       setLoadingProducts(false);
     }

@@ -61,7 +61,7 @@ export function LicenseProvider({ children }) {
         readyPosAdmin.license = data;
       }
     } catch (err) {
-      console.warn("[License] failed to refresh:", err);
+      
     }
   }, []);
 

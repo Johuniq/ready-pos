@@ -55,7 +55,7 @@ export default function CartTabs() {
       const response = await api.get("/carts/cashiers");
       setCashiers(response.cashiers || []);
     } catch (error) {
-      console.error("Failed to load cashiers:", error);
+      
       toast.error("Failed to load cashier list");
     } finally {
       setLoadingCashiers(false);
@@ -78,6 +78,15 @@ export default function CartTabs() {
   };
 
   const handleTransferClick = (cartId) => {
+    // Find the cart session to check if it has items
+    const cartSession = sessions.find((s) => s.id === cartId);
+    const itemCount = cartSession?.items?.length || 0;
+
+    if (itemCount === 0) {
+      toast.error("Cannot transfer an empty cart. Add items to the cart first.");
+      return;
+    }
+
     setSelectedCartId(cartId);
     setSelectedCashierId("");
     setShowTransferModal(true);
@@ -105,7 +114,7 @@ export default function CartTabs() {
         setShowTransferModal(false);
       }
     } catch (error) {
-      console.error("Failed to transfer cart:", error);
+      
       toast.error(error.message || "Failed to transfer cart");
     } finally {
       setTransferring(false);

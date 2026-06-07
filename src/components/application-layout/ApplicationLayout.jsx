@@ -75,7 +75,7 @@ const ApplicationLayout = () => {
       localStorage.removeItem('readypos_session');
       sessionStorage.clear();
     } catch (e) {
-      console.warn('Failed to clear storage:', e);
+      
     }
 
     // Redirect to WordPress logout URL

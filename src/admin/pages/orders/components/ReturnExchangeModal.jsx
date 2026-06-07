@@ -63,7 +63,7 @@ export default function ReturnExchangeModal({
       const res = await api.get("/returns/settings");
       setSettings(res);
     } catch (err) {
-      console.error("Failed to load return settings:", err);
+      
     }
   };
 
@@ -76,7 +76,7 @@ export default function ReturnExchangeModal({
       setEligibility(res);
     } catch (err) {
       toast.error("Failed to check return eligibility");
-      console.error(err);
+      
     } finally {
       setLoadingEligibility(false);
     }
@@ -193,7 +193,7 @@ export default function ReturnExchangeModal({
       }
     } catch (err) {
       toast.error(err.message || "Failed to process return");
-      console.error(err);
+      
     } finally {
       setProcessing(false);
     }

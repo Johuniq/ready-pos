@@ -9,6 +9,7 @@
 namespace Readypos\Controllers\Shifts;
 
 use Readypos\Models\POSEmployeeShift;
+use Readypos\Traits\Cacheable;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -20,6 +21,8 @@ defined( 'ABSPATH' ) || exit;
  * @package Readypos\Controllers\Shifts
  */
 class Actions {
+
+	use Cacheable;
 
 	/**
 	 * Clock in an employee.

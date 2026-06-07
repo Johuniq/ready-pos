@@ -99,7 +99,7 @@ export const useCart = () => {
         return false;
       }
     } catch (error) {
-      console.error("Coupon validation error:", error);
+      
       toast.error(
         error.message ||
           "Error validating coupon. Please check your connection.",

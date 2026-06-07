@@ -10,6 +10,7 @@ namespace Readypos\Controllers\Customers;
 
 use Readypos\Models\POSCustomer;
 use Readypos\Core\License;
+use Readypos\Traits\Cacheable;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -21,6 +22,8 @@ defined( 'ABSPATH' ) || exit;
  * @package Readypos\Controllers\Customers
  */
 class Actions {
+
+	use Cacheable;
 
 	/**
 	 * Paginated customer list for the back-office management page.
@@ -39,7 +42,28 @@ class Actions {
 		$limit  = intval( $request->get_param( 'limit' ) ?: 20 );
 		$limit  = max( 1, min( 100, $limit ) );
 
-		$args = array(
+		// Cache key includes all request parameters
+		$cache_key = "customers_list_{$search}_{$page}_{$limit}";
+
+		return $this->cache_response(
+			$cache_key,
+			function() use ( $search, $page, $limit ) {
+				return $this->list_customers_internal( $search, $page, $limit );
+			},
+			'customers',
+			600 // 10 minutes
+		);
+	}
+
+	/**
+	 * Internal method to list customers (used for caching).
+	 *
+	 * @param string $search Search term.
+	 * @param int    $page Page number.
+	 * @param int    $limit Results per page.
+	 * @return \WP_REST_Response
+	 */
+	private function list_customers_internal( $search, $page, $limit ) {		$args = array(
 			'role__in' => array( 'customer', 'subscriber' ),
 			'orderby'  => 'registered',
 			'order'    => 'DESC',
@@ -240,6 +264,9 @@ class Actions {
 
 		$user = get_userdata( $user_id );
 
+		// Invalidate customer caches
+		$this->invalidate_cache( 'customer', $user_id );
+
 		return new \WP_REST_Response( $this->format_customer( $user ), 200 );
 	}
 
@@ -331,6 +358,9 @@ class Actions {
 			);
 		}
 
+		// Invalidate customer caches
+		$this->invalidate_cache( 'customer', $user_id );
+
 		return new \WP_REST_Response( $this->format_customer( get_userdata( $user_id ) ), 200 );
 	}
 
@@ -374,6 +404,9 @@ class Actions {
 
 		// Remove linked POS customer record(s).
 		POSCustomer::where( 'wc_customer_id', $user_id )->delete();
+
+		// Invalidate customer caches
+		$this->invalidate_cache( 'customer', $user_id );
 
 		return new \WP_REST_Response(
 			array(

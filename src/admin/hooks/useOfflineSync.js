@@ -84,7 +84,7 @@ export const useOfflineSync = () => {
       setPendingCount(pending.length);
       setFailedCount(failed.length);
     } catch (error) {
-      console.error("[OfflineSync] Failed to read counts:", error);
+      
     }
   }, []);
 
@@ -112,7 +112,7 @@ export const useOfflineSync = () => {
       });
       return offlineOrder;
     } catch (error) {
-      console.error("[OfflineSync] Failed to save order:", error);
+      
       toast.error("Failed to save order locally.");
       throw error;
     }
@@ -247,7 +247,7 @@ export const useOfflineSync = () => {
         toast.warning(`Sync issues: ${parts.join(", ")}. Check failed orders.`);
       }
     } catch (error) {
-      console.error("[OfflineSync] Sync run failed:", error);
+      
     } finally {
       syncLockRef.current = false;
       setIsSyncing(false);

@@ -47,7 +47,7 @@ export function HardwareTestPanel({ settings }) {
         description: `${METHOD_LABELS[status.type] || status.type} is ready`
       });
     } catch (err) {
-      console.error("[Hardware] Printer connection failed:", err);
+      
       toast.error("Failed to connect printer", {
         description: err.message || "Check printer connection and try again"
       });
@@ -69,7 +69,7 @@ export function HardwareTestPanel({ settings }) {
       });
       toast.success("Printer disconnected");
     } catch (err) {
-      console.error("[Hardware] Disconnect failed:", err);
+      
       toast.error("Failed to disconnect printer");
     }
   };
@@ -96,7 +96,7 @@ export function HardwareTestPanel({ settings }) {
         description: "Check your thermal printer for output"
       });
     } catch (err) {
-      console.error("[Hardware] Test print failed:", err);
+      
       setPrinterStatus(prev => ({
         ...prev,
         lastTest: { success: false, timestamp: new Date(), error: err.message }
@@ -125,7 +125,7 @@ export function HardwareTestPanel({ settings }) {
         description: `Sent pulse to pin ${pin}`
       });
     } catch (err) {
-      console.error("[Hardware] Drawer kick failed:", err);
+      
       toast.error("Failed to open drawer", {
         description: err.message
       });

@@ -10,6 +10,7 @@ namespace Readypos\Controllers\Inventory;
 
 use Readypos\Models\POSOutletStock;
 use Readypos\Models\POSOutlet;
+use Readypos\Traits\Cacheable;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -21,6 +22,8 @@ defined( 'ABSPATH' ) || exit;
  * @package Readypos\Controllers\Inventory
  */
 class Actions {
+
+	use Cacheable;
 
 	/**
 	 * Adjust physical outlet inventory (Inventory Take).
@@ -123,6 +126,9 @@ class Actions {
 
 		wp_cache_delete( 'readypos_outlet_stock_' . absint( $outlet_id ) . '_' . absint( $product_id ), 'readypos_inventory' );
 
+		// Invalidate inventory caches
+		$this->invalidate_cache( 'inventory', $product_id );
+
 		// Fetch the updated record
 		$outlet_stock = POSOutletStock::where( 'outlet_id', $outlet_id )
 			->where( 'product_id', $product_id )
@@ -172,7 +178,26 @@ class Actions {
 
 		$outlet_id = $request->get_param( 'outletId' ) ? intval( $request->get_param( 'outletId' ) ) : null;
 
-		// 1. Get standard WC products with manage stock enabled and low stock
+		// Cache key includes outlet ID for accurate cache hits
+		$cache_key = "low_stock_" . ( $outlet_id ? $outlet_id : 'global' );
+
+		return $this->cache_response(
+			$cache_key,
+			function() use ( $outlet_id ) {
+				return $this->low_stock_internal( $outlet_id );
+			},
+			'inventory',
+			300 // 5 minutes
+		);
+	}
+
+	/**
+	 * Internal method to get low stock products (used for caching).
+	 *
+	 * @param int|null $outlet_id Outlet ID.
+	 * @return \WP_REST_Response
+	 */
+	private function low_stock_internal( $outlet_id ) {		// 1. Get standard WC products with manage stock enabled and low stock
 		$args = array(
 			'limit'        => -1,
 			'status'       => 'publish',

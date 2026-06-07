@@ -101,16 +101,16 @@ export default function PurchaseOrders({ prefilledData, clearPrefilledData }) {
       const data = await api.get("/inventory/suppliers");
       setSuppliers(data?.suppliers || []);
     } catch (err) {
-      console.error("Failed to load suppliers", err);
+      
     }
   };
 
   const fetchOutlets = async () => {
     try {
       const data = await api.get("/settings/outlets");
-      setOutlets(data?.outlets || []);
+      setOutlets(data || []);
     } catch (err) {
-      console.error("Failed to load outlets", err);
+      
     }
   };
 
@@ -124,7 +124,7 @@ export default function PurchaseOrders({ prefilledData, clearPrefilledData }) {
       const data = await api.get(`/products/get?search=${encodeURIComponent(query)}`);
       setProducts(data?.products || []);
     } catch (err) {
-      console.error("Failed to search products", err);
+      
     }
   };
 
@@ -435,7 +435,7 @@ export default function PurchaseOrders({ prefilledData, clearPrefilledData }) {
                   <SelectContent className="z-[100000]">
                     {outlets.map((o) => (
                       <SelectItem key={o.id} value={o.id.toString()} className="text-xs">
-                        {o.outlet_name}
+                        {o.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

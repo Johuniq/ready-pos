@@ -52,7 +52,6 @@ const openDB = () => {
 
 // Install: pre-cache the app shell
 self.addEventListener("install", (event) => {
-  console.log("[SW] Installing service worker v2.0.0");
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -63,7 +62,6 @@ self.addEventListener("install", (event) => {
 
 // Activate: clean up old caches
 self.addEventListener("activate", (event) => {
-  console.log("[SW] Activating service worker");
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
@@ -193,7 +191,6 @@ async function handleOfflineWrite(request) {
       store.add(queueItem);
 
       transaction.oncomplete = () => {
-        console.log("[SW] Queued offline operation:", request.method, request.url);
         resolve(
           new Response(
             JSON.stringify({
@@ -225,7 +222,6 @@ async function handleOfflineWrite(request) {
       };
     });
   } catch (error) {
-    console.error("[SW] Error handling offline write:", error);
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
       {
@@ -238,8 +234,6 @@ async function handleOfflineWrite(request) {
 
 // Background sync for pending operations
 self.addEventListener("sync", (event) => {
-  console.log("[SW] Background sync triggered:", event.tag);
-
   if (event.tag === "sync-offline-orders") {
     event.waitUntil(syncOfflineOrders());
   } else if (event.tag === "sync-queue") {
@@ -258,7 +252,6 @@ async function syncOfflineOrders() {
       const request = store.getAll();
       request.onsuccess = async () => {
         const orders = request.result || [];
-        console.log(`[SW] Syncing ${orders.length} offline orders`);
 
         for (const order of orders) {
           try {
@@ -276,7 +269,7 @@ async function syncOfflineOrders() {
               delStore.delete(order.localId);
             }
           } catch (err) {
-            console.error("[SW] Failed to sync order:", order.localId, err);
+            // Sync failed, will retry later
           }
         }
 
@@ -284,7 +277,7 @@ async function syncOfflineOrders() {
       };
     });
   } catch (error) {
-    console.error("[SW] Sync error:", error);
+    // Sync error occurred
   }
 }
 
@@ -299,7 +292,6 @@ async function syncQueuedOperations() {
       const request = store.getAll();
       request.onsuccess = async () => {
         const items = request.result || [];
-        console.log(`[SW] Syncing ${items.length} queued operations`);
 
         for (const item of items) {
           try {
@@ -317,7 +309,7 @@ async function syncQueuedOperations() {
               delStore.delete(item.id);
             }
           } catch (err) {
-            console.error("[SW] Failed to sync operation:", item.id, err);
+            // Sync failed, will retry later
           }
         }
 
@@ -325,14 +317,12 @@ async function syncQueuedOperations() {
       };
     });
   } catch (error) {
-    console.error("[SW] Sync queue error:", error);
+    // Sync queue error occurred
   }
 }
 
 // Message handler for communication with main thread
 self.addEventListener("message", (event) => {
-  console.log("[SW] Received message:", event.data);
-
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
@@ -344,7 +334,6 @@ self.addEventListener("message", (event) => {
 
   if (event.data && event.data.type === "CLEAR_CACHE") {
     caches.delete(CACHE_NAME).then(() => {
-      console.log("[SW] Cache cleared");
       event.ports[0].postMessage({ success: true });
     });
   }

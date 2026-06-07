@@ -121,6 +121,11 @@ register_activation_hook(
 			\Readypos\Core\Uninstall::clear_caches();
 		}
 		
+		// Set default data retention option (keep data on uninstall by default)
+		if ( false === get_option( 'readypos_keep_data_on_uninstall' ) ) {
+			add_option( 'readypos_keep_data_on_uninstall', 'yes', '', false );
+		}
+		
 		// Set activation timestamp and transient for notice
 		update_option( 'readypos_activated_at', time(), false );
 		set_transient( 'readypos_activated', true, 60 );

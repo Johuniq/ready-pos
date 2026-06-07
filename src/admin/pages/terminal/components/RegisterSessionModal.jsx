@@ -138,7 +138,7 @@ export default function RegisterSessionModal({
         }
       } catch (shiftErr) {
         // Log but don't block register closing if shift clock-out fails
-        console.warn("Auto clock-out failed:", shiftErr);
+        
       }
 
       // Then close the register

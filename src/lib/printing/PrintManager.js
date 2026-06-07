@@ -141,11 +141,10 @@ class PrintManager {
         try {
           const connected = await this.connectPrinter(method, true);
           if (connected) {
-            console.log(`[PrintManager] Auto-connected to ${method}`);
             return true;
           }
         } catch (err) {
-          console.log(`[PrintManager] ${method} not available:`, err.message);
+          // Method not available
         }
       }
     }
@@ -153,7 +152,6 @@ class PrintManager {
     // Fallback to browser printing
     this.activePrinter = this.printers.browser;
     this.printerType = PRINT_METHODS.BROWSER;
-    console.log("[PrintManager] Falling back to browser printing");
     return true;
   }
 
@@ -251,8 +249,6 @@ class PrintManager {
 
       return true;
     } catch (error) {
-      console.error("[PrintManager] Print failed:", error);
-      
       // Try fallback to browser printing
       if (this.printerType !== PRINT_METHODS.BROWSER) {
         toast.error(`Printer error. Falling back to browser printing.`);

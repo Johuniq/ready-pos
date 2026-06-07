@@ -10,6 +10,7 @@ namespace Readypos\Controllers\GiftCards;
 
 use Readypos\Models\POSGiftCard;
 use Readypos\Core\License;
+use Readypos\Traits\Cacheable;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -21,6 +22,8 @@ defined( 'ABSPATH' ) || exit;
  * @package Readypos\Controllers\GiftCards
  */
 class Actions {
+
+	use Cacheable;
 
 	/**
 	 * Secure integrity check to prevent license bypass.

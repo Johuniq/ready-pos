@@ -45,9 +45,9 @@ export default function ReorderAlerts({ onCreatePoClick }) {
   const fetchOutlets = async () => {
     try {
       const data = await api.get("/settings/outlets");
-      setOutlets(data?.outlets || []);
+      setOutlets(data || []);
     } catch (err) {
-      console.error("Failed to load outlets:", err);
+      
     }
   };
 
@@ -162,7 +162,7 @@ export default function ReorderAlerts({ onCreatePoClick }) {
               <SelectItem value="all" className="text-xs">All Outlets</SelectItem>
               {outlets.map((outlet) => (
                 <SelectItem key={outlet.id} value={outlet.id.toString()} className="text-xs">
-                  {outlet.outlet_name}
+                  {outlet.name}
                 </SelectItem>
               ))}
             </SelectContent>

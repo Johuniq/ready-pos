@@ -37,7 +37,7 @@ export const useOfflineInventory = () => {
       });
       setInventoryCache(map);
     } catch (error) {
-      console.error("[OfflineInventory] Failed to load cache:", error);
+      
     }
   };
 
@@ -62,11 +62,7 @@ export const useOfflineInventory = () => {
             return response.stock_quantity;
           }
         } catch (error) {
-          console.error(
-            "[OfflineInventory] Failed to fetch stock:",
-            productId,
-            error,
-          );
+          
         }
       }
 
@@ -94,7 +90,7 @@ export const useOfflineInventory = () => {
 
       return updated;
     } catch (error) {
-      console.error("[OfflineInventory] Failed to update cache:", error);
+      
       throw error;
     }
   };
@@ -104,10 +100,7 @@ export const useOfflineInventory = () => {
     const current = await getStockLevel(productId);
 
     if (current === null) {
-      console.warn(
-        "[OfflineInventory] Cannot reduce stock - no data for product:",
-        productId,
-      );
+      
       return false;
     }
 
@@ -206,11 +199,7 @@ export const useOfflineInventory = () => {
             _changeQueue: changes.filter((c) => c.synced),
           });
         } catch (error) {
-          console.error(
-            "[OfflineInventory] Failed to sync item:",
-            item.product_id,
-            error,
-          );
+          
         }
       }
 
@@ -223,7 +212,7 @@ export const useOfflineInventory = () => {
 
       setLastSyncTime(Date.now());
     } catch (error) {
-      console.error("[OfflineInventory] Sync failed:", error);
+      
       toast.error("Failed to sync inventory");
       setSyncStatus("error");
       return;
@@ -274,7 +263,7 @@ export const useOfflineInventory = () => {
         prev.filter((c) => c.product_id !== conflict.product_id),
       );
     } catch (error) {
-      console.error("[OfflineInventory] Failed to resolve conflict:", error);
+      
       toast.error("Failed to resolve conflict");
     }
   };
@@ -308,7 +297,7 @@ export const useOfflineInventory = () => {
         setLastSyncTime(Date.now());
       }
     } catch (error) {
-      console.error("[OfflineInventory] Failed to refresh cache:", error);
+      
       toast.error("Failed to refresh inventory cache");
     }
   };

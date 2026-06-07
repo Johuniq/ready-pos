@@ -55,7 +55,7 @@ class WeightScale {
         this.port = null;
       }
     } catch (err) {
-      console.warn("[Scale] disconnect error:", err);
+      
     } finally {
       this.connected = false;
       this.lastReading = null;
@@ -87,7 +87,7 @@ class WeightScale {
         }
       }
     } catch (err) {
-      console.warn("[Scale] read error:", err);
+      
     }
   }
 

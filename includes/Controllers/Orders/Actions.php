@@ -12,6 +12,7 @@ use Readypos\Models\POSOrderMeta;
 use Readypos\Models\POSSession;
 use Readypos\Models\POSOutletStock;
 use Readypos\Models\POSCustomer;
+use Readypos\Traits\Cacheable;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -23,6 +24,8 @@ defined( 'ABSPATH' ) || exit;
  * @package Readypos\Controllers\Orders
  */
 class Actions {
+
+	use Cacheable;
 
 	/**
 	 * Create a new WooCommerce order from POS cart data.
@@ -335,6 +338,9 @@ class Actions {
 				)
 			);
 
+			// Invalidate order caches
+			$this->invalidate_cache( 'order', $order_id );
+
 			// Update session sales metrics if session is active
 			// SECURITY FIX #6: Use atomic SQL updates to prevent race condition
 			if ( $session_id ) {
@@ -454,78 +460,86 @@ class Actions {
 	public function get( \WP_REST_Request $request ) {
 		$limit = $request->get_param( 'limit' ) ? intval( $request->get_param( 'limit' ) ) : 20;
 		$page  = $request->get_param( 'page' ) ? intval( $request->get_param( 'page' ) ) : 1;
-		$limit = max( 1, min( 100, $limit ) );
-		$page  = max( 1, $page );
+		
+		return $this->cache_response(
+			"orders_list_{$page}_{$limit}",
+			function() use ( $limit, $page ) {
+				$limit = max( 1, min( 100, $limit ) );
+				$page  = max( 1, $page );
 
-		// Primary source: query WooCommerce orders flagged as POS orders.
-		// This is more reliable than the custom POSOrderMeta table, which
-		// can become out-of-sync if the table insert failed or migrations
-		// haven't run yet on a particular environment.
-		$args = array(
-			'limit'      => $limit,
-			'page'       => $page,
-			'status'     => array_keys( wc_get_order_statuses() ),
-			'paginate'   => true,
-			'orderby'    => 'date',
-			'order'      => 'DESC',
-			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required WooCommerce order flag lookup for POS history.
-			'meta_query' => array(
-				array(
-					'key'     => '_readypos_is_pos_order',
-					'value'   => 'yes',
-					'compare' => '=',
-				),
-			),
-		);
-
-		$results = wc_get_orders( $args );
-
-		$orders = array();
-		if ( $results && isset( $results->orders ) ) {
-			// Pre-fetch all relevant POSOrderMeta records to avoid N+1 queries
-			$order_ids = array();
-			foreach ( $results->orders as $wc_order ) {
-				$order_ids[] = $wc_order->get_id();
-			}
-
-			$pos_metas = array();
-			if ( ! empty( $order_ids ) ) {
-				$metas = POSOrderMeta::whereIn( 'wc_order_id', $order_ids )->get();
-				foreach ( $metas as $meta ) {
-					$pos_metas[ $meta->wc_order_id ] = $meta;
-				}
-			}
-
-			foreach ( $results->orders as $wc_order ) {
-				$order_id    = $wc_order->get_id();
-				$pos_meta    = isset( $pos_metas[ $order_id ] ) ? $pos_metas[ $order_id ] : null;
-				$cashier_id  = $pos_meta ? $pos_meta->cashier_id : intval( $wc_order->get_meta( '_readypos_cashier_id' ) );
-				$cashier     = $cashier_id ? get_userdata( $cashier_id ) : null;
-				$payment     = $pos_meta ? $pos_meta->payment_method : ( $wc_order->get_payment_method() ?: 'unknown' );
-				$order_date  = $wc_order->get_date_created();
-
-				$orders[] = array(
-					'id'             => $wc_order->get_id(),
-					'order_number'   => $wc_order->get_order_number(),
-					'total'          => floatval( $wc_order->get_total() ),
-					'payment_method' => $payment,
-					'cashier_name'   => $cashier ? $cashier->display_name : __( 'Unknown', 'ready-pos' ),
-					'date'           => $order_date ? $order_date->date( 'Y-m-d H:i:s' ) : '',
-					'status'         => $wc_order->get_status(),
+				// Primary source: query WooCommerce orders flagged as POS orders.
+				// This is more reliable than the custom POSOrderMeta table, which
+				// can become out-of-sync if the table insert failed or migrations
+				// haven't run yet on a particular environment.
+				$args = array(
+					'limit'      => $limit,
+					'page'       => $page,
+					'status'     => array_keys( wc_get_order_statuses() ),
+					'paginate'   => true,
+					'orderby'    => 'date',
+					'order'      => 'DESC',
+					// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required WooCommerce order flag lookup for POS history.
+					'meta_query' => array(
+						array(
+							'key'     => '_readypos_is_pos_order',
+							'value'   => 'yes',
+							'compare' => '=',
+						),
+					),
 				);
-			}
-		}
 
-		$total       = $results ? (int) $results->total : 0;
-		$total_pages = $results ? (int) $results->max_num_pages : 1;
+				$results = wc_get_orders( $args );
 
-		return new \WP_REST_Response(
-			array(
-				'orders'      => $orders,
-				'total'       => $total,
-				'total_pages' => max( 1, $total_pages ),
-			),
-			200
+				$orders = array();
+				if ( $results && isset( $results->orders ) ) {
+					// Pre-fetch all relevant POSOrderMeta records to avoid N+1 queries
+					$order_ids = array();
+					foreach ( $results->orders as $wc_order ) {
+						$order_ids[] = $wc_order->get_id();
+					}
+
+					$pos_metas = array();
+					if ( ! empty( $order_ids ) ) {
+						$metas = POSOrderMeta::whereIn( 'wc_order_id', $order_ids )->get();
+						foreach ( $metas as $meta ) {
+							$pos_metas[ $meta->wc_order_id ] = $meta;
+						}
+					}
+
+					foreach ( $results->orders as $wc_order ) {
+						$order_id    = $wc_order->get_id();
+						$pos_meta    = isset( $pos_metas[ $order_id ] ) ? $pos_metas[ $order_id ] : null;
+						$cashier_id  = $pos_meta ? $pos_meta->cashier_id : intval( $wc_order->get_meta( '_readypos_cashier_id' ) );
+						$cashier     = $cashier_id ? get_userdata( $cashier_id ) : null;
+						$payment     = $pos_meta ? $pos_meta->payment_method : ( $wc_order->get_payment_method() ?: 'unknown' );
+						$order_date  = $wc_order->get_date_created();
+
+						$orders[] = array(
+							'id'             => $wc_order->get_id(),
+							'order_number'   => $wc_order->get_order_number(),
+							'total'          => floatval( $wc_order->get_total() ),
+							'payment_method' => $payment,
+							'cashier_name'   => $cashier ? $cashier->display_name : __( 'Unknown', 'ready-pos' ),
+							'date'           => $order_date ? $order_date->date( 'Y-m-d H:i:s' ) : '',
+							'status'         => $wc_order->get_status(),
+						);
+					}
+				}
+
+				$total       = $results ? (int) $results->total : 0;
+				$total_pages = $results ? (int) $results->max_num_pages : 1;
+
+				return new \WP_REST_Response(
+					array(
+						'orders'      => $orders,
+						'total'       => $total,
+						'total_pages' => max( 1, $total_pages ),
+					),
+					200
+				);
+			},
+			'orders',
+			180 // 3 minutes
 		);
 	}
 

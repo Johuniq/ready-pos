@@ -41,7 +41,7 @@ export const ExportButton = ({
     try {
       await exportFn();
     } catch (error) {
-      console.error(`${format} export failed:`, error);
+      
     } finally {
       setIsExporting(false);
     }

@@ -83,7 +83,7 @@ class ThermalPrinter {
       await this.write(ESC_POS.INIT);
       return true;
     } catch (err) {
-      console.warn("[Printer] auto-connect failed:", err);
+      
       return false;
     }
   }
@@ -99,7 +99,7 @@ class ThermalPrinter {
         this.port = null;
       }
     } catch (err) {
-      console.warn("[Printer] disconnect error:", err);
+      
     } finally {
       this.connected = false;
     }

@@ -128,9 +128,9 @@ export default function StockAdjustments() {
   const fetchOutlets = async () => {
     try {
       const data = await api.get("/settings/outlets");
-      setOutlets(data?.outlets || []);
+      setOutlets(data || []);
     } catch (err) {
-      console.error("Failed to load outlets:", err);
+      
     }
   };
 
@@ -144,7 +144,7 @@ export default function StockAdjustments() {
       const data = await api.get(`/products/search?search=${encodeURIComponent(query)}`);
       setProducts(data?.products || []);
     } catch (err) {
-      console.error("Failed to search products:", err);
+      
     }
   };
 
@@ -433,7 +433,7 @@ export default function StockAdjustments() {
                   <SelectContent className="z-[100000]">
                     {outlets.map((outlet) => (
                       <SelectItem key={outlet.id} value={outlet.id.toString()} className="text-xs">
-                        {outlet.outlet_name}
+                        {outlet.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

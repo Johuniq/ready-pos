@@ -8,6 +8,8 @@
 
 namespace Readypos\Controllers\Coupons;
 
+use Readypos\Traits\Cacheable;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -18,6 +20,8 @@ defined( 'ABSPATH' ) || exit;
  * @package Readypos\Controllers\Coupons
  */
 class Actions {
+
+	use Cacheable;
 
 	/**
 	 * Validate a coupon code against WooCommerce.

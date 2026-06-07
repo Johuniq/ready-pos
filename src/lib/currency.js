@@ -22,13 +22,6 @@ const getCurrencyConfig = () => {
     const config = { ...readyPosAdmin.currency };
     config.symbol = decodeHtmlEntities(config.symbol);
     
-    // Debug log to see what we're getting
-    console.log('[ReadyPOS Currency]', {
-      symbol: config.symbol,
-      position: config.position,
-      originalSymbol: readyPosAdmin.currency.symbol
-    });
-    
     return config;
   }
 

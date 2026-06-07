@@ -91,10 +91,7 @@ export default function HeldCartsModal({ open, onOpenChange }) {
             const custDetails = await api.get(`/customers/get/${customer_id}`);
             setCustomer(custDetails);
           } catch (custErr) {
-            console.error(
-              "Failed to fetch customer details for resumed cart",
-              custErr,
-            );
+            
             setCustomer({
               id: customer_id,
               first_name: "Customer #" + customer_id,

@@ -203,7 +203,7 @@ export function useMultiCart() {
         });
         return response;
       } catch (error) {
-        console.error("Failed to save cart:", error);
+        
         throw error;
       }
     },
@@ -218,7 +218,7 @@ export function useMultiCart() {
       const response = await api.get("/carts/list");
       return response.carts || [];
     } catch (error) {
-      console.error("Failed to load carts:", error);
+      
       return [];
     }
   }, []);
@@ -230,7 +230,7 @@ export function useMultiCart() {
     try {
       await api.delete(`/carts/delete/${cartId}`);
     } catch (error) {
-      console.error("Failed to delete cart:", error);
+      
       throw error;
     }
   }, []);

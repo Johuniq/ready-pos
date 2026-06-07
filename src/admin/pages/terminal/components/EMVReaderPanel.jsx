@@ -155,7 +155,7 @@ export default function EMVReaderPanel({ amount, onSuccess, onCancel }) {
       }
       onCancel();
     } catch (err) {
-      console.error("Cancel error:", err);
+      
       onCancel();
     }
   };

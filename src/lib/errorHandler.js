@@ -121,12 +121,7 @@ export function handleError(error, options = {}) {
 
   // Log error to console (or external service)
   if (logError) {
-    console.error("[Error Handler]", {
-      type: appError.type,
-      message: appError.message,
-      originalError: appError.originalError,
-      timestamp: appError.timestamp,
-    });
+    
   }
 
   // Show toast notification

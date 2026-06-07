@@ -268,6 +268,31 @@ export default function Reports() {
     title: `${getExportData().titleSuffix} (${days} days)`,
   });
 
+  // Pro-gated export handlers
+  const handleProExportCSV = () => {
+    if (!license.isPro) {
+      license.requireFeature("export_reports");
+      return;
+    }
+    handleExportCSV();
+  };
+
+  const handleProExportExcel = () => {
+    if (!license.isPro) {
+      license.requireFeature("export_reports");
+      return;
+    }
+    handleExportExcel();
+  };
+
+  const handleProExportPDF = () => {
+    if (!license.isPro) {
+      license.requireFeature("export_reports");
+      return;
+    }
+    handleExportPDF();
+  };
+
   // Client-side print styling trigger
   const handlePrintReport = () => {
     const styleId = "readypos-print-report-style";
@@ -489,12 +514,17 @@ export default function Reports() {
               <Printer className="w-3.5 h-3.5 text-muted-foreground" />
               <span>Print Report</span>
             </Button>
-            <ExportButton
-              onExportCSV={handleExportCSV}
-              onExportExcel={handleExportExcel}
-              onExportPDF={handleExportPDF}
-              disabled={loading}
-            />
+            <div className="relative">
+              <ExportButton
+                onExportCSV={handleProExportCSV}
+                onExportExcel={handleProExportExcel}
+                onExportPDF={handleProExportPDF}
+                disabled={loading}
+              />
+              {!license.isPro && (
+                <ProBadge className="absolute -top-1.5 -right-1.5 pointer-events-none" />
+              )}
+            </div>
           </div>
         </div>
 

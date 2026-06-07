@@ -30,7 +30,7 @@ export default function CustomerSelect() {
       const data = await api.get("/customers/search", { search });
       setResults(data || []);
     } catch (err) {
-      console.error(err);
+      
     } finally {
       setLoading(false);
     }

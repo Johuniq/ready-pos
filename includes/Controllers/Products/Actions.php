@@ -10,6 +10,7 @@ namespace Readypos\Controllers\Products;
 
 use Readypos\Models\POSOutletStock;
 use Readypos\Models\POSSession;
+use Readypos\Traits\Cacheable;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -21,6 +22,8 @@ defined( 'ABSPATH' ) || exit;
  * @package Readypos\Controllers\Products
  */
 class Actions {
+
+	use Cacheable;
 
 	/**
 	 * Retrieve a list of WooCommerce products (paginated, with search & category filtering).
@@ -38,10 +41,29 @@ class Actions {
 		$search   = $request->get_param( 'search' ) ? sanitize_text_field( $request->get_param( 'search' ) ) : '';
 		$category = $request->get_param( 'category' ) ? sanitize_text_field( $request->get_param( 'category' ) ) : '';
 
-		// Use WP_Query directly for maximum compatibility across WooCommerce versions.
-		// We deliberately do NOT filter by product_type taxonomy because newer WC
-		// versions (with HPOS) sometimes leave that term unassigned. Instead we
-		// filter unsupported types in PHP after fetching the WC_Product object.
+		// Cache key includes all request parameters for accurate cache hits
+		$cache_key = "products_list_{$limit}_{$page}_{$search}_{$category}";
+
+		return $this->cache_response(
+			$cache_key,
+			function() use ( $limit, $page, $search, $category ) {
+				return $this->get_products_internal( $limit, $page, $search, $category );
+			},
+			'products',
+			300 // 5 minutes
+		);
+	}
+
+	/**
+	 * Internal method to fetch products (used for caching).
+	 *
+	 * @param int    $limit Products per page.
+	 * @param int    $page Page number.
+	 * @param string $search Search term.
+	 * @param string $category Category slug.
+	 * @return \WP_REST_Response
+	 */
+	private function get_products_internal( $limit, $page, $search, $category ) {
 		$query_args = array(
 			'post_type'      => 'product',
 			'post_status'    => 'publish',

@@ -230,7 +230,7 @@ export default function Orders() {
       toast.success("Receipt sent to printer");
     } catch (err) {
       toast.error("Failed to print receipt");
-      console.error("Print error:", err);
+      
     }
   };
 

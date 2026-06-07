@@ -35,11 +35,12 @@ class Uninstall {
 			return;
 		}
 
-		// Check if this is the correct plugin being uninstalled
-		check_admin_referer( 'bulk-plugins' );
+		// Don't check nonce here - WordPress handles that before calling uninstall.php
+		// The check_admin_referer() was causing deletion to fail
 
 		// Check if we should keep data (user preference)
-		$keep_data = get_option( 'readypos_keep_data_on_uninstall', 'no' );
+		// Default to 'yes' to preserve data - safer for users
+		$keep_data = get_option( 'readypos_keep_data_on_uninstall', 'yes' );
 
 		if ( 'yes' === $keep_data ) {
 			// Only clear caches, keep all data
@@ -47,7 +48,7 @@ class Uninstall {
 			return;
 		}
 
-		// Full cleanup
+		// Full cleanup only if user explicitly requested it
 		self::clear_caches();
 		self::clear_options();
 		self::clear_transients();

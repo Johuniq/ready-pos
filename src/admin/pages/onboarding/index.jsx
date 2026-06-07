@@ -143,23 +143,40 @@ export default function Onboarding() {
       try {
         await resetOfflineStorage();
 
-        // Call the reset endpoint to clear all cached license and data
-        await api.post("/license/reset");
-        await resetOfflineStorage();
-
-        if (typeof readyPosAdmin !== "undefined") {
-          readyPosAdmin.license = {
-            ...(readyPosAdmin.license || {}),
-            plan: "free",
-            status: "free",
-            isPro: false,
-            maskedKey: "",
-            customer: {},
-          };
+        // Check if there's existing data before doing a full reset
+        // This prevents data loss during reinstall scenarios
+        let hasExistingData = false;
+        try {
+          const existingOutlets = await api.get("/settings/outlets");
+          if (existingOutlets?.data?.length > 0) {
+            hasExistingData = true;
+          }
+        } catch (e) {
+          // If checking for existing data fails, proceed with reset
+          
         }
-        console.log("[ReadyPOS] Cache reset completed during onboarding");
+
+        // Only do full reset if there's no existing data
+        if (!hasExistingData) {
+          // Call the reset endpoint to clear all cached license and data
+          await api.post("/license/reset");
+          await resetOfflineStorage();
+
+          if (typeof readyPosAdmin !== "undefined") {
+            readyPosAdmin.license = {
+              ...(readyPosAdmin.license || {}),
+              plan: "free",
+              status: "free",
+              isPro: false,
+              maskedKey: "",
+              customer: {},
+            };
+          }
+        } else {
+          // Just clear the onboarding flag if data exists
+          await api.post("/settings/update", { onboarding_complete: "no" });
+        }
       } catch (error) {
-        console.warn("[ReadyPOS] Cache reset failed:", error);
         // Don't block onboarding if reset fails
       } finally {
         setInitializing(false);
@@ -210,25 +227,51 @@ export default function Onboarding() {
   const handleFinish = async () => {
     setSaving(true);
     try {
-      // 1. Create the outlet
-      const outletResponse = await api.post("/settings/outlets/create", {
-        name: outlet.name,
-        address: outlet.address,
-        phone: outlet.phone,
-        email: outlet.email,
-        receipt_header: receipt.header,
-        receipt_footer: receipt.footer,
-      });
+      let outletId = 1;
 
-      const outletId = outletResponse?.data?.id || 1;
+      // First, always try to get existing outlets (for reinstall scenarios)
+      try {
+        const existingOutlets = await api.get("/settings/outlets");
+        if (existingOutlets?.data?.length > 0) {
+          // Use existing outlet from previous installation
+          outletId = existingOutlets.data[0].id;
+        } else {
+          // No existing outlets, try to create a new one
+          try {
+            const outletResponse = await api.post("/settings/outlets/create", {
+              name: outlet.name,
+              address: outlet.address,
+              phone: outlet.phone,
+              email: outlet.email,
+              receipt_header: receipt.header,
+              receipt_footer: receipt.footer,
+            });
+            outletId = outletResponse?.data?.id || 1;
+          } catch (createError) {
+            // If creation fails (e.g., license limit or quota), try one more time to get existing outlets
+            const retryOutlets = await api.get("/settings/outlets");
+            if (retryOutlets?.data?.length > 0) {
+              outletId = retryOutlets.data[0].id;
+            } else {
+              throw new Error("Failed to create or find an outlet. Please check your database and license status.");
+            }
+          }
+        }
+      } catch (e) {
+        throw new Error("Unable to set up outlet. Please ensure your database is accessible and try again.");
+      }
 
-      // 2. Create the register
-      await api.post("/settings/registers/create", {
-        name: register.name,
-        outlet_id: outletId,
-        opening_cash: parseFloat(register.openingCash) || 0,
-        status: "open",
-      });
+      // 2. Create the register (or update if exists)
+      try {
+        await api.post("/settings/registers/create", {
+          name: register.name,
+          outlet_id: outletId,
+          opening_cash: parseFloat(register.openingCash) || 0,
+          status: "open",
+        });
+      } catch (registerError) {
+        // Continue even if register creation fails
+      }
 
       // 3. Save hardware settings
       await api.post("/settings/update", {
@@ -275,7 +318,6 @@ export default function Onboarding() {
       toast.success("🎉 Setup complete! Your POS is ready to use.");
       navigate("/dashboard");
     } catch (err) {
-      console.error("Onboarding error:", err);
       toast.error(err.message || "Setup failed. Please try again.");
     } finally {
       setSaving(false);

@@ -51,7 +51,6 @@ class WebSocketManager {
     const wsUrl = this.getWebSocketUrl();
 
     if (!wsUrl) {
-      console.warn("[WebSocket] No WebSocket server configured, using polling fallback");
       this.enablePollingFallback();
       return;
     }
@@ -64,7 +63,6 @@ class WebSocketManager {
       this.ws.onerror = (error) => this.handleError(error);
       this.ws.onclose = () => this.handleClose();
     } catch (error) {
-      console.error("[WebSocket] Connection failed, falling back to polling:", error);
       this.enablePollingFallback();
     }
   }
@@ -90,7 +88,6 @@ class WebSocketManager {
    * Handle WebSocket connection open
    */
   handleOpen() {
-    console.log("[WebSocket] Connected");
     this.connected = true;
     this.reconnectAttempts = 0;
     this.reconnectDelay = 1000;
@@ -121,7 +118,6 @@ class WebSocketManager {
       // Handle special messages
       if (data.type === "auth_success") {
         this.connectionId = data.connectionId;
-        console.log("[WebSocket] Authenticated:", this.connectionId);
         return;
       }
 
@@ -133,7 +129,7 @@ class WebSocketManager {
       // Emit to registered handlers
       this.emit(data.type, data.payload);
     } catch (error) {
-      console.error("[WebSocket] Failed to parse message:", error);
+      // Failed to parse message
     }
   }
 
@@ -141,7 +137,6 @@ class WebSocketManager {
    * Handle WebSocket error
    */
   handleError(error) {
-    console.error("[WebSocket] Error:", error);
     this.connected = false;
   }
 
@@ -149,7 +144,6 @@ class WebSocketManager {
    * Handle WebSocket close
    */
   handleClose() {
-    console.log("[WebSocket] Connection closed");
     this.connected = false;
     this.stopHeartbeat();
 
@@ -161,10 +155,6 @@ class WebSocketManager {
         this.maxReconnectDelay,
       );
 
-      console.log(
-        `[WebSocket] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`,
-      );
-
       setTimeout(() => {
         this.connect({
           registerId: this.registerId,
@@ -172,7 +162,6 @@ class WebSocketManager {
         });
       }, delay);
     } else {
-      console.warn("[WebSocket] Max reconnection attempts reached, falling back to polling");
       this.enablePollingFallback();
     }
   }
@@ -208,7 +197,7 @@ class WebSocketManager {
         }),
       });
     } catch (error) {
-      console.error("[WebSocket] Failed to send via API:", error);
+      // Failed to send via API
     }
   }
 
@@ -254,7 +243,7 @@ class WebSocketManager {
         try {
           handler(payload);
         } catch (error) {
-          console.error(`[WebSocket] Handler error for ${eventType}:`, error);
+          // Handler error occurred
         }
       });
     }
@@ -288,7 +277,6 @@ class WebSocketManager {
   enablePollingFallback() {
     if (this.pollingFallback) return;
 
-    console.log("[WebSocket] Enabling polling fallback");
     this.pollingFallback = true;
     this.connected = false; // Mark as not connected via WebSocket
 
@@ -324,7 +312,7 @@ class WebSocketManager {
         }
       }
     } catch (error) {
-      console.error("[WebSocket] Polling error:", error);
+      // Polling error occurred
     }
   }
 

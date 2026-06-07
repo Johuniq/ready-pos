@@ -11,6 +11,7 @@ namespace Readypos\Controllers\Reports;
 use Readypos\Models\POSOrderMeta;
 use Readypos\Models\POSSession;
 use Prappo\WpEloquent\Database\Capsule\Manager as Capsule;
+use Readypos\Traits\Cacheable;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -22,6 +23,8 @@ defined( 'ABSPATH' ) || exit;
  * @package Readypos\Controllers\Reports
  */
 class Actions {
+
+	use Cacheable;
 
 	/**
 	 * Fetch all POS-flagged WooCommerce orders within a date range.
@@ -167,75 +170,74 @@ class Actions {
 		$days = $request->get_param( 'days' ) ? intval( $request->get_param( 'days' ) ) : 30;
 		$days = max( 1, $days );
 
-		$cache_key = 'readypos_report_sales_summary_pro_' . $days;
-		$cached = get_transient( $cache_key );
-		if ( false !== $cached ) {
-			return new \WP_REST_Response( $cached, 200 );
-		}
+		return $this->cache_response(
+			"sales_summary_{$days}",
+			function() use ( $days ) {
+				$now = current_time( 'timestamp' );
 
-		$now = current_time( 'timestamp' );
+				// Current period
+				$current_start = wp_date( 'Y-m-d 00:00:00', strtotime( "-{$days} days", $now ) );
+				$current_end   = wp_date( 'Y-m-d 23:59:59', $now );
 
-		// Current period
-		$current_start = wp_date( 'Y-m-d 00:00:00', strtotime( "-{$days} days", $now ) );
-		$current_end   = wp_date( 'Y-m-d 23:59:59', $now );
+				// Previous equivalent period (the days before current period started)
+				$prev_days     = $days * 2;
+				$previous_start = wp_date( 'Y-m-d 00:00:00', strtotime( "-{$prev_days} days", $now ) );
+				$previous_end   = wp_date( 'Y-m-d 23:59:59', strtotime( "-{$days} days -1 day", $now ) );
 
-		// Previous equivalent period (the days before current period started)
-		$prev_days     = $days * 2;
-		$previous_start = wp_date( 'Y-m-d 00:00:00', strtotime( "-{$prev_days} days", $now ) );
-		$previous_end   = wp_date( 'Y-m-d 23:59:59', strtotime( "-{$days} days -1 day", $now ) );
+				$current_orders  = $this->fetch_pos_orders( $current_start, $current_end );
+				$previous_orders = $this->fetch_pos_orders( $previous_start, $previous_end );
 
-		$current_orders  = $this->fetch_pos_orders( $current_start, $current_end );
-		$previous_orders = $this->fetch_pos_orders( $previous_start, $previous_end );
+				$current_summary  = $this->aggregate_totals( $current_orders );
+				$previous_summary = $this->aggregate_totals( $previous_orders );
 
-		$current_summary  = $this->aggregate_totals( $current_orders );
-		$previous_summary = $this->aggregate_totals( $previous_orders );
+				// Compute growth percentages
+				$growth = array(
+					'gross_sales'  => $this->growth_pct( $current_summary['gross_sales'], $previous_summary['gross_sales'] ),
+					'total_orders' => $this->growth_pct( $current_summary['total_orders'], $previous_summary['total_orders'] ),
+					'avg_order'    => $this->growth_pct(
+						$current_summary['total_orders'] > 0 ? $current_summary['gross_sales'] / $current_summary['total_orders'] : 0,
+						$previous_summary['total_orders'] > 0 ? $previous_summary['gross_sales'] / $previous_summary['total_orders'] : 0
+					),
+				);
 
-		// Compute growth percentages
-		$growth = array(
-			'gross_sales'  => $this->growth_pct( $current_summary['gross_sales'], $previous_summary['gross_sales'] ),
-			'total_orders' => $this->growth_pct( $current_summary['total_orders'], $previous_summary['total_orders'] ),
-			'avg_order'    => $this->growth_pct(
-				$current_summary['total_orders'] > 0 ? $current_summary['gross_sales'] / $current_summary['total_orders'] : 0,
-				$previous_summary['total_orders'] > 0 ? $previous_summary['gross_sales'] / $previous_summary['total_orders'] : 0
-			),
+				// Daily chart for current period
+				$daily_chart = array();
+				for ( $i = $days; $i >= 0; $i-- ) {
+					$date                    = wp_date( 'Y-m-d', strtotime( "-{$i} days", $now ) );
+					$daily_chart[ $date ]    = 0;
+				}
+
+				foreach ( $current_orders as $order ) {
+					$created_at = $order->get_date_created();
+					if ( ! $created_at ) {
+						continue;
+					}
+					$date_key = $created_at->date( 'Y-m-d' );
+					if ( isset( $daily_chart[ $date_key ] ) ) {
+						$daily_chart[ $date_key ] += floatval( $order->get_total() );
+					}
+				}
+
+				$chart_data = array();
+				foreach ( $daily_chart as $date => $amount ) {
+					$chart_data[] = array(
+						'date'  => wp_date( 'M d', strtotime( $date ) ),
+						'sales' => round( $amount, 2 ),
+					);
+				}
+
+				$response_data = array(
+					'summary'  => $current_summary,
+					'previous' => $previous_summary,
+					'growth'   => $growth,
+					'chart'    => $chart_data,
+				);
+
+				return new \WP_REST_Response( $response_data, 200 );
+			},
+			'reports',
+			900 // 15 minutes
 		);
-
-		// Daily chart for current period
-		$daily_chart = array();
-		for ( $i = $days; $i >= 0; $i-- ) {
-			$date                    = wp_date( 'Y-m-d', strtotime( "-{$i} days", $now ) );
-			$daily_chart[ $date ]    = 0;
-		}
-
-		foreach ( $current_orders as $order ) {
-			$created_at = $order->get_date_created();
-			if ( ! $created_at ) {
-				continue;
-			}
-			$date_key = $created_at->date( 'Y-m-d' );
-			if ( isset( $daily_chart[ $date_key ] ) ) {
-				$daily_chart[ $date_key ] += floatval( $order->get_total() );
-			}
-		}
-
-		$chart_data = array();
-		foreach ( $daily_chart as $date => $amount ) {
-			$chart_data[] = array(
-				'date'  => wp_date( 'M d', strtotime( $date ) ),
-				'sales' => round( $amount, 2 ),
-			);
-		}
-
-		$response_data = array(
-			'summary'  => $current_summary,
-			'previous' => $previous_summary,
-			'growth'   => $growth,
-			'chart'    => $chart_data,
-		);
-
-		set_transient( $cache_key, $response_data, HOUR_IN_SECONDS );
-
-		return new \WP_REST_Response( $response_data, 200 );
 	}
 
 	/**
@@ -797,6 +799,23 @@ class Actions {
 		$days = $request->get_param( 'days' ) ? intval( $request->get_param( 'days' ) ) : 30;
 		$days = max( 1, $days );
 
+		return $this->cache_response(
+			"outlet_analytics_{$days}",
+			function() use ( $days ) {
+				return $this->outlet_analytics_internal( $days );
+			},
+			'reports',
+			900 // 15 minutes
+		);
+	}
+
+	/**
+	 * Internal outlet analytics logic.
+	 *
+	 * @param int $days Number of days.
+	 * @return \WP_REST_Response
+	 */
+	private function outlet_analytics_internal( $days ) {
 		$cache_key = 'readypos_report_outlet_analytics_' . $days;
 		$cached    = get_transient( $cache_key );
 		if ( false !== $cached ) {

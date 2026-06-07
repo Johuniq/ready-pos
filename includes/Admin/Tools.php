@@ -14,6 +14,7 @@ namespace Readypos\Admin;
 
 use Readypos\Traits\Base;
 use Readypos\Core\Uninstall;
+use Readypos\Utils\Cache;
 
 /**
  * Class Tools
@@ -31,7 +32,9 @@ class Tools {
 	 */
 	public function init() {
 		add_action( 'admin_post_readypos_clear_cache', array( $this, 'handle_clear_cache' ) );
+		add_action( 'admin_post_readypos_clear_cache_group', array( $this, 'handle_clear_cache_group' ) );
 		add_action( 'admin_post_readypos_get_data_summary', array( $this, 'handle_data_summary' ) );
+		add_action( 'wp_ajax_readypos_get_cache_stats', array( $this, 'handle_cache_stats' ) );
 	}
 
 	/**
@@ -50,20 +53,80 @@ class Tools {
 			wp_die( esc_html__( 'You do not have permission to perform this action', 'ready-pos' ) );
 		}
 
-		// Clear caches
-		Uninstall::clear_caches();
+		// Clear all caches
+		$deleted = Cache::clear_all();
+
+		// Also clear WordPress object cache if available
+		if ( function_exists( 'wp_cache_flush' ) ) {
+			wp_cache_flush();
+		}
 
 		// Redirect back with success message
 		$redirect_url = add_query_arg(
 			array(
-				'page'                => 'ready-pos',
-				'readypos_cache_cleared' => '1',
+				'page'                   => 'ready-pos',
+				'readypos_cache_cleared' => $deleted,
 			),
 			admin_url( 'admin.php' )
 		);
 
 		wp_safe_redirect( $redirect_url );
 		exit;
+	}
+
+	/**
+	 * Handle cache group clearing request.
+	 *
+	 * @return void
+	 */
+	public function handle_clear_cache_group() {
+		// Check nonce
+		if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'readypos_clear_cache_group' ) ) {
+			wp_die( esc_html__( 'Security check failed', 'ready-pos' ) );
+		}
+
+		// Check permissions
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to perform this action', 'ready-pos' ) );
+		}
+
+		$group = isset( $_POST['group'] ) ? sanitize_text_field( wp_unslash( $_POST['group'] ) ) : '';
+
+		if ( $group ) {
+			Cache::clear_group( $group );
+		}
+
+		// Redirect back with success message
+		$redirect_url = add_query_arg(
+			array(
+				'page'                         => 'ready-pos',
+				'readypos_cache_group_cleared' => $group,
+			),
+			admin_url( 'admin.php' )
+		);
+
+		wp_safe_redirect( $redirect_url );
+		exit;
+	}
+
+	/**
+	 * Handle cache stats request (AJAX).
+	 *
+	 * @return void
+	 */
+	public function handle_cache_stats() {
+		// Check nonce
+		check_ajax_referer( 'readypos_cache_stats', 'nonce' );
+
+		// Check permissions
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Permission denied' ) );
+		}
+
+		// Get cache stats
+		$stats = Cache::get_stats();
+
+		wp_send_json_success( $stats );
 	}
 
 	/**

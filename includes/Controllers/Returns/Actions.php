@@ -11,6 +11,7 @@ use Readypos\Models\POSReturn;
 use Readypos\Models\POSOrderMeta;
 use Readypos\Models\POSSession;
 use Readypos\Models\POSCustomer;
+use Readypos\Traits\Cacheable;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_Error;
@@ -19,6 +20,8 @@ use WP_Error;
  * Returns Actions Class
  */
 class Actions {
+
+	use Cacheable;
 
 	/**
 	 * Get return settings
@@ -96,7 +99,30 @@ class Actions {
 		$type      = $request->get_param( 'type' );
 		$search    = $request->get_param( 'search' );
 
-		$query = POSReturn::query();
+		// Cache key includes all request parameters
+		$cache_key = "returns_list_{$page}_{$per_page}_{$status}_{$type}_{$search}";
+
+		return $this->cache_response(
+			$cache_key,
+			function() use ( $page, $per_page, $status, $type, $search ) {
+				return $this->get_returns_internal( $page, $per_page, $status, $type, $search );
+			},
+			'orders', // Using 'orders' group since returns are related to orders
+			180 // 3 minutes
+		);
+	}
+
+	/**
+	 * Internal method to get returns list (used for caching).
+	 *
+	 * @param int    $page Page number.
+	 * @param int    $per_page Results per page.
+	 * @param string $status Return status filter.
+	 * @param string $type Return type filter.
+	 * @param string $search Search term.
+	 * @return \WP_REST_Response
+	 */
+	private function get_returns_internal( $page, $per_page, $status, $type, $search ) {		$query = POSReturn::query();
 
 		if ( $status ) {
 			$query->where( 'return_status', $status );
@@ -390,6 +416,9 @@ class Actions {
 				$return_reason
 			)
 		);
+
+		// Invalidate returns and order caches
+		$this->invalidate_cache( 'order', $order_id );
 
 		return new WP_REST_Response(
 			array(

@@ -1,1 +1,1 @@
-(()=>{"use strict";console.log("Hello World! from ready-pos")})();
+(()=>{"use strict";})();

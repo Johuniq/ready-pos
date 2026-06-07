@@ -8,7 +8,7 @@ export const openDB = () => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
     request.onerror = (event) => {
-      console.error("IndexedDB opening failed:", event.target.error);
+      
       reject(event.target.error);
     };
 
@@ -84,7 +84,6 @@ export const openDB = () => {
 
       // Migration logic for existing data
       if (oldVersion < 2) {
-        console.log("[DB] Migrating from version", oldVersion, "to version 2");
         // Add any migration logic here if needed
       }
     };

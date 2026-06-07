@@ -11,6 +11,7 @@ namespace Readypos\Controllers\Settings;
 use Readypos\Models\POSOutlet;
 use Readypos\Models\POSRegister;
 use Readypos\Core\License;
+use Readypos\Traits\Cacheable;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -23,62 +24,71 @@ defined( 'ABSPATH' ) || exit;
  */
 class Actions {
 
+	use Cacheable;
+
 	/**
 	 * Get POS general, receipt, and payment settings.
 	 *
 	 * @return \WP_REST_Response
 	 */
 	public function get() {
-		$default_settings = array(
-			// Site Identity
-			'site_name'       => get_option( 'readypos_site_name', get_bloginfo( 'name' ) ),
-			'site_tagline'    => get_option( 'readypos_site_tagline', get_bloginfo( 'description' ) ),
-			'site_logo'       => get_option( 'readypos_site_logo', '' ),
-			'site_address'    => get_option( 'readypos_site_address', '' ),
-			'site_phone'      => get_option( 'readypos_site_phone', '' ),
-			'site_email'      => get_option( 'readypos_site_email', get_option( 'admin_email' ) ),
-			// Currency
-			'currency_symbol' => class_exists( 'WooCommerce' ) ? get_woocommerce_currency_symbol() : '$',
-			'currency_code'   => class_exists( 'WooCommerce' ) ? get_woocommerce_currency() : 'USD',
-			'tax_rates'       => $this->get_wc_tax_rates(),
-			// Receipt Settings
-			'receipt_logo'    => get_option( 'readypos_receipt_logo', '' ),
-			'receipt_header'  => get_option( 'readypos_receipt_header', get_bloginfo( 'name' ) ),
-			'receipt_footer'  => get_option( 'readypos_receipt_footer', 'Thank you for shopping with us!' ),
-			'receipt_paper_width' => get_option( 'readypos_receipt_paper_width', '80mm' ),
-			'print_barcode'   => get_option( 'readypos_print_barcode', 'yes' ),
-			'receipt_blocks'  => json_decode( get_option( 'readypos_receipt_blocks', '[]' ), true ),
-			'receipt_printing_method' => get_option( 'readypos_receipt_printing_method', 'auto' ),
-			'printer_connection_type' => get_option( 'readypos_printer_connection_type', 'serial' ),
-			'printer_auto_reconnect' => get_option( 'readypos_printer_auto_reconnect', 'yes' ),
-			'printer_network_address' => get_option( 'readypos_printer_network_address', '' ),
-			'star_webprnt_url' => get_option( 'readypos_star_webprnt_url', '' ),
-			// Payment Settings
-			'payment_cash'    => get_option( 'readypos_payment_cash', 'yes' ),
-			'payment_card'    => get_option( 'readypos_payment_card', 'yes' ),
-			'pos_cash_gateway' => get_option( 'readypos_pos_cash_gateway', 'cod' ),
-			'pos_card_gateway' => get_option( 'readypos_pos_card_gateway', 'stripe' ),
-			// Terminal Settings
-			'keyboard_status' => get_option( 'readypos_keyboard_status', 'yes' ),
-			'cash_drawer_pulse' => get_option( 'readypos_cash_drawer_pulse', 'none' ),
-			'customer_display_message' => get_option( 'readypos_customer_display_message', 'Welcome to our store!' ),
-			'max_discount_limit' => intval( get_option( 'readypos_max_discount_limit', '100' ) ),
-			'pos_order_prefix' => get_option( 'readypos_pos_order_prefix', '' ),
-			// Return/Exchange Settings
-			'enable_returns'          => get_option( 'readypos_enable_returns', 'yes' ),
-			'enable_exchanges'        => get_option( 'readypos_enable_exchanges', 'yes' ),
-			'enable_store_credit'     => get_option( 'readypos_enable_store_credit', 'yes' ),
-			'return_time_limit_days'  => intval( get_option( 'readypos_return_time_limit_days', 30 ) ),
-			'require_receipt'         => get_option( 'readypos_require_receipt', 'no' ),
-			'restocking_fee_enabled'  => get_option( 'readypos_restocking_fee_enabled', 'no' ),
-			'restocking_fee_type'     => get_option( 'readypos_restocking_fee_type', 'percentage' ),
-			'restocking_fee_value'    => floatval( get_option( 'readypos_restocking_fee_value', 10 ) ),
-			'auto_restock_inventory'  => get_option( 'readypos_auto_restock_inventory', 'yes' ),
-			// Onboarding
-			'onboarding_complete' => get_option( 'readypos_onboarding_complete', 'no' ),
-		);
+		return $this->cache_response(
+			'settings_main',
+			function() {
+				$default_settings = array(
+					// Site Identity
+					'site_name'       => get_option( 'readypos_site_name', get_bloginfo( 'name' ) ),
+					'site_tagline'    => get_option( 'readypos_site_tagline', get_bloginfo( 'description' ) ),
+					'site_logo'       => get_option( 'readypos_site_logo', '' ),
+					'site_address'    => get_option( 'readypos_site_address', '' ),
+					'site_phone'      => get_option( 'readypos_site_phone', '' ),
+					'site_email'      => get_option( 'readypos_site_email', get_option( 'admin_email' ) ),
+					// Currency
+					'currency_symbol' => class_exists( 'WooCommerce' ) ? get_woocommerce_currency_symbol() : '$',
+					'currency_code'   => class_exists( 'WooCommerce' ) ? get_woocommerce_currency() : 'USD',
+					'tax_rates'       => $this->get_wc_tax_rates(),
+					// Receipt Settings
+					'receipt_logo'    => get_option( 'readypos_receipt_logo', '' ),
+					'receipt_header'  => get_option( 'readypos_receipt_header', get_bloginfo( 'name' ) ),
+					'receipt_footer'  => get_option( 'readypos_receipt_footer', 'Thank you for shopping with us!' ),
+					'receipt_paper_width' => get_option( 'readypos_receipt_paper_width', '80mm' ),
+					'print_barcode'   => get_option( 'readypos_print_barcode', 'yes' ),
+					'receipt_blocks'  => json_decode( get_option( 'readypos_receipt_blocks', '[]' ), true ),
+					'receipt_printing_method' => get_option( 'readypos_receipt_printing_method', 'auto' ),
+					'printer_connection_type' => get_option( 'readypos_printer_connection_type', 'serial' ),
+					'printer_auto_reconnect' => get_option( 'readypos_printer_auto_reconnect', 'yes' ),
+					'printer_network_address' => get_option( 'readypos_printer_network_address', '' ),
+					'star_webprnt_url' => get_option( 'readypos_star_webprnt_url', '' ),
+					// Payment Settings
+					'payment_cash'    => get_option( 'readypos_payment_cash', 'yes' ),
+					'payment_card'    => get_option( 'readypos_payment_card', 'yes' ),
+					'pos_cash_gateway' => get_option( 'readypos_pos_cash_gateway', 'cod' ),
+					'pos_card_gateway' => get_option( 'readypos_pos_card_gateway', 'stripe' ),
+					// Terminal Settings
+					'keyboard_status' => get_option( 'readypos_keyboard_status', 'yes' ),
+					'cash_drawer_pulse' => get_option( 'readypos_cash_drawer_pulse', 'none' ),
+					'customer_display_message' => get_option( 'readypos_customer_display_message', 'Welcome to our store!' ),
+					'max_discount_limit' => intval( get_option( 'readypos_max_discount_limit', '100' ) ),
+					'pos_order_prefix' => get_option( 'readypos_pos_order_prefix', '' ),
+					// Return/Exchange Settings
+					'enable_returns'          => get_option( 'readypos_enable_returns', 'yes' ),
+					'enable_exchanges'        => get_option( 'readypos_enable_exchanges', 'yes' ),
+					'enable_store_credit'     => get_option( 'readypos_enable_store_credit', 'yes' ),
+					'return_time_limit_days'  => intval( get_option( 'readypos_return_time_limit_days', 30 ) ),
+					'require_receipt'         => get_option( 'readypos_require_receipt', 'no' ),
+					'restocking_fee_enabled'  => get_option( 'readypos_restocking_fee_enabled', 'no' ),
+					'restocking_fee_type'     => get_option( 'readypos_restocking_fee_type', 'percentage' ),
+					'restocking_fee_value'    => floatval( get_option( 'readypos_restocking_fee_value', 10 ) ),
+					'auto_restock_inventory'  => get_option( 'readypos_auto_restock_inventory', 'yes' ),
+					// Onboarding
+					'onboarding_complete' => get_option( 'readypos_onboarding_complete', 'no' ),
+				);
 
-		return new \WP_REST_Response( $default_settings, 200 );
+				return new \WP_REST_Response( $default_settings, 200 );
+			},
+			'settings',
+			1800 // 30 minutes
+		);
 	}
 
 	/**
@@ -192,6 +202,9 @@ class Actions {
 			update_option( 'readypos_onboarding_complete', $onboarding_complete );
 		}
 
+		// Invalidate settings caches
+		$this->invalidate_cache( 'setting' );
+
 		return new \WP_REST_Response( array( 'success' => true ), 200 );
 	}
 
@@ -201,24 +214,31 @@ class Actions {
 	 * @return \WP_REST_Response
 	 */
 	public function get_payment_methods() {
-		if ( ! class_exists( 'WooCommerce' ) ) {
-			return new \WP_REST_Response( array(), 200 );
-		}
+		return $this->cache_response(
+			'payment_methods_list',
+			function() {
+				if ( ! class_exists( 'WooCommerce' ) ) {
+					return new \WP_REST_Response( array(), 200 );
+				}
 
-		$gateways = \WC()->payment_gateways->payment_gateways();
-		$data     = array();
+				$gateways = \WC()->payment_gateways->payment_gateways();
+				$data     = array();
 
-		foreach ( $gateways as $id => $gateway ) {
-			if ( 'yes' === $gateway->enabled ) {
-				$data[] = array(
-					'id'          => $id,
-					'title'       => $gateway->get_title(),
-					'description' => $gateway->get_description(),
-				);
-			}
-		}
+				foreach ( $gateways as $id => $gateway ) {
+					if ( 'yes' === $gateway->enabled ) {
+						$data[] = array(
+							'id'          => $id,
+							'title'       => $gateway->get_title(),
+							'description' => $gateway->get_description(),
+						);
+					}
+				}
 
-		return new \WP_REST_Response( $data, 200 );
+				return new \WP_REST_Response( $data, 200 );
+			},
+			'payment_methods',
+			3600 // 1 hour
+		);
 	}
 
 	/**
@@ -227,35 +247,42 @@ class Actions {
 	 * @return \WP_REST_Response
 	 */
 	public function get_outlets() {
-		$outlets = POSOutlet::all();
-		$data    = array();
+		return $this->cache_response(
+			'outlets_list',
+			function() {
+				$outlets = POSOutlet::all();
+				$data    = array();
 
-		foreach ( $outlets as $outlet ) {
-			$registers = POSRegister::where( 'outlet_id', $outlet->id )->get();
-			$regs      = array();
+				foreach ( $outlets as $outlet ) {
+					$registers = POSRegister::where( 'outlet_id', $outlet->id )->get();
+					$regs      = array();
 
-			foreach ( $registers as $reg ) {
-				$regs[] = array(
-					'id'     => $reg->id,
-					'name'   => $reg->name,
-					'status' => $reg->status,
-				);
-			}
+					foreach ( $registers as $reg ) {
+						$regs[] = array(
+							'id'     => $reg->id,
+							'name'   => $reg->name,
+							'status' => $reg->status,
+						);
+					}
 
-			$data[] = array(
-				'id'             => $outlet->id,
-				'name'           => $outlet->name,
-				'address'        => $outlet->address,
-				'phone'          => $outlet->phone,
-				'email'          => $outlet->email,
-				'receipt_header' => $outlet->receipt_header,
-				'receipt_footer' => $outlet->receipt_footer,
-				'status'         => $outlet->status,
-				'registers'      => $regs,
-			);
-		}
+					$data[] = array(
+						'id'             => $outlet->id,
+						'name'           => $outlet->name,
+						'address'        => $outlet->address,
+						'phone'          => $outlet->phone,
+						'email'          => $outlet->email,
+						'receipt_header' => $outlet->receipt_header,
+						'receipt_footer' => $outlet->receipt_footer,
+						'status'         => $outlet->status,
+						'registers'      => $regs,
+					);
+				}
 
-		return new \WP_REST_Response( $data, 200 );
+				return new \WP_REST_Response( $data, 200 );
+			},
+			'outlets',
+			1800 // 30 minutes
+		);
 	}
 
 	/**
@@ -300,6 +327,10 @@ class Actions {
 			)
 		);
 
+		// Invalidate outlet and register caches
+		$this->invalidate_cache( 'outlet', $outlet->id );
+		$this->invalidate_cache( 'register' );
+
 		return new \WP_REST_Response( array( 'success' => true, 'id' => $outlet->id ), 200 );
 	}
 
@@ -330,6 +361,9 @@ class Actions {
 		$outlet->receipt_header = $receipt_header;
 		$outlet->receipt_footer = $receipt_footer;
 		$outlet->save();
+
+		// Invalidate outlet caches
+		$this->invalidate_cache( 'outlet', $id );
 
 		return new \WP_REST_Response( array( 'success' => true ), 200 );
 	}
@@ -367,6 +401,10 @@ class Actions {
 			)
 		);
 
+		// Invalidate register caches
+		$this->invalidate_cache( 'register' );
+		$this->invalidate_cache( 'outlet', $outlet_id );
+
 		return new \WP_REST_Response( array( 'success' => true, 'id' => $register->id ), 200 );
 	}
 
@@ -391,6 +429,10 @@ class Actions {
 
 		$register->name = $name;
 		$register->save();
+
+		// Invalidate register caches
+		$this->invalidate_cache( 'register' );
+		$this->invalidate_cache( 'outlet', $register->outlet_id );
 
 		return new \WP_REST_Response( array( 'success' => true ), 200 );
 	}
@@ -417,6 +459,10 @@ class Actions {
 		}
 
 		$register->delete();
+
+		// Invalidate register caches
+		$this->invalidate_cache( 'register' );
+		$this->invalidate_cache( 'outlet', $outlet_id );
 
 		return new \WP_REST_Response( array( 'success' => true ), 200 );
 	}

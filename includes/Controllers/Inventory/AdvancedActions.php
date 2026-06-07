@@ -15,6 +15,7 @@ use Readypos\Models\POSStockTransfer;
 use Readypos\Models\POSStockAdjustment;
 use Readypos\Models\POSOutletStock;
 use Readypos\Models\POSOutlet;
+use Readypos\Traits\Cacheable;
 use WP_REST_Request;
 use WP_REST_Response;
 use WP_Error;
@@ -23,6 +24,8 @@ use WP_Error;
  * AdvancedActions Class
  */
 class AdvancedActions {
+
+	use Cacheable;
 
 	/**
 	 * Check permissions
@@ -51,6 +54,29 @@ class AdvancedActions {
 		$status   = $request->get_param( 'status' );
 		$search   = $request->get_param( 'search' );
 
+		// Cache key includes all request parameters
+		$cache_key = "suppliers_list_{$page}_{$per_page}_{$status}_{$search}";
+
+		return $this->cache_response(
+			$cache_key,
+			function() use ( $page, $per_page, $status, $search ) {
+				return $this->get_suppliers_internal( $page, $per_page, $status, $search );
+			},
+			'suppliers',
+			1800 // 30 minutes
+		);
+	}
+
+	/**
+	 * Internal method to get suppliers list (used for caching).
+	 *
+	 * @param int    $page Page number.
+	 * @param int    $per_page Results per page.
+	 * @param string $status Status filter.
+	 * @param string $search Search term.
+	 * @return \WP_REST_Response
+	 */
+	private function get_suppliers_internal( $page, $per_page, $status, $search ) {
 		$query = POSSupplier::query();
 
 		if ( $status ) {
@@ -126,6 +152,9 @@ class AdvancedActions {
 			)
 		);
 
+		// Invalidate supplier caches
+		$this->invalidate_cache( 'supplier', $supplier->id );
+
 		return new WP_REST_Response( array( 'success' => true, 'supplier' => $supplier ), 201 );
 	}
 
@@ -162,6 +191,9 @@ class AdvancedActions {
 		$supplier->status         = sanitize_text_field( $request->get_param( 'status' ) ) ?: $supplier->status;
 		$supplier->updated_at     = current_time( 'mysql' );
 		$supplier->save();
+
+		// Invalidate supplier caches
+		$this->invalidate_cache( 'supplier', $supplier->id );
 
 		return new WP_REST_Response( array( 'success' => true, 'supplier' => $supplier ), 200 );
 	}

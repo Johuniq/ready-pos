@@ -139,7 +139,7 @@ export default function ProductGrid() {
         ...data,
       ]);
     } catch (err) {
-      console.error(err);
+      
       // Fallback to indexedDB if error occurs online
       const localData = await dbOperations.getAll("categories").catch(() => []);
       setCategories([

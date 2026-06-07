@@ -10,6 +10,7 @@ namespace Readypos\Controllers\Sessions;
 
 use Readypos\Models\POSSession;
 use Readypos\Models\POSRegister;
+use Readypos\Traits\Cacheable;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -21,6 +22,8 @@ defined( 'ABSPATH' ) || exit;
  * @package Readypos\Controllers\Sessions
  */
 class Actions {
+
+	use Cacheable;
 
 	/**
 	 * Open a register session.
@@ -86,6 +89,9 @@ class Actions {
 			\Readypos\Core\AuditLog::SEVERITY_INFO
 		);
 
+		// Invalidate session caches
+		$this->invalidate_cache( 'session', $session->id );
+
 		return new \WP_REST_Response(
 			array(
 				'success'    => true,
@@ -147,6 +153,9 @@ class Actions {
 			\Readypos\Core\AuditLog::SEVERITY_INFO
 		);
 
+		// Invalidate session caches
+		$this->invalidate_cache( 'session', $session_id );
+
 		return new \WP_REST_Response( array( 'success' => true ), 200 );
 	}
 
@@ -193,6 +202,22 @@ class Actions {
 	 * @return \WP_REST_Response
 	 */
 	public function history() {
+		return $this->cache_response(
+			'sessions_history',
+			function() {
+				return $this->history_internal();
+			},
+			'sessions',
+			60 // 1 minute
+		);
+	}
+
+	/**
+	 * Internal method to get session history (used for caching).
+	 *
+	 * @return \WP_REST_Response
+	 */
+	private function history_internal() {
 		$sessions = POSSession::orderBy( 'opened_at', 'desc' )->take( 20 )->get();
 		$history  = array();
 
