@@ -105,8 +105,8 @@ export default function ShiftTrackerModal({
   };
 
   const username =
-    typeof readyPosAdmin !== "undefined"
-      ? readyPosAdmin.userInfo.username
+    typeof readypos_admin !== "undefined"
+      ? readypos_admin.userInfo.username
       : "Cashier";
 
   return (

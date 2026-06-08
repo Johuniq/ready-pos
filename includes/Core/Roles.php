@@ -86,7 +86,7 @@ class Roles {
 		// POS Cashier Role
 		add_role(
 			'pos_cashier',
-			__( 'POS Cashier', 'ready-pos' ),
+			__( 'POS Cashier', 'ready-pos-for-woocommerce' ),
 			array(
 				'read'               => true,
 				'edit_dashboard'     => true,
@@ -110,7 +110,7 @@ class Roles {
 		// POS Manager Role
 		add_role(
 			'pos_manager',
-			__( 'POS Manager', 'ready-pos' ),
+			__( 'POS Manager', 'ready-pos-for-woocommerce' ),
 			array(
 				'read'               => true,
 				'use_pos'            => true,
@@ -199,7 +199,7 @@ class Roles {
 			if ( ! is_user_logged_in() ) {
 				return new \WP_Error(
 					'rest_forbidden',
-					__( 'You must be logged in to access the POS API.', 'ready-pos' ),
+					__( 'You must be logged in to access the POS API.', 'ready-pos-for-woocommerce' ),
 					array( 'status' => 401 )
 				);
 			}
@@ -211,7 +211,7 @@ class Roles {
 
 		return new \WP_Error(
 			'rest_forbidden',
-			__( 'You do not have permission to access the POS API.', 'ready-pos' ),
+			__( 'You do not have permission to access the POS API.', 'ready-pos-for-woocommerce' ),
 			array( 'status' => 403 )
 		);
 	}

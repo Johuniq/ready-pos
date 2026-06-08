@@ -41,7 +41,7 @@ class Actions {
 		if ( 'pro' !== $plan || ! in_array( $status, array( 'active', 'grace' ), true ) || empty( $stored_sig ) ) {
 			return new \WP_Error(
 				'pro_feature_required',
-				__( 'This premium feature requires a valid ReadyPOS Pro license.', 'ready-pos' ),
+				__( 'This premium feature requires a valid ReadyPOS Pro license.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 402 )
 			);
 		}
@@ -64,7 +64,7 @@ class Actions {
 		if ( ! hash_equals( $expected, $stored_sig ) ) {
 			return new \WP_Error(
 				'license_integrity_violation',
-				__( 'License integrity check failed.', 'ready-pos' ),
+				__( 'License integrity check failed.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 402 )
 			);
 		}
@@ -138,7 +138,7 @@ class Actions {
 		$notes       = sanitize_textarea_field( $request->get_param( 'notes' ) ?: '' );
 
 		if ( $balance <= 0 ) {
-			return new \WP_Error( 'invalid_balance', __( 'Balance must be greater than zero.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'invalid_balance', __( 'Balance must be greater than zero.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		// Auto-generate code if not provided.
@@ -148,7 +148,7 @@ class Actions {
 
 		// Check uniqueness.
 		if ( POSGiftCard::where( 'code', $code )->exists() ) {
-			return new \WP_Error( 'code_exists', __( 'A card with this code already exists.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'code_exists', __( 'A card with this code already exists.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$card = POSGiftCard::create(
@@ -183,21 +183,21 @@ class Actions {
 		$code = strtoupper( sanitize_text_field( $request->get_param( 'code' ) ) );
 
 		if ( empty( $code ) ) {
-			return new \WP_Error( 'missing_code', __( 'Card code is required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'missing_code', __( 'Card code is required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$card = POSGiftCard::where( 'code', $code )->first();
 
 		if ( ! $card ) {
-			return new \WP_Error( 'not_found', __( 'Gift card not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Gift card not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		if ( 'active' !== $card->status ) {
-			return new \WP_Error( 'card_inactive', __( 'This card is no longer active.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'card_inactive', __( 'This card is no longer active.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		if ( $card->expires_at && strtotime( $card->expires_at ) < time() ) {
-			return new \WP_Error( 'card_expired', __( 'This card has expired.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'card_expired', __( 'This card has expired.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		return new \WP_REST_Response( $this->format_card( $card ), 200 );
@@ -219,21 +219,21 @@ class Actions {
 		$amount = floatval( $request->get_param( 'amount' ) );
 
 		if ( empty( $code ) || $amount <= 0 ) {
-			return new \WP_Error( 'invalid_params', __( 'Valid code and amount are required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'invalid_params', __( 'Valid code and amount are required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$card = POSGiftCard::where( 'code', $code )->first();
 
 		if ( ! $card ) {
-			return new \WP_Error( 'not_found', __( 'Gift card not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Gift card not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		if ( 'active' !== $card->status ) {
-			return new \WP_Error( 'card_inactive', __( 'This card is no longer active.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'card_inactive', __( 'This card is no longer active.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		if ( $card->expires_at && strtotime( $card->expires_at ) < time() ) {
-			return new \WP_Error( 'card_expired', __( 'This card has expired.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'card_expired', __( 'This card has expired.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$available = floatval( $card->balance );
@@ -272,13 +272,13 @@ class Actions {
 		$amount = floatval( $request->get_param( 'amount' ) );
 
 		if ( empty( $code ) || $amount <= 0 ) {
-			return new \WP_Error( 'invalid_params', __( 'Valid code and amount are required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'invalid_params', __( 'Valid code and amount are required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$card = POSGiftCard::where( 'code', $code )->first();
 
 		if ( ! $card ) {
-			return new \WP_Error( 'not_found', __( 'Gift card not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Gift card not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		$card->balance += $amount;

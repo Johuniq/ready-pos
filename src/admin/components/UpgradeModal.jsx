@@ -159,8 +159,8 @@ export default function UpgradeModal() {
 
   const upgradeUrl =
     lic.portalUrl ||
-    (typeof readyPosAdmin !== "undefined" && readyPosAdmin.upgradeUrl
-      ? readyPosAdmin.upgradeUrl
+    (typeof readypos_admin !== "undefined" && readypos_admin.upgradeUrl
+      ? readypos_admin.upgradeUrl
       : "");
 
   const featureInfo = upgradeReason.feature

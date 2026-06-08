@@ -1,7 +1,7 @@
 export default function Logo({ className = "w-7 h-7" }: { className?: string }) {
   // Get the plugin URL from WordPress localized data
-  const pluginUrl = typeof readyPosAdmin !== 'undefined' 
-    ? readyPosAdmin.pluginUrl 
+  const pluginUrl = typeof readypos_admin !== 'undefined' 
+    ? readypos_admin.pluginUrl 
     : '/wp-content/plugins/ready-pos';
 
   return (

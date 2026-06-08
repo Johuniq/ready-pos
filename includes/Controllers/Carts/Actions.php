@@ -42,7 +42,7 @@ class Actions {
 
 		// Validate cart data
 		if ( empty( $items ) || ! is_array( $items ) ) {
-			return new \WP_Error( 'empty_cart', __( 'Cannot save empty cart.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'empty_cart', __( 'Cannot save empty cart.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$table_name = $wpdb->prefix . 'readypos_saved_carts';
@@ -76,7 +76,7 @@ class Actions {
 			$existing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table_name} WHERE id = %d", $cart_id ) );
 			
 			if ( ! $existing ) {
-				return new \WP_Error( 'cart_not_found', __( 'Cart not found.', 'ready-pos' ), array( 'status' => 404 ) );
+				return new \WP_Error( 'cart_not_found', __( 'Cart not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 			}
 
 			// Update existing cart
@@ -109,7 +109,7 @@ class Actions {
 			array(
 				'success' => true,
 				'cart_id' => $saved_cart_id,
-				'message' => __( 'Cart saved successfully.', 'ready-pos' ),
+				'message' => __( 'Cart saved successfully.', 'ready-pos-for-woocommerce' ),
 			),
 			200
 		);
@@ -190,7 +190,7 @@ class Actions {
 		$cart = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table_name} WHERE id = %d", $cart_id ) );
 
 		if ( ! $cart ) {
-			return new \WP_Error( 'cart_not_found', __( 'Cart not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'cart_not_found', __( 'Cart not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		// Check if user is manager/admin or owner
@@ -200,7 +200,7 @@ class Actions {
 		              in_array( 'pos_manager', $user->roles, true );
 
 		if ( ! $is_manager && intval( $cart->user_id ) !== $user_id ) {
-			return new \WP_Error( 'unauthorized', __( 'You do not have permission to delete this cart.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new \WP_Error( 'unauthorized', __( 'You do not have permission to delete this cart.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		// Delete cart
@@ -222,7 +222,7 @@ class Actions {
 		return new \WP_REST_Response(
 			array(
 				'success' => true,
-				'message' => __( 'Cart deleted successfully.', 'ready-pos' ),
+				'message' => __( 'Cart deleted successfully.', 'ready-pos-for-woocommerce' ),
 			),
 			200
 		);
@@ -245,7 +245,7 @@ class Actions {
 		// Validate target user exists and is a cashier
 		$target_user = get_userdata( $target_user_id );
 		if ( ! $target_user ) {
-			return new \WP_Error( 'invalid_user', __( 'Target cashier not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'invalid_user', __( 'Target cashier not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		$target_roles = $target_user->roles;
@@ -255,7 +255,7 @@ class Actions {
 		                in_array( 'shop_manager', $target_roles, true );
 
 		if ( ! $is_pos_user ) {
-			return new \WP_Error( 'invalid_target', __( 'Target user is not a POS cashier.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'invalid_target', __( 'Target user is not a POS cashier.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		// Verify ownership
@@ -265,7 +265,7 @@ class Actions {
 		if ( ! $cart ) {
 			return new \WP_Error(
 				'cart_not_found',
-				__( 'Cart not found. Empty carts are not saved to the database. Add items to the cart before transferring.', 'ready-pos' ),
+				__( 'Cart not found. Empty carts are not saved to the database. Add items to the cart before transferring.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 404 )
 			);
 		}
@@ -311,7 +311,7 @@ class Actions {
 		return new \WP_REST_Response(
 			array(
 				'success'    => true,
-				'message'    => __( 'Cart transferred successfully.', 'ready-pos' ),
+				'message'    => __( 'Cart transferred successfully.', 'ready-pos-for-woocommerce' ),
 				'owner_id'   => $target_user_id,
 				'owner_name' => $target_user->user_login,
 			),

@@ -38,7 +38,7 @@ class Actions {
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			return new \WP_Error(
 				'unauthorized',
-				__( 'You do not have permission to adjust inventory.', 'ready-pos' ),
+				__( 'You do not have permission to adjust inventory.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -52,7 +52,7 @@ class Actions {
 		if ( empty( $outlet_id ) || empty( $product_id ) ) {
 			return new \WP_Error(
 				'missing_fields',
-				__( 'Outlet ID and Product ID are required.', 'ready-pos' ),
+				__( 'Outlet ID and Product ID are required.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -61,7 +61,7 @@ class Actions {
 		if ( $stock_quantity < 0 ) {
 			return new \WP_Error(
 				'invalid_quantity',
-				__( 'Stock quantity cannot be negative.', 'ready-pos' ),
+				__( 'Stock quantity cannot be negative.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -71,7 +71,7 @@ class Actions {
 		if ( ! $product ) {
 			return new \WP_Error(
 				'invalid_product',
-				__( 'The product does not exist in WooCommerce.', 'ready-pos' ),
+				__( 'The product does not exist in WooCommerce.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -119,7 +119,7 @@ class Actions {
 		if ( false === $result ) {
 			return new \WP_Error(
 				'update_failed',
-				__( 'Failed to update inventory. Please try again.', 'ready-pos' ),
+				__( 'Failed to update inventory. Please try again.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 500 )
 			);
 		}
@@ -173,7 +173,7 @@ class Actions {
 	 */
 	public function low_stock( \WP_REST_Request $request ) {
 		if ( ! class_exists( 'WooCommerce' ) ) {
-			return new \WP_Error( 'wc_missing', __( 'WooCommerce is not active.', 'ready-pos' ), array( 'status' => 500 ) );
+			return new \WP_Error( 'wc_missing', __( 'WooCommerce is not active.', 'ready-pos-for-woocommerce' ), array( 'status' => 500 ) );
 		}
 
 		$outlet_id = $request->get_param( 'outletId' ) ? intval( $request->get_param( 'outletId' ) ) : null;

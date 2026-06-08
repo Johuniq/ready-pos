@@ -208,7 +208,7 @@ class Actions {
 		$notes      = sanitize_textarea_field( (string) $request->get_param( 'notes' ) );
 
 		if ( empty( $first_name ) ) {
-			return new \WP_Error( 'missing_fields', __( 'First name is required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'missing_fields', __( 'First name is required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		// Generate unique username from name or email
@@ -220,7 +220,7 @@ class Actions {
 		}
 
 		if ( ! empty( $email ) && email_exists( $email ) ) {
-			return new \WP_Error( 'email_exists', __( 'Customer with this email already exists.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'email_exists', __( 'Customer with this email already exists.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$user_id = wp_create_user( $username, wp_generate_password(), $email ?: '' );
@@ -281,7 +281,7 @@ class Actions {
 		$user    = get_userdata( $user_id );
 
 		if ( ! $user ) {
-			return new \WP_Error( 'not_found', __( 'Customer not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Customer not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		return new \WP_REST_Response( $this->format_customer( $user ), 200 );
@@ -302,17 +302,17 @@ class Actions {
 		$notes      = sanitize_textarea_field( (string) $request->get_param( 'notes' ) );
 
 		if ( empty( $first_name ) ) {
-			return new \WP_Error( 'missing_fields', __( 'First name is required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'missing_fields', __( 'First name is required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$user = get_userdata( $user_id );
 		if ( ! $user ) {
-			return new \WP_Error( 'not_found', __( 'Customer not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Customer not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		// Email check
 		if ( ! empty( $email ) && $email !== $user->user_email && email_exists( $email ) ) {
-			return new \WP_Error( 'email_exists', __( 'Customer with this email already exists.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'email_exists', __( 'Customer with this email already exists.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$update_args = array(
@@ -377,12 +377,12 @@ class Actions {
 		$user_id = intval( $request->get_param( 'id' ) );
 
 		if ( ! $user_id ) {
-			return new \WP_Error( 'invalid_id', __( 'A valid customer id is required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'invalid_id', __( 'A valid customer id is required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$user = get_userdata( $user_id );
 		if ( ! $user ) {
-			return new \WP_Error( 'not_found', __( 'Customer not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Customer not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		// Refuse to delete a user that holds privileged roles (admins, shop managers, cashiers).
@@ -390,16 +390,20 @@ class Actions {
 		if ( array_intersect( $privileged_roles, (array) $user->roles ) ) {
 			return new \WP_Error(
 				'cannot_delete_staff',
-				__( 'Privileged users cannot be deleted from the customer manager.', 'ready-pos' ),
+				__( 'Privileged users cannot be deleted from the customer manager.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
 
-		require_once ABSPATH . 'wp-admin/includes/user.php';
+		// Load user.php file if wp_delete_user function is not available.
+		if ( ! function_exists( 'wp_delete_user' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/user.php';
+		}
+
 		$deleted = wp_delete_user( $user_id );
 
 		if ( ! $deleted ) {
-			return new \WP_Error( 'delete_failed', __( 'Failed to delete customer.', 'ready-pos' ), array( 'status' => 500 ) );
+			return new \WP_Error( 'delete_failed', __( 'Failed to delete customer.', 'ready-pos-for-woocommerce' ), array( 'status' => 500 ) );
 		}
 
 		// Remove linked POS customer record(s).
@@ -435,7 +439,7 @@ class Actions {
 
 		$user = get_userdata( $user_id );
 		if ( ! $user ) {
-			return new \WP_Error( 'not_found', __( 'Customer not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Customer not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		$orders = wc_get_orders(
@@ -508,18 +512,18 @@ class Actions {
 		$points  = intval( $request->get_param( 'points' ) );
 
 		if ( $points <= 0 ) {
-			return new \WP_Error( 'invalid_points', __( 'Points must be greater than zero.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'invalid_points', __( 'Points must be greater than zero.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$pos_customer = POSCustomer::where( 'wc_customer_id', $user_id )->first();
 		if ( ! $pos_customer ) {
-			return new \WP_Error( 'not_found', __( 'Customer loyalty record not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Customer loyalty record not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		if ( $pos_customer->loyalty_points < $points ) {
 			return new \WP_Error(
 				'insufficient_points',
-				__( 'Customer does not have enough loyalty points.', 'ready-pos' ),
+				__( 'Customer does not have enough loyalty points.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}

@@ -322,7 +322,7 @@ class Actions {
 		POSRegister::create(
 			array(
 				'outlet_id' => $outlet->id,
-				'name'      => __( 'Register 1', 'ready-pos' ),
+				'name'      => __( 'Register 1', 'ready-pos-for-woocommerce' ),
 				'status'    => 'closed',
 			)
 		);
@@ -351,7 +351,7 @@ class Actions {
 
 		$outlet = POSOutlet::find( $id );
 		if ( ! $outlet ) {
-			return new \WP_Error( 'not_found', __( 'Outlet not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Outlet not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		$outlet->name           = $name;
@@ -386,11 +386,11 @@ class Actions {
 		$name      = sanitize_text_field( $request->get_param( 'name' ) );
 
 		if ( ! $outlet_id ) {
-			return new \WP_Error( 'bad_request', __( 'Outlet ID is required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'bad_request', __( 'Outlet ID is required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		if ( empty( $name ) ) {
-			return new \WP_Error( 'bad_request', __( 'Register name is required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'bad_request', __( 'Register name is required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$register = POSRegister::create(
@@ -419,12 +419,12 @@ class Actions {
 		$name = sanitize_text_field( $request->get_param( 'name' ) );
 
 		if ( empty( $name ) ) {
-			return new \WP_Error( 'bad_request', __( 'Register name is required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'bad_request', __( 'Register name is required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$register = POSRegister::find( $id );
 		if ( ! $register ) {
-			return new \WP_Error( 'not_found', __( 'Register not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Register not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		$register->name = $name;
@@ -448,14 +448,14 @@ class Actions {
 
 		$register = POSRegister::find( $id );
 		if ( ! $register ) {
-			return new \WP_Error( 'not_found', __( 'Register not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Register not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		// Ensure we don't delete the only register or a default register in an outlet easily if it's the last one
 		$outlet_id = $register->outlet_id;
 		$sibling_count = POSRegister::where( 'outlet_id', $outlet_id )->count();
 		if ( $sibling_count <= 1 ) {
-			return new \WP_Error( 'cannot_delete', __( 'You cannot delete the only register of an outlet.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'cannot_delete', __( 'You cannot delete the only register of an outlet.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$register->delete();
@@ -507,7 +507,7 @@ class Actions {
 
 		$outlet = POSOutlet::find( $id );
 		if ( ! $outlet ) {
-			return new \WP_Error( 'not_found', __( 'Outlet not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Outlet not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		$config = array(
@@ -532,7 +532,7 @@ class Actions {
 
 		$outlet = POSOutlet::find( $id );
 		if ( ! $outlet ) {
-			return new \WP_Error( 'not_found', __( 'Outlet not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Outlet not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		// Update pricing configuration
@@ -574,7 +574,7 @@ class Actions {
 		return new \WP_REST_Response(
 			array(
 				'success' => true,
-				'message' => __( 'Outlet configuration updated successfully.', 'ready-pos' ),
+				'message' => __( 'Outlet configuration updated successfully.', 'ready-pos-for-woocommerce' ),
 			),
 			200
 		);

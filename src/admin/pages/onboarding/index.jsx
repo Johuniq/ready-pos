@@ -162,9 +162,9 @@ export default function Onboarding() {
           await api.post("/license/reset");
           await resetOfflineStorage();
 
-          if (typeof readyPosAdmin !== "undefined") {
-            readyPosAdmin.license = {
-              ...(readyPosAdmin.license || {}),
+          if (typeof readypos_admin !== "undefined") {
+            readypos_admin.license = {
+              ...(readypos_admin.license || {}),
               plan: "free",
               status: "free",
               isPro: false,
@@ -311,8 +311,8 @@ export default function Onboarding() {
       }
 
       // 7. Update the in-memory flag so LayoutOne won't redirect back
-      if (typeof readyPosAdmin !== "undefined") {
-        readyPosAdmin.onboardingComplete = true;
+      if (typeof readypos_admin !== "undefined") {
+        readypos_admin.onboardingComplete = true;
       }
 
       toast.success("🎉 Setup complete! Your POS is ready to use.");
@@ -1275,8 +1275,8 @@ export default function Onboarding() {
                 api
                   .post("/settings/update", { onboarding_complete: "yes" })
                   .catch(() => {});
-                if (typeof readyPosAdmin !== "undefined") {
-                  readyPosAdmin.onboardingComplete = true;
+                if (typeof readypos_admin !== "undefined") {
+                  readypos_admin.onboardingComplete = true;
                 }
                 navigate("/dashboard");
               }}

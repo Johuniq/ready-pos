@@ -434,7 +434,7 @@ class Route {
 						return new \WP_Error(
 							'rest_no_route',
 							/* translators: %s: controller class name */
-							sprintf( __( 'Controller class %s not found.', 'ready-pos' ), $class ),
+							sprintf( __( 'Controller class %s not found.', 'ready-pos-for-woocommerce' ), $class ),
 							array( 'status' => 404 )
 						);
 					}
@@ -445,7 +445,7 @@ class Route {
 						return new \WP_Error(
 							'rest_no_route',
 							/* translators: 1: method name, 2: controller class name */
-							sprintf( __( 'Method %1$s not found in controller %2$s.', 'ready-pos' ), $method, $class ),
+							sprintf( __( 'Method %1$s not found in controller %2$s.', 'ready-pos-for-woocommerce' ), $method, $class ),
 							array( 'status' => 404 )
 						);
 					}
@@ -458,7 +458,7 @@ class Route {
 					}
 					return new \WP_Error(
 						'rest_callback_error',
-						__( 'Internal server error.', 'ready-pos' ),
+						__( 'Internal server error.', 'ready-pos-for-woocommerce' ),
 						array( 'status' => 500 )
 					);
 				}
@@ -501,7 +501,7 @@ class Route {
 					if ( ! class_exists( $class ) ) {
 						return new \WP_Error(
 							'rest_forbidden',
-							__( 'Auth handler not found.', 'ready-pos' ),
+							__( 'Auth handler not found.', 'ready-pos-for-woocommerce' ),
 							array( 'status' => 403 )
 						);
 					}
@@ -511,7 +511,7 @@ class Route {
 					if ( ! method_exists( $instance, $method ) ) {
 						return new \WP_Error(
 							'rest_forbidden',
-							__( 'Auth method not found.', 'ready-pos' ),
+							__( 'Auth method not found.', 'ready-pos-for-woocommerce' ),
 							array( 'status' => 403 )
 						);
 					}

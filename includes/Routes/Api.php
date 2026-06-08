@@ -86,6 +86,7 @@ Route::prefix(
 		$route->get( '/cashier/list', '\Readypos\Controllers\Cashier\Actions@list_cashiers' );
 		$route->get( '/cashier/login-list', '\Readypos\Controllers\Cashier\Actions@login_list' );
 		$route->post( '/cashier/login', '\Readypos\Controllers\Cashier\Actions@login' );
+		$route->post( '/cashier/logout', '\Readypos\Controllers\Cashier\Actions@logout' );
 		$route->post( '/cashier/create', '\Readypos\Controllers\Cashier\Actions@create' );
 		$route->post( '/cashier/set-pin', '\Readypos\Controllers\Cashier\Actions@set_pin' );
 		$route->post( '/cashier/remove-pin', '\Readypos\Controllers\Cashier\Actions@remove_pin' );

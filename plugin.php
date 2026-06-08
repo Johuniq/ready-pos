@@ -83,6 +83,6 @@ final class Readypos {
 	 */
 	public function i18n() {
 		// phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomain -- Kept for backwards compatibility with WP < 4.6 and local development with custom translations
-		load_plugin_textdomain( 'ready-pos', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/' );
+		load_plugin_textdomain( 'ready-pos-for-woocommerce', false, dirname( plugin_basename( __FILE__ ) ) . '/languages/' );
 	}
 }

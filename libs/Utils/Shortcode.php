@@ -45,20 +45,31 @@ class Shortcode {
     
     /**
      * Handle shortcode rendering
+     *
+     * SECURITY NOTE: Output is sanitized with wp_kses_post to allow safe HTML
+     * while preventing XSS attacks. Callback functions should return HTML content
+     * that will be filtered through wp_kses_post.
      */
     public function handleShortcode($atts, $content = null) {
         $atts = shortcode_atts(array_fill_keys($this->attrs, ''), $atts, $this->tag);
         
+        $output = '';
+        
         if (is_callable($this->render)) {
-            return call_user_func($this->render, $atts, $content);
+            // SECURITY FIX #WP.ORG-5: Sanitize callback output
+            $output = call_user_func($this->render, $atts, $content);
         } elseif (is_string($this->render) && file_exists($this->render)) {
             ob_start();
+            // phpcs:ignore WordPress.PHP.DontExtract.extract_extract -- Controlled extraction for shortcode template rendering
             extract($atts); // Extract attributes to be used as variables
             $shortcode_content = $content; // Pass content to the view file
             include $this->render;
-            return ob_get_clean();
+            $output = ob_get_clean();
         }
         
-        return ''; // Return empty string if no valid render function or file is found
+        // Sanitize output to prevent XSS attacks
+        // wp_kses_post allows safe HTML tags like <p>, <a>, <img>, etc.
+        // If you need different sanitization, override this in your callback
+        return wp_kses_post($output);
     }
 }

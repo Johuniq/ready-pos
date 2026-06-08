@@ -45,12 +45,12 @@ class Tools {
 	public function handle_clear_cache() {
 		// Check nonce
 		if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'readypos_clear_cache' ) ) {
-			wp_die( esc_html__( 'Security check failed', 'ready-pos' ) );
+			wp_die( esc_html__( 'Security check failed', 'ready-pos-for-woocommerce' ) );
 		}
 
 		// Check permissions
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to perform this action', 'ready-pos' ) );
+			wp_die( esc_html__( 'You do not have permission to perform this action', 'ready-pos-for-woocommerce' ) );
 		}
 
 		// Clear all caches
@@ -82,12 +82,12 @@ class Tools {
 	public function handle_clear_cache_group() {
 		// Check nonce
 		if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'readypos_clear_cache_group' ) ) {
-			wp_die( esc_html__( 'Security check failed', 'ready-pos' ) );
+			wp_die( esc_html__( 'Security check failed', 'ready-pos-for-woocommerce' ) );
 		}
 
 		// Check permissions
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to perform this action', 'ready-pos' ) );
+			wp_die( esc_html__( 'You do not have permission to perform this action', 'ready-pos-for-woocommerce' ) );
 		}
 
 		$group = isset( $_POST['group'] ) ? sanitize_text_field( wp_unslash( $_POST['group'] ) ) : '';
@@ -165,7 +165,7 @@ class Tools {
 			<input type="hidden" name="_wpnonce" value="<?php echo esc_attr( $nonce ); ?>">
 			<button type="submit" class="button button-secondary">
 				<span class="dashicons dashicons-update" style="vertical-align: middle;"></span>
-				<?php esc_html_e( 'Clear All Caches', 'ready-pos' ); ?>
+				<?php esc_html_e( 'Clear All Caches', 'ready-pos-for-woocommerce' ); ?>
 			</button>
 		</form>
 		<?php

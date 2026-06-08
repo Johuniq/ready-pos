@@ -48,7 +48,7 @@ const navigation = [
 
 const ApplicationLayout = () => {
   // const showApplicationLayout = true;
-  const showApplicationLayout = !window.readyPosAdmin?.isAdmin;
+  const showApplicationLayout = !window.readypos_admin?.isAdmin;
   const navigate = useNavigate();
   let location = useLocation();
   const pageTitle = location.pathname.split("/")[1];
@@ -153,14 +153,14 @@ const ApplicationLayout = () => {
                           <ModeToggle />
                           <Avatar>
                             <AvatarImage
-                              src={window.readyPosAdmin?.userInfo?.avatar}
-                              alt={window.readyPosAdmin?.userInfo?.username}
+                              src={window.readypos_admin?.userInfo?.avatar}
+                              alt={window.readypos_admin?.userInfo?.username}
                             />
                             <AvatarFallback>CN</AvatarFallback>
                           </Avatar>
                         </div>
                         <div className="text-neutral-600 text-xs font-medium leading-none">
-                          {window.readyPosAdmin?.userInfo?.username}
+                          {window.readypos_admin?.userInfo?.username}
                         </div>
                         <div className="text-neutral-600 text-xs font-medium leading-none">
                           <Icons.DownIcon />

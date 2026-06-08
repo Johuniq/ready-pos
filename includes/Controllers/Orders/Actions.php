@@ -35,7 +35,7 @@ class Actions {
 	 */
 	public function create( \WP_REST_Request $request ) {
 		if ( ! class_exists( 'WooCommerce' ) ) {
-			return new \WP_Error( 'wc_missing', __( 'WooCommerce is not active.', 'ready-pos' ), array( 'status' => 500 ) );
+			return new \WP_Error( 'wc_missing', __( 'WooCommerce is not active.', 'ready-pos-for-woocommerce' ), array( 'status' => 500 ) );
 		}
 
 		$items           = $request->get_param( 'items' ); // Cart items array
@@ -51,7 +51,7 @@ class Actions {
 		$shipping        = $request->get_param( 'shipping' ); // Shipping details: { method_id, method_title, cost, address }
 
 		if ( empty( $items ) || ! is_array( $items ) ) {
-			return new \WP_Error( 'empty_cart', __( 'Cart is empty.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'empty_cart', __( 'Cart is empty.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		try {
@@ -90,7 +90,7 @@ class Actions {
 						'insufficient_stock',
 						sprintf(
 							/* translators: %s: product name */
-							__( 'Insufficient stock for product: %s', 'ready-pos' ),
+							__( 'Insufficient stock for product: %s', 'ready-pos-for-woocommerce' ),
 							$product->get_name()
 						),
 						array( 'status' => 400 )
@@ -123,7 +123,7 @@ class Actions {
 			if ( empty( $validated_items ) ) {
 				return new \WP_Error(
 					'no_valid_products',
-					__( 'No valid products to process.', 'ready-pos' ),
+					__( 'No valid products to process.', 'ready-pos-for-woocommerce' ),
 					array( 'status' => 400 )
 				);
 			}
@@ -195,7 +195,7 @@ class Actions {
 							'discount_exceeded',
 							sprintf(
 								/* translators: %s: maximum discount percentage */
-								__( 'Discount cannot exceed %s%%.', 'ready-pos' ),
+								__( 'Discount cannot exceed %s%%.', 'ready-pos-for-woocommerce' ),
 								$max_discount_percent
 							),
 							array( 'status' => 400 )
@@ -212,7 +212,7 @@ class Actions {
 							'discount_exceeded',
 							sprintf(
 								/* translators: %s: maximum discount amount */
-								__( 'Discount cannot exceed %s.', 'ready-pos' ),
+								__( 'Discount cannot exceed %s.', 'ready-pos-for-woocommerce' ),
 								wc_price( $max_discount_fixed )
 							),
 							array( 'status' => 400 )
@@ -225,7 +225,7 @@ class Actions {
 
 				// Add discount as negative fee
 				$item = new \WC_Order_Item_Fee();
-				$item->set_name( __( 'POS Discount', 'ready-pos' ) );
+				$item->set_name( __( 'POS Discount', 'ready-pos-for-woocommerce' ) );
 				$item->set_amount( -1 * $discount_amount );
 				$item->set_total( -1 * $discount_amount );
 				$order->add_item( $item );
@@ -280,7 +280,7 @@ class Actions {
 						'split_payment_mismatch',
 						sprintf(
 							/* translators: 1: split payment sum, 2: order total */
-							__( 'Split payment amounts (%1$s) do not match order total (%2$s).', 'ready-pos' ),
+							__( 'Split payment amounts (%1$s) do not match order total (%2$s).', 'ready-pos-for-woocommerce' ),
 							wc_price( $split_total ),
 							wc_price( $order_total_before_calc )
 						),
@@ -301,7 +301,7 @@ class Actions {
 					);
 				}
 				$order->add_order_note(
-					__( 'Split Payment Breakdown:', 'ready-pos' ) . "\n" . implode( "\n", $breakdown_lines )
+					__( 'Split Payment Breakdown:', 'ready-pos-for-woocommerce' ) . "\n" . implode( "\n", $breakdown_lines )
 				);
 			}
 
@@ -316,7 +316,7 @@ class Actions {
 
 			// Calculate totals server-side (never trust client calculations)
 			$order->calculate_totals();
-			$order->update_status( 'completed', __( 'Order completed via POS terminal.', 'ready-pos' ) );
+			$order->update_status( 'completed', __( 'Order completed via POS terminal.', 'ready-pos-for-woocommerce' ) );
 			$order->save();
 
 			$order_id = $order->get_id();
@@ -519,7 +519,7 @@ class Actions {
 							'order_number'   => $wc_order->get_order_number(),
 							'total'          => floatval( $wc_order->get_total() ),
 							'payment_method' => $payment,
-							'cashier_name'   => $cashier ? $cashier->display_name : __( 'Unknown', 'ready-pos' ),
+							'cashier_name'   => $cashier ? $cashier->display_name : __( 'Unknown', 'ready-pos-for-woocommerce' ),
 							'date'           => $order_date ? $order_date->date( 'Y-m-d H:i:s' ) : '',
 							'status'         => $wc_order->get_status(),
 						);
@@ -554,7 +554,7 @@ class Actions {
 		$wc_order = wc_get_order( $order_id );
 
 		if ( ! $wc_order ) {
-			return new \WP_Error( 'not_found', __( 'Order not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Order not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		$pos_meta = POSOrderMeta::where( 'wc_order_id', $order_id )->first();
@@ -598,7 +598,7 @@ class Actions {
 		if ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'manage_pos' ) ) {
 			return new \WP_Error(
 				'insufficient_permissions',
-				__( 'You do not have permission to process refunds.', 'ready-pos' ),
+				__( 'You do not have permission to process refunds.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -610,21 +610,21 @@ class Actions {
 		if ( $amount <= 0 ) {
 			return new \WP_Error(
 				'invalid_amount',
-				__( 'Refund amount must be greater than zero.', 'ready-pos' ),
+				__( 'Refund amount must be greater than zero.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
 
 		$order = wc_get_order( $order_id );
 		if ( ! $order ) {
-			return new \WP_Error( 'not_found', __( 'Order not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Order not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		// Validate refund amount doesn't exceed order total
 		if ( $amount > $order->get_total() ) {
 			return new \WP_Error(
 				'amount_exceeds_total',
-				__( 'Refund amount cannot exceed order total.', 'ready-pos' ),
+				__( 'Refund amount cannot exceed order total.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -636,7 +636,7 @@ class Actions {
 				'refund_exceeds_remaining',
 				sprintf(
 					/* translators: %s: remaining refundable amount */
-					__( 'Refund amount exceeds remaining refundable amount of %s.', 'ready-pos' ),
+					__( 'Refund amount exceeds remaining refundable amount of %s.', 'ready-pos-for-woocommerce' ),
 					wc_price( $order->get_total() - $refunded_amount )
 				),
 				array( 'status' => 400 )
@@ -660,7 +660,7 @@ class Actions {
 			$order->add_order_note(
 				sprintf(
 					/* translators: 1: refund amount, 2: user name */
-					__( 'POS Refund of %1$s processed by %2$s', 'ready-pos' ),
+					__( 'POS Refund of %1$s processed by %2$s', 'ready-pos-for-woocommerce' ),
 					wc_price( $amount ),
 					$current_user->display_name
 				)

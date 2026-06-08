@@ -39,10 +39,10 @@ interface ReadyPosAdminData {
 
 declare global {
   interface Window {
-    readyPosAdmin: ReadyPosAdminData;
+    readypos_admin: ReadyPosAdminData;
   }
 
-  const readyPosAdmin: ReadyPosAdminData;
+  const readypos_admin: ReadyPosAdminData;
 }
 
 export {};

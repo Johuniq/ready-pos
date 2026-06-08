@@ -132,7 +132,7 @@ class PluginMeta {
 				'<a href="%s" style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:#2271b1;">%s %s</a>',
 				esc_url( admin_url( 'admin.php?page=ready-pos#/settings' ) ),
 				$settings_icon,
-				esc_html__( 'Settings', 'ready-pos' )
+				esc_html__( 'Settings', 'ready-pos-for-woocommerce' )
 			),
 		);
 
@@ -143,7 +143,7 @@ class PluginMeta {
 				'<a href="%s" style="display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#d63638;">%s %s</a>',
 				esc_url( admin_url( 'admin.php?page=ready-pos#/license' ) ),
 				$bolt_icon,
-				esc_html__( 'Upgrade to Pro', 'ready-pos' )
+				esc_html__( 'Upgrade to Pro', 'ready-pos-for-woocommerce' )
 			);
 		}
 
@@ -174,7 +174,7 @@ class PluginMeta {
 				sprintf(
 					'<span style="display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#00a32a;">%s %s</span>',
 					$star_icon,
-					esc_html__( 'Pro Active', 'ready-pos' )
+					esc_html__( 'Pro Active', 'ready-pos-for-woocommerce' )
 				),
 			);
 		} else {
@@ -184,7 +184,7 @@ class PluginMeta {
 					'<a href="%s" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#d63638;">%s %s</a>',
 					esc_url( 'https://readypos.johuniq.tech/' ),
 					$bolt_icon,
-					esc_html__( 'Pro Features', 'ready-pos' )
+					esc_html__( 'Pro Features', 'ready-pos-for-woocommerce' )
 				),
 			);
 		}
@@ -449,6 +449,65 @@ class PluginMeta {
 			return;
 		}
 
+		// SECURITY FIX #WP.ORG-6: Enqueue styles and scripts properly
+		// Register and enqueue a dummy handle for inline styles/scripts
+		wp_register_style( 'readypos-plugin-banner', false ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
+		wp_enqueue_style( 'readypos-plugin-banner' );
+		
+		$banner_css = '
+			.readypos-upgrade-banner-row td { background: #f6f7f7 !important; }
+			.readypos-btn-upgrade:hover {
+				transform: translateY(-1px);
+				box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4) !important;
+				background: linear-gradient(135deg, #4338ca 0%, #2563eb 100%) !important;
+			}
+			.readypos-btn-pricing:hover {
+				background: rgba(255, 255, 255, 0.08) !important;
+				color: #ffffff !important;
+				border-color: rgba(255, 255, 255, 0.16) !important;
+			}
+			#readypos-dismiss-banner:hover {
+				background: rgba(255, 255, 255, 0.08) !important;
+				color: #ffffff !important;
+				border-color: rgba(255, 255, 255, 0.16) !important;
+			}
+		';
+		wp_add_inline_style( 'readypos-plugin-banner', $banner_css );
+
+		wp_register_script( 'readypos-plugin-banner', false, array(), false, true ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
+		wp_enqueue_script( 'readypos-plugin-banner' );
+		
+		$banner_js = "
+		(function () {
+			var DISMISSED_KEY = 'readypos_banner_dismissed';
+
+			function dismissBanner() {
+				var row = document.getElementById( 'readypos-upgrade-banner-row' );
+				if ( row ) {
+					row.style.transition = 'opacity .25s ease';
+					row.style.opacity    = '0';
+					setTimeout( function () { row.style.display = 'none'; }, 250 );
+				}
+
+				try { sessionStorage.setItem( DISMISSED_KEY, '1' ); } catch (e) {}
+			}
+
+			// Restore dismissed state within the same browser session.
+			try {
+				if ( sessionStorage.getItem( DISMISSED_KEY ) ) {
+					var row = document.getElementById( 'readypos-upgrade-banner-row' );
+					if ( row ) { row.style.display = 'none'; }
+				}
+			} catch (e) {}
+
+			var btn = document.getElementById( 'readypos-dismiss-banner' );
+			if ( btn ) {
+				btn.addEventListener( 'click', dismissBanner );
+			}
+		})();
+		";
+		wp_add_inline_script( 'readypos-plugin-banner', $banner_js );
+
 		$wp_list_table = _get_list_table( 'WP_Plugins_List_Table' );
 		$columns_count = $wp_list_table->get_column_count();
 		$upgrade_url   = esc_url( admin_url( 'admin.php?page=ready-pos#/license' ) );
@@ -456,10 +515,10 @@ class PluginMeta {
 
 		// Feature cards: [ icon_name, label, description ]
 		$features = array(
-			array( 'store',   __( 'Unlimited Outlets', 'ready-pos' ),     __( 'No cap on locations or registers.', 'ready-pos' ) ),
-			array( 'chart',   __( 'Advanced Analytics', 'ready-pos' ),    __( 'Sales, profit, and inventory reports.', 'ready-pos' ) ),
-			array( 'printer', __( 'Hardware Support', 'ready-pos' ),      __( 'Printers, drawers, scanners & scales.', 'ready-pos' ) ),
-			array( 'gift',    __( 'Gift Cards & Loyalty', 'ready-pos' ),  __( 'Issue cards and reward points.', 'ready-pos' ) ),
+			array( 'store',   __( 'Unlimited Outlets', 'ready-pos-for-woocommerce' ),     __( 'No cap on locations or registers.', 'ready-pos-for-woocommerce' ) ),
+			array( 'chart',   __( 'Advanced Analytics', 'ready-pos-for-woocommerce' ),    __( 'Sales, profit, and inventory reports.', 'ready-pos-for-woocommerce' ) ),
+			array( 'printer', __( 'Hardware Support', 'ready-pos-for-woocommerce' ),      __( 'Printers, drawers, scanners & scales.', 'ready-pos-for-woocommerce' ) ),
+			array( 'gift',    __( 'Gift Cards & Loyalty', 'ready-pos-for-woocommerce' ),  __( 'Issue cards and reward points.', 'ready-pos-for-woocommerce' ) ),
 		);
 
 		?>
@@ -492,7 +551,7 @@ class PluginMeta {
 					<!-- Dismiss button -->
 					<button type="button"
 							id="readypos-dismiss-banner"
-							aria-label="<?php esc_attr_e( 'Dismiss upgrade notice', 'ready-pos' ); ?>"
+							aria-label="<?php esc_attr_e( 'Dismiss upgrade notice', 'ready-pos-for-woocommerce' ); ?>"
 							style="
 								position: absolute;
 								top: 16px; right: 16px;
@@ -527,7 +586,7 @@ class PluginMeta {
 						<div style="flex: 1;">
 							<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap;">
 								<h4 style="margin: 0; font-size: 16px; font-weight: 700; color: #ffffff; letter-spacing: -0.01em;">
-									<?php esc_html_e( 'Unlock Professional Store Features', 'ready-pos' ); ?>
+									<?php esc_html_e( 'Unlock Professional Store Features', 'ready-pos-for-woocommerce' ); ?>
 								</h4>
 								<span style="
 									display: inline-flex; align-items: center; gap: 4px;
@@ -548,8 +607,8 @@ class PluginMeta {
 								<?php
 								printf(
 									/* translators: %s: free plan emphasis label */
-									esc_html__( 'Expand your %s with multi-outlet operations, split cash/card payments, gift cards, advanced cashier shifts, customizable thermal receipts, and barcode scales.', 'ready-pos' ),
-									'<span style="color: #cbd5e1; font-weight: 600;">' . esc_html__( 'Free Plan', 'ready-pos' ) . '</span>'
+									esc_html__( 'Expand your %s with multi-outlet operations, split cash/card payments, gift cards, advanced cashier shifts, customizable thermal receipts, and barcode scales.', 'ready-pos-for-woocommerce' ),
+									'<span style="color: #cbd5e1; font-weight: 600;">' . esc_html__( 'Free Plan', 'ready-pos-for-woocommerce' ) . '</span>'
 								);
 								?>
 							</p>
@@ -558,15 +617,15 @@ class PluginMeta {
 							<div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 11px; color: #cbd5e1;">
 								<span style="display: inline-flex; align-items: center; gap: 4px;">
 									<span style="display: inline-block; width: 6px; height: 6px; background: #06b6d4; border-radius: 50%;"></span>
-									<?php esc_html_e( 'Unlimited registers & outlets', 'ready-pos' ); ?>
+									<?php esc_html_e( 'Unlimited registers & outlets', 'ready-pos-for-woocommerce' ); ?>
 								</span>
 								<span style="display: inline-flex; align-items: center; gap: 4px;">
 									<span style="display: inline-block; width: 6px; height: 6px; background: #06b6d4; border-radius: 50%;"></span>
-									<?php esc_html_e( 'Thermal printing (ESC/POS)', 'ready-pos' ); ?>
+									<?php esc_html_e( 'Thermal printing (ESC/POS)', 'ready-pos-for-woocommerce' ); ?>
 								</span>
 								<span style="display: inline-flex; align-items: center; gap: 4px;">
 									<span style="display: inline-block; width: 6px; height: 6px; background: #06b6d4; border-radius: 50%;"></span>
-									<?php esc_html_e( 'Store credit & split-payments', 'ready-pos' ); ?>
+									<?php esc_html_e( 'Store credit & split-payments', 'ready-pos-for-woocommerce' ); ?>
 								</span>
 							</div>
 						</div>
@@ -599,62 +658,13 @@ class PluginMeta {
 								cursor: pointer;
 						   ">
 							<?php echo $this->icon( 'bolt', '14', '#ffffff' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-							<?php esc_html_e( 'Upgrade to Pro', 'ready-pos' ); ?>
+							<?php esc_html_e( 'Upgrade to Pro', 'ready-pos-for-woocommerce' ); ?>
 						</a>
 					</div>
 
 				</div><!-- .readypos-upgrade-card -->
 			</td>
 		</tr>
-
-		<style id="readypos-banner-styles">
-			.readypos-upgrade-banner-row td { background: #f6f7f7 !important; }
-			.readypos-btn-upgrade:hover {
-				transform: translateY(-1px);
-				box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4) !important;
-				background: linear-gradient(135deg, #4338ca 0%, #2563eb 100%) !important;
-			}
-			.readypos-btn-pricing:hover {
-				background: rgba(255, 255, 255, 0.08) !important;
-				color: #ffffff !important;
-				border-color: rgba(255, 255, 255, 0.16) !important;
-			}
-			#readypos-dismiss-banner:hover {
-				background: rgba(255, 255, 255, 0.08) !important;
-				color: #ffffff !important;
-				border-color: rgba(255, 255, 255, 0.16) !important;
-			}
-		</style>
-
-		<script id="readypos-banner-script">
-		(function () {
-			var DISMISSED_KEY = 'readypos_banner_dismissed';
-
-			function dismissBanner() {
-				var row = document.getElementById( 'readypos-upgrade-banner-row' );
-				if ( row ) {
-					row.style.transition = 'opacity .25s ease';
-					row.style.opacity    = '0';
-					setTimeout( function () { row.style.display = 'none'; }, 250 );
-				}
-
-				try { sessionStorage.setItem( DISMISSED_KEY, '1' ); } catch (e) {}
-			}
-
-			// Restore dismissed state within the same browser session.
-			try {
-				if ( sessionStorage.getItem( DISMISSED_KEY ) ) {
-					var row = document.getElementById( 'readypos-upgrade-banner-row' );
-					if ( row ) { row.style.display = 'none'; }
-				}
-			} catch (e) {}
-
-			var btn = document.getElementById( 'readypos-dismiss-banner' );
-			if ( btn ) {
-				btn.addEventListener( 'click', dismissBanner );
-			}
-		})();
-		</script>
 		<?php
 	}
 }

@@ -17,7 +17,7 @@ class Template {
 
 	const FRONTEND_TEMPLATE      = 'frontend-template.php';
 	const FRONTEND_TEMPLATE_NAME = 'Readypos';
-	const FRONTEND_TEMPLATE_SLUG = 'ready-pos';
+	const FRONTEND_TEMPLATE_SLUG = 'ready-pos-for-woocommerce';
 
 	/**
 	 * Initialize the class.

@@ -31,7 +31,7 @@ class Actions {
 	 */
 	public function validate( \WP_REST_Request $request ) {
 		if ( ! class_exists( 'WooCommerce' ) ) {
-			return new \WP_Error( 'wc_missing', __( 'WooCommerce is not active.', 'ready-pos' ), array( 'status' => 500 ) );
+			return new \WP_Error( 'wc_missing', __( 'WooCommerce is not active.', 'ready-pos-for-woocommerce' ), array( 'status' => 500 ) );
 		}
 
 		$code = $request->get_param( 'code' ) ? sanitize_text_field( $request->get_param( 'code' ) ) : '';
@@ -40,7 +40,7 @@ class Actions {
 			return new \WP_REST_Response(
 				array(
 					'success' => false,
-					'message' => __( 'Coupon code cannot be empty.', 'ready-pos' ),
+					'message' => __( 'Coupon code cannot be empty.', 'ready-pos-for-woocommerce' ),
 				),
 				200
 			);
@@ -54,7 +54,7 @@ class Actions {
 			return new \WP_REST_Response(
 				array(
 					'success' => false,
-					'message' => __( 'Coupon does not exist.', 'ready-pos' ),
+					'message' => __( 'Coupon does not exist.', 'ready-pos-for-woocommerce' ),
 				),
 				200
 			);
@@ -66,7 +66,7 @@ class Actions {
 			return new \WP_REST_Response(
 				array(
 					'success' => false,
-					'message' => __( 'This coupon is not active.', 'ready-pos' ),
+					'message' => __( 'This coupon is not active.', 'ready-pos-for-woocommerce' ),
 				),
 				200
 			);
@@ -81,7 +81,7 @@ class Actions {
 			return new \WP_REST_Response(
 				array(
 					'success' => false,
-					'message' => __( 'This coupon has expired.', 'ready-pos' ),
+					'message' => __( 'This coupon has expired.', 'ready-pos-for-woocommerce' ),
 				),
 				200
 			);
@@ -94,7 +94,7 @@ class Actions {
 			return new \WP_REST_Response(
 				array(
 					'success' => false,
-					'message' => __( 'Coupon usage limit has been reached.', 'ready-pos' ),
+					'message' => __( 'Coupon usage limit has been reached.', 'ready-pos-for-woocommerce' ),
 				),
 				200
 			);
@@ -114,7 +114,7 @@ class Actions {
 					return new \WP_REST_Response(
 						array(
 							'success' => false,
-							'message' => __( 'You have reached the usage limit for this coupon.', 'ready-pos' ),
+							'message' => __( 'You have reached the usage limit for this coupon.', 'ready-pos-for-woocommerce' ),
 						),
 						200
 					);

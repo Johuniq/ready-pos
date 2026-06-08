@@ -6,11 +6,12 @@
  * Version: 1.0.0
  * Requires at least: 5.8
  * Requires PHP: 7.4
+ * Requires Plugins: woocommerce
  * Author: Johuniq
  * Author URI: https://johuniq.tech
  * License: GPLv2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: ready-pos
+ * Text Domain: ready-pos-for-woocommerce
  * Domain Path: /languages
  * WC requires at least: 6.0
  * WC tested up to: 9.0

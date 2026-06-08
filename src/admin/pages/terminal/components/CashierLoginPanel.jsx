@@ -37,7 +37,7 @@ export default function CashierLoginPanel({ onLogin, onSkip, onLogout }) {
 
   // Current WP user info for the "skip" option.
   const currentUser =
-    typeof readyPosAdmin !== "undefined" ? readyPosAdmin.userInfo : null;
+    typeof readypos_admin !== "undefined" ? readypos_admin.userInfo : null;
   const isAdmin =
     currentUser?.roles?.includes("administrator") ||
     currentUser?.roles?.includes("shop_manager");

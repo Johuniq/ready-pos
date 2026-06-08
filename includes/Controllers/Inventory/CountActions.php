@@ -34,7 +34,7 @@ class CountActions {
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			return new \WP_Error(
 				'unauthorized',
-				__( 'You do not have permission to start inventory counts.', 'ready-pos' ),
+				__( 'You do not have permission to start inventory counts.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -48,7 +48,7 @@ class CountActions {
 		if ( empty( $outlet_id ) || empty( $count_type ) || empty( $name ) ) {
 			return new \WP_Error(
 				'missing_fields',
-				__( 'Outlet ID, count type, and name are required.', 'ready-pos' ),
+				__( 'Outlet ID, count type, and name are required.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -57,7 +57,7 @@ class CountActions {
 		if ( ! in_array( $count_type, array( 'cycle', 'full', 'spot' ), true ) ) {
 			return new \WP_Error(
 				'invalid_count_type',
-				__( 'Invalid count type. Must be cycle, full, or spot.', 'ready-pos' ),
+				__( 'Invalid count type. Must be cycle, full, or spot.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -67,7 +67,7 @@ class CountActions {
 		if ( ! $outlet ) {
 			return new \WP_Error(
 				'invalid_outlet',
-				__( 'The outlet does not exist.', 'ready-pos' ),
+				__( 'The outlet does not exist.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -152,7 +152,7 @@ class CountActions {
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			return new \WP_Error(
 				'unauthorized',
-				__( 'You do not have permission to update inventory counts.', 'ready-pos' ),
+				__( 'You do not have permission to update inventory counts.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -165,7 +165,7 @@ class CountActions {
 		if ( empty( $item_id ) ) {
 			return new \WP_Error(
 				'missing_fields',
-				__( 'Item ID is required.', 'ready-pos' ),
+				__( 'Item ID is required.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -174,7 +174,7 @@ class CountActions {
 		if ( ! $item ) {
 			return new \WP_Error(
 				'invalid_item',
-				__( 'Count item not found.', 'ready-pos' ),
+				__( 'Count item not found.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 404 )
 			);
 		}
@@ -184,7 +184,7 @@ class CountActions {
 		if ( ! $count || 'in_progress' !== $count->status ) {
 			return new \WP_Error(
 				'invalid_status',
-				__( 'This count is not in progress.', 'ready-pos' ),
+				__( 'This count is not in progress.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -235,7 +235,7 @@ class CountActions {
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			return new \WP_Error(
 				'unauthorized',
-				__( 'You do not have permission to update inventory counts.', 'ready-pos' ),
+				__( 'You do not have permission to update inventory counts.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -247,7 +247,7 @@ class CountActions {
 		if ( empty( $count_id ) || empty( $barcode ) ) {
 			return new \WP_Error(
 				'missing_fields',
-				__( 'Count ID and barcode are required.', 'ready-pos' ),
+				__( 'Count ID and barcode are required.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -263,7 +263,7 @@ class CountActions {
 		if ( ! $product_id ) {
 			return new \WP_Error(
 				'product_not_found',
-				__( 'Product not found with this barcode.', 'ready-pos' ),
+				__( 'Product not found with this barcode.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 404 )
 			);
 		}
@@ -279,7 +279,7 @@ class CountActions {
 			if ( ! $count ) {
 				return new \WP_Error(
 					'invalid_count',
-					__( 'Count session not found.', 'ready-pos' ),
+					__( 'Count session not found.', 'ready-pos-for-woocommerce' ),
 					array( 'status' => 404 )
 				);
 			}
@@ -355,7 +355,7 @@ class CountActions {
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			return new \WP_Error(
 				'unauthorized',
-				__( 'You do not have permission to complete inventory counts.', 'ready-pos' ),
+				__( 'You do not have permission to complete inventory counts.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -366,7 +366,7 @@ class CountActions {
 		if ( empty( $count_id ) ) {
 			return new \WP_Error(
 				'missing_fields',
-				__( 'Count ID is required.', 'ready-pos' ),
+				__( 'Count ID is required.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -375,7 +375,7 @@ class CountActions {
 		if ( ! $count ) {
 			return new \WP_Error(
 				'invalid_count',
-				__( 'Count session not found.', 'ready-pos' ),
+				__( 'Count session not found.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 404 )
 			);
 		}
@@ -383,7 +383,7 @@ class CountActions {
 		if ( 'in_progress' !== $count->status ) {
 			return new \WP_Error(
 				'invalid_status',
-				__( 'This count is not in progress.', 'ready-pos' ),
+				__( 'This count is not in progress.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -494,7 +494,7 @@ class CountActions {
 		if ( empty( $count_id ) ) {
 			return new \WP_Error(
 				'missing_fields',
-				__( 'Count ID is required.', 'ready-pos' ),
+				__( 'Count ID is required.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -503,7 +503,7 @@ class CountActions {
 		if ( ! $count ) {
 			return new \WP_Error(
 				'invalid_count',
-				__( 'Count session not found.', 'ready-pos' ),
+				__( 'Count session not found.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 404 )
 			);
 		}
@@ -523,7 +523,7 @@ class CountActions {
 		if ( empty( $count_id ) ) {
 			return new \WP_Error(
 				'missing_fields',
-				__( 'Count ID is required.', 'ready-pos' ),
+				__( 'Count ID is required.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -532,7 +532,7 @@ class CountActions {
 		if ( ! $count ) {
 			return new \WP_Error(
 				'invalid_count',
-				__( 'Count session not found.', 'ready-pos' ),
+				__( 'Count session not found.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 404 )
 			);
 		}
@@ -612,7 +612,7 @@ class CountActions {
 		if ( ! current_user_can( 'edit_posts' ) ) {
 			return new \WP_Error(
 				'unauthorized',
-				__( 'You do not have permission to cancel inventory counts.', 'ready-pos' ),
+				__( 'You do not have permission to cancel inventory counts.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -622,7 +622,7 @@ class CountActions {
 		if ( empty( $count_id ) ) {
 			return new \WP_Error(
 				'missing_fields',
-				__( 'Count ID is required.', 'ready-pos' ),
+				__( 'Count ID is required.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -631,7 +631,7 @@ class CountActions {
 		if ( ! $count ) {
 			return new \WP_Error(
 				'invalid_count',
-				__( 'Count session not found.', 'ready-pos' ),
+				__( 'Count session not found.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 404 )
 			);
 		}
@@ -646,7 +646,7 @@ class CountActions {
 		return new \WP_REST_Response(
 			array(
 				'success' => true,
-				'message' => __( 'Count cancelled successfully.', 'ready-pos' ),
+				'message' => __( 'Count cancelled successfully.', 'ready-pos-for-woocommerce' ),
 			),
 			200
 		);

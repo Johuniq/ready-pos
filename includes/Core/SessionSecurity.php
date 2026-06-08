@@ -315,7 +315,7 @@ class SessionSecurity {
 		if ( ! is_user_logged_in() ) {
 			return new \WP_Error(
 				'rest_forbidden',
-				__( 'You must be logged in to access this endpoint.', 'ready-pos' ),
+				__( 'You must be logged in to access this endpoint.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 401 )
 			);
 		}
@@ -339,7 +339,7 @@ class SessionSecurity {
 
 			return new \WP_Error(
 				'rest_forbidden',
-				__( 'Session validation failed. Please log in again.', 'ready-pos' ),
+				__( 'Session validation failed. Please log in again.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -349,7 +349,7 @@ class SessionSecurity {
 		if ( $session_created && ( time() - $session_created ) > self::MAX_SESSION_LIFETIME ) {
 			return new \WP_Error(
 				'session_expired',
-				__( 'Your session has expired. Please log in again.', 'ready-pos' ),
+				__( 'Your session has expired. Please log in again.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 401 )
 			);
 		}
@@ -359,7 +359,7 @@ class SessionSecurity {
 		if ( $last_activity && ( time() - $last_activity ) > self::IDLE_TIMEOUT ) {
 			return new \WP_Error(
 				'session_idle',
-				__( 'Your session has expired due to inactivity. Please log in again.', 'ready-pos' ),
+				__( 'Your session has expired due to inactivity. Please log in again.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 401 )
 			);
 		}

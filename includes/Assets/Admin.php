@@ -31,8 +31,9 @@ class Admin {
 
 	/**
 	 * Localized JS global object name.
+	 * Prefixed with 'readypos_' to avoid naming collisions per WordPress.org guidelines.
 	 */
-	const OBJ_NAME = 'readyPosAdmin';
+	const OBJ_NAME = 'readypos_admin';
 
 	/**
 	 * Dev entry script.
@@ -77,8 +78,8 @@ class Admin {
 			?>
 			<div class="notice notice-success is-dismissible">
 				<p>
-					<strong><?php esc_html_e( 'Ready POS:', 'ready-pos' ); ?></strong>
-					<?php esc_html_e( 'All caches have been cleared successfully. Please refresh your browser (Ctrl+Shift+R or Cmd+Shift+R) to see the latest changes.', 'ready-pos' ); ?>
+					<strong><?php esc_html_e( 'Ready POS:', 'ready-pos-for-woocommerce' ); ?></strong>
+					<?php esc_html_e( 'All caches have been cleared successfully. Please refresh your browser (Ctrl+Shift+R or Cmd+Shift+R) to see the latest changes.', 'ready-pos-for-woocommerce' ); ?>
 				</p>
 			</div>
 			<?php
@@ -110,25 +111,31 @@ class Admin {
 				}
 			);
 
+			// SECURITY FIX #WP.ORG-2: Use wp_enqueue_script instead of inline <script> tags
 			add_action(
 				'admin_footer',
 				function () {
+					// Register and enqueue a handle for the service worker inline script
+					wp_register_script( 'readypos-sw-registration', false, array(), false, true ); // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion
+					wp_enqueue_script( 'readypos-sw-registration' );
+
 					$sw_url = plugins_url( 'assets/sw.js', READYPOS_PLUGIN_FILE );
 					$cache_version = get_option( 'readypos_cache_version', 1 );
-					?>
-					<script>
+					
+					$sw_script = "
 					// Set cache version for service worker
-					self.READYPOS_CACHE_VERSION = 'v<?php echo esc_js( $cache_version ); ?>';
+					self.READYPOS_CACHE_VERSION = 'v" . esc_js( $cache_version ) . "';
 					
 					if ('serviceWorker' in navigator) {
 						window.addEventListener('load', function() {
-							navigator.serviceWorker.register('<?php echo esc_url( $sw_url ); ?>?v=<?php echo esc_js( $cache_version ); ?>', { scope: '/wp-admin/' })
+							navigator.serviceWorker.register('" . esc_url( $sw_url ) . "?v=" . esc_js( $cache_version ) . "', { scope: '/wp-admin/' })
 								.then(function(reg) { /* SW registered */ })
 								.catch(function(err) { /* SW registration failed */ });
 						});
 					}
-					</script>
-					<?php
+					";
+					
+					wp_add_inline_script( 'readypos-sw-registration', $sw_script );
 				}
 			);
 		}
@@ -202,7 +209,7 @@ class Admin {
 		if ( $screen && in_array( $screen->id, $this->allowed_screens, true ) ) {
 			return sprintf(
 				'<span id="footer-thankyou">%s <a href="https://johuniq.tech" target="_blank" rel="noopener">Johuniq</a></span>',
-				__( 'Ready POS — Professional WooCommerce Point of Sale. Built by', 'ready-pos' )
+				__( 'Ready POS — Professional WooCommerce Point of Sale. Built by', 'ready-pos-for-woocommerce' )
 			);
 		}
 		return $text;

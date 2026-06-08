@@ -87,7 +87,7 @@ class HistoryActions {
 		if ( empty( $product_id ) ) {
 			return new \WP_Error(
 				'missing_product_id',
-				__( 'Product ID is required.', 'ready-pos' ),
+				__( 'Product ID is required.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -158,7 +158,7 @@ class HistoryActions {
 		if ( empty( $product_id ) ) {
 			return new \WP_Error(
 				'missing_product_id',
-				__( 'Product ID is required.', 'ready-pos' ),
+				__( 'Product ID is required.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}

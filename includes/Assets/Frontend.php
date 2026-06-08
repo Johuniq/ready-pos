@@ -26,8 +26,9 @@ class Frontend {
 
 	/**
 	 * JS Object name for Readypos.
+	 * Prefixed with 'readypos_' to avoid naming collisions per WordPress.org guidelines.
 	 */
-	const OBJ_NAME = 'wordpressPluginBoilerplateFrontend';
+	const OBJ_NAME = 'readypos_frontend';
 
 	/**
 	 * Development script path for Readypos.

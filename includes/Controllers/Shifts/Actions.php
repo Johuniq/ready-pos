@@ -43,7 +43,7 @@ class Actions {
 		if ( $active_shift ) {
 			return new \WP_Error(
 				'already_clocked_in',
-				__( 'You are already clocked in for a shift.', 'ready-pos' ),
+				__( 'You are already clocked in for a shift.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -86,7 +86,7 @@ class Actions {
 		if ( ! $shift ) {
 			return new \WP_Error(
 				'no_active_shift',
-				__( 'You do not have an active shift to clock out from.', 'ready-pos' ),
+				__( 'You do not have an active shift to clock out from.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}

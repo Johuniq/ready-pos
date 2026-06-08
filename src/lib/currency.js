@@ -17,9 +17,9 @@ const decodeHtmlEntities = (text) => {
 };
 
 const getCurrencyConfig = () => {
-  if (typeof readyPosAdmin !== "undefined" && readyPosAdmin.currency) {
+  if (typeof readypos_admin !== "undefined" && readypos_admin.currency) {
     // The symbol is already decoded by PHP, but decode again as fallback
-    const config = { ...readyPosAdmin.currency };
+    const config = { ...readypos_admin.currency };
     config.symbol = decodeHtmlEntities(config.symbol);
     
     return config;

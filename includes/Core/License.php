@@ -316,7 +316,7 @@ class License {
 		return new \WP_Error(
 			'pro_feature_required',
 			/* translators: %s: feature name */
-			sprintf( __( 'This feature (%s) requires a Pro license.', 'ready-pos' ), $feature ),
+			sprintf( __( 'This feature (%s) requires a Pro license.', 'ready-pos-for-woocommerce' ), $feature ),
 			array(
 				'status'  => 402,
 				'feature' => $feature,
@@ -340,7 +340,7 @@ class License {
 			'pro_quota_exceeded',
 			sprintf(
 				/* translators: 1: resource, 2: limit */
-				__( 'Your Free plan is limited to %2$d %1$s. Upgrade to Pro for unlimited.', 'ready-pos' ),
+				__( 'Your Free plan is limited to %2$d %1$s. Upgrade to Pro for unlimited.', 'ready-pos-for-woocommerce' ),
 				$resource,
 				$limit
 			),

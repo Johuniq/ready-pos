@@ -26,12 +26,13 @@ class SubresourceIntegrity {
 	 *
 	 * Format: 'url' => 'integrity_hash'
 	 *
+	 * Note: Ready POS uses WordPress bundled packages (react, react-dom) and does not load from external CDNs.
+	 * This array is kept for future extensibility if needed.
+	 *
 	 * @var array
 	 */
 	private static $known_hashes = array(
-		// React (if loaded from CDN)
-		'https://unpkg.com/react@18.2.0/umd/react.production.min.js' => 'sha384-/S8G8L2qeid4rFY/hHYo8kxZOmKuR+3rYPE0lDqFJ0qFjjqcH9CqGOJdOlH9F6KQ',
-		'https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js' => 'sha384-j8/fZ/dQS3rF8yM/ZsGZNjqVqHWvhL5dQqT6lTEqLhiNdCk6rX6pXr1eLQcDj/Gj',
+		// No external CDN resources currently used
 	);
 
 	/**
@@ -253,7 +254,7 @@ class SubresourceIntegrity {
 
 		// Get current screen
 		$screen = get_current_screen();
-		if ( ! $screen || strpos( $screen->id, 'ready-pos' ) === false ) {
+		if ( ! $screen || strpos( $screen->id, 'ready-pos-for-woocommerce' ) === false ) {
 			return;
 		}
 

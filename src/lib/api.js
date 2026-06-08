@@ -7,10 +7,10 @@
  */
 
 const getApiConfig = () => {
-  if (typeof readyPosAdmin !== "undefined") {
+  if (typeof readypos_admin !== "undefined") {
     return {
-      url: readyPosAdmin.apiUrl,
-      nonce: readyPosAdmin.restNonce,
+      url: readypos_admin.apiUrl,
+      nonce: readypos_admin.restNonce,
     };
   }
 

@@ -20,8 +20,8 @@ const createEmptyCart = (id, label) => ({
   coupons: [],
   notes: "",
   createdAt: Date.now(),
-  ownerId: typeof readyPosAdmin !== "undefined" ? readyPosAdmin.userInfo?.ID : null,
-  ownerName: typeof readyPosAdmin !== "undefined" ? readyPosAdmin.userInfo?.username : "Unknown",
+  ownerId: typeof readypos_admin !== "undefined" ? readypos_admin.userInfo?.ID : null,
+  ownerName: typeof readypos_admin !== "undefined" ? readypos_admin.userInfo?.username : "Unknown",
 });
 
 // All cart sessions

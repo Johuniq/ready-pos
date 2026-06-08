@@ -79,8 +79,8 @@ export default function LicensePage() {
 
   const upgradeUrl =
     lic.portalUrl ||
-    (typeof readyPosAdmin !== "undefined" && readyPosAdmin.upgradeUrl
-      ? readyPosAdmin.upgradeUrl
+    (typeof readypos_admin !== "undefined" && readypos_admin.upgradeUrl
+      ? readypos_admin.upgradeUrl
       : "");
 
   const isPro = lic.isPro;

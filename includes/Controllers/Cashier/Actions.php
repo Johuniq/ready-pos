@@ -21,6 +21,91 @@ class Actions {
 	const PIN_META_KEY = '_readypos_cashier_pin';
 
 	/**
+	 * Initialize session if needed.
+	 *
+	 * @return void
+	 */
+	private static function init_session() {
+		if ( session_status() === PHP_SESSION_NONE ) {
+			session_start();
+		}
+	}
+
+	/**
+	 * Get the active cashier ID from the current session.
+	 *
+	 * Returns the cashier ID if a cashier has logged in via PIN,
+	 * or the current WordPress user ID as a fallback.
+	 *
+	 * @return int User ID of the active cashier.
+	 */
+	public static function get_active_cashier_id() {
+		self::init_session();
+
+		// If a cashier has logged in via PIN, use that ID
+		if ( ! empty( $_SESSION['readypos_active_cashier_id'] ) ) {
+			return intval( $_SESSION['readypos_active_cashier_id'] );
+		}
+
+		// Otherwise, use the WordPress authenticated user
+		return get_current_user_id();
+	}
+
+	/**
+	 * Get information about the active cashier session.
+	 *
+	 * @return array|null Session info or null if no cashier session.
+	 */
+	public static function get_cashier_session_info() {
+		self::init_session();
+
+		if ( empty( $_SESSION['readypos_active_cashier_id'] ) ) {
+			return null;
+		}
+
+		return array(
+			'cashier_id'       => intval( $_SESSION['readypos_active_cashier_id'] ),
+			'authenticated_by' => intval( $_SESSION['readypos_authenticated_by'] ?? 0 ),
+			'login_time'       => intval( $_SESSION['readypos_cashier_login_time'] ?? 0 ),
+		);
+	}
+
+	/**
+	 * Clear the active cashier session.
+	 *
+	 * @return void
+	 */
+	public static function clear_cashier_session() {
+		self::init_session();
+
+		$cashier_id = self::get_active_cashier_id();
+
+		unset( $_SESSION['readypos_active_cashier_id'] );
+		unset( $_SESSION['readypos_cashier_login_time'] );
+		unset( $_SESSION['readypos_authenticated_by'] );
+
+		do_action( 'readypos_cashier_logout', $cashier_id );
+	}
+
+	/**
+	 * Logout endpoint for cashier PIN session.
+	 *
+	 * Clears the active cashier from the session without logging out
+	 * the WordPress user.
+	 *
+	 * @param \WP_REST_Request $request
+	 * @return \WP_REST_Response
+	 */
+	public function logout( \WP_REST_Request $request ) {
+		self::clear_cashier_session();
+
+		return new \WP_REST_Response(
+			array( 'success' => true ),
+			200
+		);
+	}
+
+	/**
 	 * Get all POS staff members (cashiers and POS managers only).
 	 *
 	 * Used by the Staff & Roles management page. Does NOT include
@@ -95,21 +180,58 @@ class Actions {
 	/**
 	 * Authenticate a cashier by PIN.
 	 *
-	 * On success, returns a short-lived token (WordPress application password
-	 * style nonce) that the frontend uses for subsequent API calls during
-	 * this cashier's session. Also returns the user's info.
+	 * SECURITY NOTE: This does NOT switch the WordPress user session.
+	 * Instead, it validates the PIN and stores the cashier ID in the
+	 * WordPress session for audit logging purposes only.
+	 *
+	 * The original logged-in user (admin/manager) remains authenticated
+	 * at the WordPress level. The cashier identity is used solely for:
+	 * - Audit trails (who processed the transaction)
+	 * - Register session tracking
+	 * - UI display purposes
+	 *
+	 * This approach is required by WordPress.org security guidelines.
 	 *
 	 * @param \WP_REST_Request $request
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function login( \WP_REST_Request $request ) {
+		// SECURITY FIX #WP.ORG-3: Verify the requesting user is already authenticated
+		// and has permission to access the POS terminal.
+		if ( ! is_user_logged_in() ) {
+			return new \WP_Error(
+				'not_authenticated',
+				__( 'You must be logged in to access the POS terminal.', 'ready-pos-for-woocommerce' ),
+				array( 'status' => 401 )
+			);
+		}
+
+		// Only users with POS access can use the cashier login feature
+		if ( ! current_user_can( 'use_pos' ) && ! current_user_can( 'manage_pos' ) ) {
+			return new \WP_Error(
+				'insufficient_permissions',
+				__( 'You do not have permission to access the POS terminal.', 'ready-pos-for-woocommerce' ),
+				array( 'status' => 403 )
+			);
+		}
+
+		// Verify nonce for CSRF protection
+		$nonce = $request->get_header( 'X-WP-Nonce' );
+		if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+			return new \WP_Error(
+				'invalid_nonce',
+				__( 'Security check failed. Please refresh the page.', 'ready-pos-for-woocommerce' ),
+				array( 'status' => 403 )
+			);
+		}
+
 		$user_id = intval( $request->get_param( 'userId' ) );
 		$pin     = sanitize_text_field( $request->get_param( 'pin' ) );
 
 		if ( ! $user_id || empty( $pin ) ) {
 			return new \WP_Error(
 				'invalid_input',
-				__( 'User ID and PIN are required.', 'ready-pos' ),
+				__( 'User ID and PIN are required.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -118,7 +240,7 @@ class Actions {
 		if ( ! $user || ! user_can( $user, 'use_pos' ) ) {
 			return new \WP_Error(
 				'invalid_user',
-				__( 'User not found or does not have POS access.', 'ready-pos' ),
+				__( 'User not found or does not have POS access.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 404 )
 			);
 		}
@@ -127,7 +249,7 @@ class Actions {
 		if ( empty( $stored_hash ) ) {
 			return new \WP_Error(
 				'no_pin',
-				__( 'This user has not set a PIN. Please set one from the user profile.', 'ready-pos' ),
+				__( 'This user has not set a PIN. Please set one from the user profile.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -143,14 +265,14 @@ class Actions {
 			if ( $attempts >= 5 ) {
 				return new \WP_Error(
 					'too_many_attempts',
-					__( 'Too many failed attempts. Please wait 15 minutes.', 'ready-pos' ),
+					__( 'Too many failed attempts. Please wait 15 minutes.', 'ready-pos-for-woocommerce' ),
 					array( 'status' => 429 )
 				);
 			}
 
 			return new \WP_Error(
 				'invalid_pin',
-				__( 'Incorrect PIN. Please try again.', 'ready-pos' ),
+				__( 'Incorrect PIN. Please try again.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 401 )
 			);
 		}
@@ -158,12 +280,16 @@ class Actions {
 		// Clear failed attempts on success.
 		delete_transient( 'readypos_pin_attempts_' . $user_id );
 
-		// Switch the current WordPress session to this user.
-		// This is safe because the terminal is already authenticated as an admin/manager.
-		wp_set_current_user( $user_id );
+		// SECURITY FIX #WP.ORG-3: Store active cashier ID in session (NOT wp_set_current_user)
+		// The WordPress user remains unchanged. We only track who's using the terminal
+		// for audit logging and UI display purposes.
+		self::init_session();
+		$_SESSION['readypos_active_cashier_id'] = $user_id;
+		$_SESSION['readypos_cashier_login_time'] = time();
+		$_SESSION['readypos_authenticated_by'] = get_current_user_id(); // Who authenticated this terminal
 
-		// Generate a fresh nonce for this user's session.
-		$nonce = wp_create_nonce( 'wp_rest' );
+		// Log the cashier login for audit trail
+		do_action( 'readypos_cashier_login', $user_id, get_current_user_id() );
 
 		return new \WP_REST_Response(
 			array(
@@ -175,7 +301,6 @@ class Actions {
 					'avatar'   => get_avatar_url( $user->ID, array( 'size' => 96 ) ),
 					'roles'    => (array) $user->roles,
 				),
-				'nonce'   => $nonce,
 				'license' => \Readypos\Core\License::frontend_data(),
 			),
 			200
@@ -195,14 +320,14 @@ class Actions {
 		$pin     = sanitize_text_field( $request->get_param( 'pin' ) );
 
 		if ( ! $user_id || empty( $pin ) ) {
-			return new \WP_Error( 'invalid_input', __( 'User ID and PIN are required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'invalid_input', __( 'User ID and PIN are required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		// Validate PIN format: 4-6 digits only.
 		if ( ! preg_match( '/^\d{4,6}$/', $pin ) ) {
 			return new \WP_Error(
 				'invalid_pin_format',
-				__( 'PIN must be 4-6 digits.', 'ready-pos' ),
+				__( 'PIN must be 4-6 digits.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 400 )
 			);
 		}
@@ -210,7 +335,7 @@ class Actions {
 		// Permission check: user can set their own PIN, or admin/manager can set anyone's.
 		$current_user_id = get_current_user_id();
 		if ( $current_user_id !== $user_id && ! current_user_can( 'manage_pos' ) ) {
-			return new \WP_Error( 'forbidden', __( 'You can only set your own PIN.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new \WP_Error( 'forbidden', __( 'You can only set your own PIN.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		// Hash the PIN with bcrypt (same as WordPress passwords).
@@ -230,7 +355,7 @@ class Actions {
 	 */
 	public function create( \WP_REST_Request $request ) {
 		if ( ! current_user_can( 'manage_pos' ) ) {
-			return new \WP_Error( 'forbidden', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new \WP_Error( 'forbidden', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$name     = sanitize_text_field( $request->get_param( 'name' ) );
@@ -240,15 +365,15 @@ class Actions {
 		$pin      = sanitize_text_field( $request->get_param( 'pin' ) );
 
 		if ( empty( $name ) || empty( $email ) ) {
-			return new \WP_Error( 'missing_fields', __( 'Name and email are required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'missing_fields', __( 'Name and email are required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		if ( ! in_array( $role, array( 'pos_cashier', 'pos_manager' ), true ) ) {
-			return new \WP_Error( 'invalid_role', __( 'Role must be pos_cashier or pos_manager.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'invalid_role', __( 'Role must be pos_cashier or pos_manager.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		if ( email_exists( $email ) ) {
-			return new \WP_Error( 'email_exists', __( 'A user with this email already exists.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'email_exists', __( 'A user with this email already exists.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		// Generate username from name.
@@ -303,12 +428,12 @@ class Actions {
 		$user_id = intval( $request->get_param( 'userId' ) );
 
 		if ( ! $user_id ) {
-			return new \WP_Error( 'invalid_input', __( 'User ID is required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'invalid_input', __( 'User ID is required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$current_user_id = get_current_user_id();
 		if ( $current_user_id !== $user_id && ! current_user_can( 'manage_pos' ) ) {
-			return new \WP_Error( 'forbidden', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new \WP_Error( 'forbidden', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		delete_user_meta( $user_id, self::PIN_META_KEY );

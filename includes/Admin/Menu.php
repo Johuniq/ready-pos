@@ -44,13 +44,13 @@ class Menu {
 	 */
 	public function menu() {
 		add_menu_page(
-			__( 'Ready POS', 'ready-pos' ),
-			__( 'Ready POS', 'ready-pos' ),
+			__( 'Ready POS', 'ready-pos-for-woocommerce' ),
+			__( 'Ready POS', 'ready-pos-for-woocommerce' ),
 			'use_pos',
 			$this->parent_slug,
 			array( $this, 'admin_page' ),
 			'dashicons-store',
-			3
+			56
 		);
 
 		$plugin_url = admin_url( '/admin.php?page=' . $this->parent_slug );
@@ -63,80 +63,80 @@ class Menu {
 		$submenu_pages = array(
 			array(
 				'parent_slug' => $this->parent_slug,
-				'page_title'  => __( 'POS Terminal', 'ready-pos' ),
-				'menu_title'  => __( 'POS Terminal', 'ready-pos' ),
+				'page_title'  => __( 'POS Terminal', 'ready-pos-for-woocommerce' ),
+				'menu_title'  => __( 'POS Terminal', 'ready-pos-for-woocommerce' ),
 				'capability'  => 'use_pos',
 				'menu_slug'   => $plugin_url . '/#/terminal',
 				'function'    => null,
 			),
 			array(
 				'parent_slug' => $this->parent_slug,
-				'page_title'  => __( 'Orders', 'ready-pos' ),
-				'menu_title'  => __( 'Orders', 'ready-pos' ),
+				'page_title'  => __( 'Orders', 'ready-pos-for-woocommerce' ),
+				'menu_title'  => __( 'Orders', 'ready-pos-for-woocommerce' ),
 				'capability'  => 'use_pos',
 				'menu_slug'   => $plugin_url . '/#/orders',
 				'function'    => null,
 			),
 			array(
 				'parent_slug' => $this->parent_slug,
-				'page_title'  => __( 'Customers', 'ready-pos' ),
-				'menu_title'  => __( 'Customers', 'ready-pos' ),
+				'page_title'  => __( 'Customers', 'ready-pos-for-woocommerce' ),
+				'menu_title'  => __( 'Customers', 'ready-pos-for-woocommerce' ),
 				'capability'  => 'manage_pos',
 				'menu_slug'   => $plugin_url . '/#/customers',
 				'function'    => null,
 			),
 			array(
 				'parent_slug' => $this->parent_slug,
-				'page_title'  => __( 'Inventory', 'ready-pos' ),
-				'menu_title'  => __( 'Inventory', 'ready-pos' ),
+				'page_title'  => __( 'Inventory', 'ready-pos-for-woocommerce' ),
+				'menu_title'  => __( 'Inventory', 'ready-pos-for-woocommerce' ),
 				'capability'  => 'manage_pos',
 				'menu_slug'   => $plugin_url . '/#/inventory',
 				'function'    => null,
 			),
 			array(
 				'parent_slug' => $this->parent_slug,
-				'page_title'  => __( 'Reports', 'ready-pos' ),
-				'menu_title'  => __( 'Reports', 'ready-pos' ),
+				'page_title'  => __( 'Reports', 'ready-pos-for-woocommerce' ),
+				'menu_title'  => __( 'Reports', 'ready-pos-for-woocommerce' ),
 				'capability'  => 'view_pos_reports',
 				'menu_slug'   => $plugin_url . '/#/reports',
 				'function'    => null,
 			),
 			array(
 				'parent_slug' => $this->parent_slug,
-				'page_title'  => __( 'Outlets', 'ready-pos' ),
-				'menu_title'  => __( 'Outlets', 'ready-pos' ),
+				'page_title'  => __( 'Outlets', 'ready-pos-for-woocommerce' ),
+				'menu_title'  => __( 'Outlets', 'ready-pos-for-woocommerce' ),
 				'capability'  => 'manage_pos',
 				'menu_slug'   => $plugin_url . '/#/outlets',
 				'function'    => null,
 			),
 			array(
 				'parent_slug' => $this->parent_slug,
-				'page_title'  => __( 'Settings', 'ready-pos' ),
-				'menu_title'  => __( 'Settings', 'ready-pos' ),
+				'page_title'  => __( 'Settings', 'ready-pos-for-woocommerce' ),
+				'menu_title'  => __( 'Settings', 'ready-pos-for-woocommerce' ),
 				'capability'  => 'manage_pos',
 				'menu_slug'   => $plugin_url . '/#/settings',
 				'function'    => null,
 			),
 			array(
 				'parent_slug' => $this->parent_slug,
-				'page_title'  => __( 'Hardware', 'ready-pos' ),
-				'menu_title'  => __( 'Hardware', 'ready-pos' ),
+				'page_title'  => __( 'Hardware', 'ready-pos-for-woocommerce' ),
+				'menu_title'  => __( 'Hardware', 'ready-pos-for-woocommerce' ),
 				'capability'  => 'manage_pos',
 				'menu_slug'   => $plugin_url . '/#/hardware',
 				'function'    => null,
 			),
 			array(
 				'parent_slug' => $this->parent_slug,
-				'page_title'  => __( 'Staff & Roles', 'ready-pos' ),
-				'menu_title'  => __( 'Staff & Roles', 'ready-pos' ),
+				'page_title'  => __( 'Staff & Roles', 'ready-pos-for-woocommerce' ),
+				'menu_title'  => __( 'Staff & Roles', 'ready-pos-for-woocommerce' ),
 				'capability'  => 'manage_pos',
 				'menu_slug'   => $plugin_url . '/#/staff',
 				'function'    => null,
 			),
 			array(
 				'parent_slug' => $this->parent_slug,
-				'page_title'  => __( 'License', 'ready-pos' ),
-				'menu_title'  => __( 'License', 'ready-pos' ),
+				'page_title'  => __( 'License', 'ready-pos-for-woocommerce' ),
+				'menu_title'  => __( 'License', 'ready-pos-for-woocommerce' ),
 				'capability'  => 'manage_options',
 				'menu_slug'   => $plugin_url . '/#/license',
 				'function'    => null,
@@ -164,7 +164,7 @@ class Menu {
 	 */
 	public function admin_page() {
 		if ( ! current_user_can( 'use_pos' ) ) {
-			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'ready-pos' ) );
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'ready-pos-for-woocommerce' ) );
 		}
 		?>
 		<div id="myplugin" class="readypos-app"></div>

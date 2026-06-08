@@ -91,12 +91,12 @@ export default function POSHeader({
   };
 
   const userName =
-    typeof readyPosAdmin !== "undefined"
-      ? readyPosAdmin.userInfo.username
+    typeof readypos_admin !== "undefined"
+      ? readypos_admin.userInfo.username
       : "Cashier";
   const userRole =
-    typeof readyPosAdmin !== "undefined"
-      ? readyPosAdmin.userInfo.roles.join(", ")
+    typeof readypos_admin !== "undefined"
+      ? readypos_admin.userInfo.roles.join(", ")
       : "Staff";
 
   const handleOpenCustomerDisplay = () => {
@@ -139,7 +139,7 @@ export default function POSHeader({
           href="#/dashboard"
           className="flex items-center gap-2 font-bold text-base text-primary shrink-0">
           <img 
-            src={typeof readyPosAdmin !== 'undefined' ? `${readyPosAdmin.pluginUrl}/assets/images/pos.png` : '/wp-content/plugins/ready-pos/assets/images/pos.png'}
+            src={typeof readypos_admin !== 'undefined' ? `${readypos_admin.pluginUrl}/assets/images/pos.png` : '/wp-content/plugins/ready-pos/assets/images/pos.png'}
             alt="Ready POS"
             className="w-7 h-7 object-contain"
           />

@@ -39,7 +39,7 @@ class DefaultOutlet {
 				'phone'          => '',
 				'email'          => get_option( 'admin_email', '' ),
 				'receipt_header' => get_bloginfo( 'name' ) ?: 'Main Store',
-				'receipt_footer' => __( 'Thank you for your purchase!', 'ready-pos' ),
+				'receipt_footer' => __( 'Thank you for your purchase!', 'ready-pos-for-woocommerce' ),
 				'status'         => 'active',
 			)
 		);
@@ -47,7 +47,7 @@ class DefaultOutlet {
 		POSRegister::create(
 			array(
 				'outlet_id' => $outlet->id,
-				'name'      => __( 'Register 1', 'ready-pos' ),
+				'name'      => __( 'Register 1', 'ready-pos-for-woocommerce' ),
 				'status'    => 'closed',
 			)
 		);

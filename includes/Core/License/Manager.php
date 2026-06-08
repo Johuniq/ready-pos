@@ -239,19 +239,19 @@ class Manager {
 	public static function activate( $key ) {
 		$key = trim( sanitize_text_field( $key ) );
 		if ( empty( $key ) ) {
-			return new \WP_Error( 'empty_key', __( 'License key is required.', 'ready-pos' ) );
+			return new \WP_Error( 'empty_key', __( 'License key is required.', 'ready-pos-for-woocommerce' ) );
 		}
 
 		// Prefix Validation: ReadyPOS license keys must begin with RP.
 		if ( strpos( $key, 'RP' ) !== 0 ) {
-			return new \WP_Error( 'invalid_prefix', __( 'Invalid license key format. Key must start with RP.', 'ready-pos' ) );
+			return new \WP_Error( 'invalid_prefix', __( 'Invalid license key format. Key must start with RP.', 'ready-pos-for-woocommerce' ) );
 		}
 
 		$server = self::server();
 		if ( ! $server ) {
 			return new \WP_Error(
 				'no_server',
-				__( 'License server is not configured. Please contact support.', 'ready-pos' )
+				__( 'License server is not configured. Please contact support.', 'ready-pos-for-woocommerce' )
 			);
 		}
 
@@ -333,7 +333,7 @@ class Manager {
 
 		$server = self::server();
 		if ( ! $server ) {
-			return new \WP_Error( 'no_server', __( 'License server is not configured.', 'ready-pos' ) );
+			return new \WP_Error( 'no_server', __( 'License server is not configured.', 'ready-pos-for-woocommerce' ) );
 		}
 
 		$result = $server->validate( $key, home_url() );

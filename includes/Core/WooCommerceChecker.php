@@ -57,7 +57,7 @@ class WooCommerceChecker {
 	 */
 	public function render_wc_missing_notice() {
 		$class   = 'notice notice-error';
-		$message = __( 'Ready POS requires WooCommerce to be installed and active. Please install or activate WooCommerce to use Ready POS.', 'ready-pos' );
+		$message = __( 'Ready POS requires WooCommerce to be installed and active. Please install or activate WooCommerce to use Ready POS.', 'ready-pos-for-woocommerce' );
 
 		printf( '<div class="%1$s"><p>%2$s</p></div>', esc_attr( $class ), esc_html( $message ) );
 	}

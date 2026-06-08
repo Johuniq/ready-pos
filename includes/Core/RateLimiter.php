@@ -78,7 +78,7 @@ class RateLimiter {
 				'rate_limit_exceeded',
 				sprintf(
 					/* translators: %d: minutes remaining */
-					__( 'Too many requests. Please try again in %d minutes.', 'ready-pos' ),
+					__( 'Too many requests. Please try again in %d minutes.', 'ready-pos-for-woocommerce' ),
 					ceil( $remaining / 60 )
 				),
 				array(
@@ -134,7 +134,7 @@ class RateLimiter {
 				'rate_limit_exceeded',
 				sprintf(
 					/* translators: %d: minutes */
-					__( 'Too many requests. Your access has been temporarily restricted for %d minutes.', 'ready-pos' ),
+					__( 'Too many requests. Your access has been temporarily restricted for %d minutes.', 'ready-pos-for-woocommerce' ),
 					ceil( self::LOCKOUT_DURATION / 60 )
 				),
 				array(

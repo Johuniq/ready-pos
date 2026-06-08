@@ -121,8 +121,8 @@ export const printReceipt = (order, settings = {}) => {
   const dateStr = order.date || new Date().toLocaleString();
   const cashierName =
     order.cashier_name ||
-    (typeof readyPosAdmin !== "undefined"
-      ? readyPosAdmin.userInfo.username
+    (typeof readypos_admin !== "undefined"
+      ? readypos_admin.userInfo.username
       : "Cashier");
 
   const itemsHtml = order.items

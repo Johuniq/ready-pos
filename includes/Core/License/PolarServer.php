@@ -62,7 +62,7 @@ class PolarServer implements Server {
 			'meta'            => array(
 				'site_url' => $site_url,
 				'site_host' => $conditions['site_host'],
-				'plugin'   => 'ready-pos',
+				'plugin'   => 'ready-pos-for-woocommerce',
 				'version'  => defined( 'READYPOS_VERSION' ) ? READYPOS_VERSION : '1.0.0',
 			),
 		);
@@ -74,7 +74,7 @@ class PolarServer implements Server {
 
 		$activation_id = $response['id'] ?? '';
 		if ( empty( $activation_id ) ) {
-			return new \WP_Error( 'invalid_response', __( 'Polar did not return an activation ID.', 'ready-pos' ) );
+			return new \WP_Error( 'invalid_response', __( 'Polar did not return an activation ID.', 'ready-pos-for-woocommerce' ) );
 		}
 
 		// Persist the Polar activation ID before validation. Polar validation
@@ -103,7 +103,7 @@ class PolarServer implements Server {
 				'license_site_limit_exceeded',
 				sprintf(
 					/* translators: 1: usage count, 2: allowed site limit */
-					__( 'This license is already active on the maximum number of sites (%1$d/%2$d). Deactivate it on another site first.', 'ready-pos' ),
+					__( 'This license is already active on the maximum number of sites (%1$d/%2$d). Deactivate it on another site first.', 'ready-pos-for-woocommerce' ),
 					$usage_count,
 					$usage_limit
 				)
@@ -203,7 +203,7 @@ class PolarServer implements Server {
 				'license_site_limit_exceeded',
 				sprintf(
 					/* translators: 1: usage count, 2: allowed site limit */
-					__( 'This license is already active on the maximum number of sites (%1$d/%2$d). Deactivate it on another site first.', 'ready-pos' ),
+					__( 'This license is already active on the maximum number of sites (%1$d/%2$d). Deactivate it on another site first.', 'ready-pos-for-woocommerce' ),
 					$usage_count,
 					$usage_limit
 				)
@@ -251,10 +251,10 @@ class PolarServer implements Server {
 	 */
 	private function call( $path, $body ) {
 		if ( empty( $this->token ) ) {
-			return new \WP_Error( 'no_token', __( 'Polar API token is not configured.', 'ready-pos' ) );
+			return new \WP_Error( 'no_token', __( 'Polar API token is not configured.', 'ready-pos-for-woocommerce' ) );
 		}
 		if ( empty( $this->organization_id ) ) {
-			return new \WP_Error( 'no_org', __( 'Polar organization ID is not configured.', 'ready-pos' ) );
+			return new \WP_Error( 'no_org', __( 'Polar organization ID is not configured.', 'ready-pos-for-woocommerce' ) );
 		}
 
 		$response = wp_remote_post(
@@ -286,7 +286,7 @@ class PolarServer implements Server {
 		}
 
 		if ( ! is_array( $decoded ) ) {
-			return new \WP_Error( 'invalid_response', __( 'Unexpected response from license server.', 'ready-pos' ) );
+			return new \WP_Error( 'invalid_response', __( 'Unexpected response from license server.', 'ready-pos-for-woocommerce' ) );
 		}
 
 		return $decoded;
@@ -294,7 +294,7 @@ class PolarServer implements Server {
 
 	private function call_get( $path ) {
 		if ( empty( $this->token ) ) {
-			return new \WP_Error( 'no_token', __( 'Polar API token is not configured.', 'ready-pos' ) );
+			return new \WP_Error( 'no_token', __( 'Polar API token is not configured.', 'ready-pos-for-woocommerce' ) );
 		}
 
 		$response = wp_remote_get(
@@ -321,7 +321,7 @@ class PolarServer implements Server {
 			return new \WP_Error( 'polar_get_failed', $this->extract_error_message( $decoded, $status ) );
 		}
 
-		return is_array( $decoded ) ? $decoded : new \WP_Error( 'invalid_response', __( 'Unexpected response from license server.', 'ready-pos' ) );
+		return is_array( $decoded ) ? $decoded : new \WP_Error( 'invalid_response', __( 'Unexpected response from license server.', 'ready-pos-for-woocommerce' ) );
 	}
 
 	private function fetch_license_key( $license_key_id ) {
@@ -344,16 +344,16 @@ class PolarServer implements Server {
 		}
 		switch ( $status ) {
 			case 401:
-				return __( 'Polar API token is invalid or expired.', 'ready-pos' );
+				return __( 'Polar API token is invalid or expired.', 'ready-pos-for-woocommerce' );
 			case 403:
-				return __( 'Polar API token does not have permission to manage license keys.', 'ready-pos' );
+				return __( 'Polar API token does not have permission to manage license keys.', 'ready-pos-for-woocommerce' );
 			case 404:
-				return __( 'License key not found. Check that the key is correct.', 'ready-pos' );
+				return __( 'License key not found. Check that the key is correct.', 'ready-pos-for-woocommerce' );
 			case 422:
-				return __( 'License key was rejected by the server.', 'ready-pos' );
+				return __( 'License key was rejected by the server.', 'ready-pos-for-woocommerce' );
 			default:
 				/* translators: %d: HTTP status code */
-				return sprintf( __( 'License server returned status %d', 'ready-pos' ), $status );
+				return sprintf( __( 'License server returned status %d', 'ready-pos-for-woocommerce' ), $status );
 		}
 	}
 
@@ -366,7 +366,7 @@ class PolarServer implements Server {
 	 */
 	private function normalize_license( $lk, $context = array() ) {
 		if ( ! is_array( $lk ) || empty( $lk['id'] ) ) {
-			return new \WP_Error( 'invalid_response', __( 'Polar response did not include license details.', 'ready-pos' ) );
+			return new \WP_Error( 'invalid_response', __( 'Polar response did not include license details.', 'ready-pos-for-woocommerce' ) );
 		}
 
 		$subscription = $this->fetch_subscription_for_license( $lk, $context );
@@ -381,7 +381,7 @@ class PolarServer implements Server {
 				'license_failed',
 				sprintf(
 					/* translators: %s: status from Polar (revoked, disabled, etc.) */
-					__( 'License is not active on Polar (status: %s).', 'ready-pos' ),
+					__( 'License is not active on Polar (status: %s).', 'ready-pos-for-woocommerce' ),
 					$polar_status
 				)
 			);

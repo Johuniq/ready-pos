@@ -39,7 +39,7 @@ class Actions {
 		$notes        = sanitize_text_field( $request->get_param( 'notes' ) );
 
 		if ( empty( $register_id ) || empty( $outlet_id ) ) {
-			return new \WP_Error( 'missing_fields', __( 'Outlet ID and Register ID are required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'missing_fields', __( 'Outlet ID and Register ID are required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		// Check if register is already open
@@ -48,7 +48,7 @@ class Actions {
 			->first();
 
 		if ( $active_session ) {
-			return new \WP_Error( 'already_open', __( 'This register is already open in another session.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'already_open', __( 'This register is already open in another session.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		// Create session
@@ -114,7 +114,7 @@ class Actions {
 
 		$session = POSSession::find( $session_id );
 		if ( ! $session || 'closed' === $session->status ) {
-			return new \WP_Error( 'invalid_session', __( 'Active session not found or already closed.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'invalid_session', __( 'Active session not found or already closed.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		// Close session and update stats
@@ -227,8 +227,8 @@ class Actions {
 
 			$history[] = array(
 				'id'            => $session->id,
-				'cashier'       => $user ? $user->display_name : __( 'Unknown', 'ready-pos' ),
-				'register_name' => $register ? $register->name : __( 'Register', 'ready-pos' ),
+				'cashier'       => $user ? $user->display_name : __( 'Unknown', 'ready-pos-for-woocommerce' ),
+				'register_name' => $register ? $register->name : __( 'Register', 'ready-pos-for-woocommerce' ),
 				'opening_cash'  => floatval( $session->opening_cash ),
 				'closing_cash'  => floatval( $session->closing_cash ),
 				'total_sales'   => floatval( $session->total_sales ),
@@ -256,11 +256,11 @@ class Actions {
 		$reason     = sanitize_text_field( $request->get_param( 'reason' ) );
 
 		if ( empty( $session_id ) || empty( $type ) || $amount <= 0 ) {
-			return new \WP_Error( 'missing_fields', __( 'Session ID, type, and valid amount are required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'missing_fields', __( 'Session ID, type, and valid amount are required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		if ( ! in_array( $type, array( 'in', 'out' ), true ) ) {
-			return new \WP_Error( 'invalid_type', __( 'Type must be "in" or "out".', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'invalid_type', __( 'Type must be "in" or "out".', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		global $wpdb;
@@ -281,7 +281,7 @@ class Actions {
 		}
 
 		if ( ! $session ) {
-			return new \WP_Error( 'invalid_session', __( 'Active session not found.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'invalid_session', __( 'Active session not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		// Determine adjustment direction
@@ -316,7 +316,7 @@ class Actions {
 		);
 
 		if ( ! $updated ) {
-			return new \WP_Error( 'update_failed', __( 'Failed to update session. Session may have been closed.', 'ready-pos' ), array( 'status' => 500 ) );
+			return new \WP_Error( 'update_failed', __( 'Failed to update session. Session may have been closed.', 'ready-pos-for-woocommerce' ), array( 'status' => 500 ) );
 		}
 
 		wp_cache_delete( $session_cache_key, 'readypos_sessions' );
@@ -364,7 +364,7 @@ class Actions {
 		if ( empty( $session_id ) ) {
 			return new \WP_Error( 
 				'session_required', 
-				__( 'An active session is required to open the cash drawer.', 'ready-pos' ), 
+				__( 'An active session is required to open the cash drawer.', 'ready-pos-for-woocommerce' ), 
 				array( 'status' => 400 ) 
 			);
 		}
@@ -373,7 +373,7 @@ class Actions {
 		if ( ! current_user_can( 'use_pos' ) && ! current_user_can( 'manage_pos' ) ) {
 			return new \WP_Error(
 				'unauthorized',
-				__( 'You do not have permission to open the cash drawer.', 'ready-pos' ),
+				__( 'You do not have permission to open the cash drawer.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -383,7 +383,7 @@ class Actions {
 		if ( ! $session || 'open' !== $session->status ) {
 			return new \WP_Error( 
 				'invalid_session', 
-				__( 'Session not found or not active.', 'ready-pos' ), 
+				__( 'Session not found or not active.', 'ready-pos-for-woocommerce' ), 
 				array( 'status' => 400 ) 
 			);
 		}

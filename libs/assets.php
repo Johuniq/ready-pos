@@ -191,8 +191,10 @@ function inject_react_refresh_preamble_script( object $manifest ): void {
 
 	$react_refresh_script_src = generate_development_asset_src( $manifest, '@react-refresh' );
 	$script_position          = 'after';
+	// SECURITY FIX #WP.ORG-4: Escape URL properly for JavaScript context
+	$escaped_src = esc_js( $react_refresh_script_src );
 	// Use standard string concatenation instead of heredoc
-	$script = 'import RefreshRuntime from "' . $react_refresh_script_src . '";' . "\n"
+	$script = 'import RefreshRuntime from "' . $escaped_src . '";' . "\n"
 		. 'RefreshRuntime.injectIntoGlobalHook(window);' . "\n"
 		. 'window.$RefreshReg$ = () => {};' . "\n"
 		. 'window.$RefreshSig$ = () => (type) => type;' . "\n"

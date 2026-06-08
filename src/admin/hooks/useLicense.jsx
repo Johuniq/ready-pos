@@ -10,8 +10,8 @@ import { api, onLicenseError } from "@/lib/api";
 const LicenseContext = createContext(null);
 
 const initialFromGlobal = () => {
-  if (typeof readyPosAdmin !== "undefined" && readyPosAdmin.license) {
-    return readyPosAdmin.license;
+  if (typeof readypos_admin !== "undefined" && readypos_admin.license) {
+    return readypos_admin.license;
   }
   return {
     plan: "free",
@@ -57,8 +57,8 @@ export function LicenseProvider({ children }) {
     try {
       const data = await api.get("/license/get");
       setLicense(data);
-      if (typeof readyPosAdmin !== "undefined") {
-        readyPosAdmin.license = data;
+      if (typeof readypos_admin !== "undefined") {
+        readypos_admin.license = data;
       }
     } catch (err) {
       
@@ -138,8 +138,8 @@ export function LicenseProvider({ children }) {
     const res = await api.post("/license/activate", { key });
     if (res?.success && res?.data) {
       setLicense(res.data);
-      if (typeof readyPosAdmin !== "undefined") {
-        readyPosAdmin.license = res.data;
+      if (typeof readypos_admin !== "undefined") {
+        readypos_admin.license = res.data;
       }
       return true;
     }
@@ -150,8 +150,8 @@ export function LicenseProvider({ children }) {
     const res = await api.post("/license/deactivate", {});
     if (res?.success && res?.data) {
       setLicense(res.data);
-      if (typeof readyPosAdmin !== "undefined") {
-        readyPosAdmin.license = res.data;
+      if (typeof readypos_admin !== "undefined") {
+        readypos_admin.license = res.data;
       }
       return true;
     }
@@ -162,8 +162,8 @@ export function LicenseProvider({ children }) {
     const res = await api.post("/license/revalidate", {});
     if (res?.success && res?.data) {
       setLicense(res.data);
-      if (typeof readyPosAdmin !== "undefined") {
-        readyPosAdmin.license = res.data;
+      if (typeof readypos_admin !== "undefined") {
+        readypos_admin.license = res.data;
       }
       return true;
     }

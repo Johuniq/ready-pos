@@ -32,7 +32,7 @@ class Actions {
 		if ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'manage_pos' ) ) {
 			return new \WP_Error(
 				'insufficient_permissions',
-				__( 'You do not have permission to view return settings.', 'ready-pos' ),
+				__( 'You do not have permission to view return settings.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -60,14 +60,14 @@ class Actions {
 	 */
 	private function get_return_reasons() {
 		$default_reasons = array(
-			'defective'         => __( 'Defective or Damaged', 'ready-pos' ),
-			'wrong_item'        => __( 'Wrong Item Received', 'ready-pos' ),
-			'not_as_described'  => __( 'Not as Described', 'ready-pos' ),
-			'changed_mind'      => __( 'Changed Mind', 'ready-pos' ),
-			'better_price'      => __( 'Found Better Price', 'ready-pos' ),
-			'no_longer_needed'  => __( 'No Longer Needed', 'ready-pos' ),
-			'size_issue'        => __( 'Size/Fit Issue', 'ready-pos' ),
-			'other'             => __( 'Other', 'ready-pos' ),
+			'defective'         => __( 'Defective or Damaged', 'ready-pos-for-woocommerce' ),
+			'wrong_item'        => __( 'Wrong Item Received', 'ready-pos-for-woocommerce' ),
+			'not_as_described'  => __( 'Not as Described', 'ready-pos-for-woocommerce' ),
+			'changed_mind'      => __( 'Changed Mind', 'ready-pos-for-woocommerce' ),
+			'better_price'      => __( 'Found Better Price', 'ready-pos-for-woocommerce' ),
+			'no_longer_needed'  => __( 'No Longer Needed', 'ready-pos-for-woocommerce' ),
+			'size_issue'        => __( 'Size/Fit Issue', 'ready-pos-for-woocommerce' ),
+			'other'             => __( 'Other', 'ready-pos-for-woocommerce' ),
 		);
 
 		$custom_reasons = get_option( 'readypos_return_reasons', array() );
@@ -88,7 +88,7 @@ class Actions {
 		if ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'manage_pos' ) ) {
 			return new \WP_Error(
 				'insufficient_permissions',
-				__( 'You do not have permission to view returns.', 'ready-pos' ),
+				__( 'You do not have permission to view returns.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -180,7 +180,7 @@ class Actions {
 		if ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'manage_pos' ) ) {
 			return new \WP_Error(
 				'insufficient_permissions',
-				__( 'You do not have permission to view return details.', 'ready-pos' ),
+				__( 'You do not have permission to view return details.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -189,7 +189,7 @@ class Actions {
 		$return = POSReturn::find( $id );
 
 		if ( ! $return ) {
-			return new \WP_Error( 'not_found', __( 'Return not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Return not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		// Get original order details
@@ -232,7 +232,7 @@ class Actions {
 		$order    = wc_get_order( $order_id );
 
 		if ( ! $order ) {
-			return new \WP_Error( 'not_found', __( 'Order not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Order not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		$eligible = true;
@@ -241,7 +241,7 @@ class Actions {
 		// Check if returns are enabled
 		if ( get_option( 'readypos_enable_returns', 'yes' ) !== 'yes' ) {
 			$eligible = false;
-			$reasons[] = __( 'Returns are currently disabled.', 'ready-pos' );
+			$reasons[] = __( 'Returns are currently disabled.', 'ready-pos-for-woocommerce' );
 		}
 
 		// Check time limit
@@ -254,7 +254,7 @@ class Actions {
 				$eligible = false;
 				$reasons[] = sprintf(
 					/* translators: %d: number of days */
-					__( 'Return window expired. Returns must be made within %d days.', 'ready-pos' ),
+					__( 'Return window expired. Returns must be made within %d days.', 'ready-pos-for-woocommerce' ),
 					$time_limit
 				);
 			}
@@ -263,14 +263,14 @@ class Actions {
 		// Check if already fully refunded
 		if ( $order->get_total_refunded() >= $order->get_total() ) {
 			$eligible = false;
-			$reasons[] = __( 'Order has already been fully refunded.', 'ready-pos' );
+			$reasons[] = __( 'Order has already been fully refunded.', 'ready-pos-for-woocommerce' );
 		}
 
 		// Check order status
 		$allowed_statuses = array( 'completed', 'processing' );
 		if ( ! in_array( $order->get_status(), $allowed_statuses, true ) ) {
 			$eligible = false;
-			$reasons[] = __( 'Order status does not allow returns.', 'ready-pos' );
+			$reasons[] = __( 'Order status does not allow returns.', 'ready-pos-for-woocommerce' );
 		}
 
 		return new WP_REST_Response(
@@ -295,7 +295,7 @@ class Actions {
 		if ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'manage_pos' ) ) {
 			return new \WP_Error(
 				'insufficient_permissions',
-				__( 'You do not have permission to process returns.', 'ready-pos' ),
+				__( 'You do not have permission to process returns.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -309,7 +309,7 @@ class Actions {
 
 		$order = wc_get_order( $order_id );
 		if ( ! $order ) {
-			return new \WP_Error( 'not_found', __( 'Order not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Order not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		// Calculate return amount
@@ -409,7 +409,7 @@ class Actions {
 		$order->add_order_note(
 			sprintf(
 				/* translators: 1: return type, 2: amount, 3: cashier name */
-				__( 'POS %1$s of %2$s processed by %3$s. Reason: %4$s', 'ready-pos' ),
+				__( 'POS %1$s of %2$s processed by %3$s. Reason: %4$s', 'ready-pos-for-woocommerce' ),
 				ucfirst( $return_type ),
 				wc_price( $refund_amount ),
 				$current_user->display_name,
@@ -440,7 +440,7 @@ class Actions {
 		if ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'manage_pos' ) ) {
 			return new \WP_Error(
 				'insufficient_permissions',
-				__( 'You do not have permission to process exchanges.', 'ready-pos' ),
+				__( 'You do not have permission to process exchanges.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}
@@ -451,12 +451,12 @@ class Actions {
 
 		$return = POSReturn::find( $return_id );
 		if ( ! $return ) {
-			return new \WP_Error( 'not_found', __( 'Return not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Return not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		$original_order = wc_get_order( $return->original_order_id );
 		if ( ! $original_order ) {
-			return new \WP_Error( 'not_found', __( 'Original order not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new \WP_Error( 'not_found', __( 'Original order not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		// Calculate new order total
@@ -493,7 +493,7 @@ class Actions {
 			$new_order->add_order_note(
 				sprintf(
 					/* translators: 1: credit amount, 2: return ID */
-					__( 'Exchange credit of %1$s applied from return #%2$d', 'ready-pos' ),
+					__( 'Exchange credit of %1$s applied from return #%2$d', 'ready-pos-for-woocommerce' ),
 					wc_price( $credit_amount ),
 					$return_id
 				)
@@ -564,7 +564,7 @@ class Actions {
 				$order->add_order_note(
 					sprintf(
 						/* translators: 1: product name, 2: quantity */
-						__( 'Restocked %1$s x %2$d', 'ready-pos' ),
+						__( 'Restocked %1$s x %2$d', 'ready-pos-for-woocommerce' ),
 						$product->get_name(),
 						$item['quantity']
 					)
@@ -601,7 +601,7 @@ class Actions {
 			'amount'    => $amount,
 			'order_id'  => $order_id,
 			'date'      => current_time( 'mysql' ),
-			'note'      => __( 'Return credit', 'ready-pos' ),
+			'note'      => __( 'Return credit', 'ready-pos-for-woocommerce' ),
 		);
 
 		update_user_meta( $customer_id, 'readypos_store_credit_transactions', $transactions );

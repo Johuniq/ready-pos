@@ -46,7 +46,7 @@ class AdvancedActions {
 	 */
 	public function get_suppliers( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$page     = $request->get_param( 'page' ) ?: 1;
@@ -115,20 +115,20 @@ class AdvancedActions {
 	 */
 	public function create_supplier( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$supplier_code = sanitize_text_field( $request->get_param( 'supplier_code' ) );
 		$supplier_name = sanitize_text_field( $request->get_param( 'supplier_name' ) );
 
 		if ( empty( $supplier_code ) || empty( $supplier_name ) ) {
-			return new WP_Error( 'missing_fields', __( 'Supplier code and name are required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new WP_Error( 'missing_fields', __( 'Supplier code and name are required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		// Check for duplicate code
 		$existing = POSSupplier::where( 'supplier_code', $supplier_code )->first();
 		if ( $existing ) {
-			return new WP_Error( 'duplicate_code', __( 'Supplier code already exists.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new WP_Error( 'duplicate_code', __( 'Supplier code already exists.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$supplier = POSSupplier::create(
@@ -166,14 +166,14 @@ class AdvancedActions {
 	 */
 	public function update_supplier( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$id = intval( $request->get_param( 'id' ) );
 		$supplier = POSSupplier::find( $id );
 
 		if ( ! $supplier ) {
-			return new WP_Error( 'not_found', __( 'Supplier not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new WP_Error( 'not_found', __( 'Supplier not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		$supplier->supplier_name  = sanitize_text_field( $request->get_param( 'supplier_name' ) ) ?: $supplier->supplier_name;
@@ -208,7 +208,7 @@ class AdvancedActions {
 	 */
 	public function get_purchase_orders( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$page     = $request->get_param( 'page' ) ?: 1;
@@ -252,7 +252,7 @@ class AdvancedActions {
 	 */
 	public function create_purchase_order( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$supplier_id = intval( $request->get_param( 'supplier_id' ) );
@@ -260,7 +260,7 @@ class AdvancedActions {
 		$items       = $request->get_param( 'items' );
 
 		if ( empty( $supplier_id ) || empty( $outlet_id ) || empty( $items ) ) {
-			return new WP_Error( 'missing_fields', __( 'Supplier, outlet, and items are required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new WP_Error( 'missing_fields', __( 'Supplier, outlet, and items are required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		// Generate PO number
@@ -308,7 +308,7 @@ class AdvancedActions {
 	 */
 	public function update_po_status( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$id     = intval( $request->get_param( 'id' ) );
@@ -316,7 +316,7 @@ class AdvancedActions {
 
 		$po = POSPurchaseOrder::find( $id );
 		if ( ! $po ) {
-			return new WP_Error( 'not_found', __( 'Purchase order not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new WP_Error( 'not_found', __( 'Purchase order not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		$po->status = $status;
@@ -392,7 +392,7 @@ class AdvancedActions {
 	 */
 	public function get_stock_transfers( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$page     = $request->get_param( 'page' ) ?: 1;
@@ -439,7 +439,7 @@ class AdvancedActions {
 	 */
 	public function create_stock_transfer( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$from_outlet_id = intval( $request->get_param( 'from_outlet_id' ) );
@@ -448,11 +448,11 @@ class AdvancedActions {
 		$skip_approval  = $request->get_param( 'skip_approval' ) === true; // Manager override
 
 		if ( empty( $from_outlet_id ) || empty( $to_outlet_id ) || empty( $items ) ) {
-			return new WP_Error( 'missing_fields', __( 'Source outlet, destination outlet, and items are required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new WP_Error( 'missing_fields', __( 'Source outlet, destination outlet, and items are required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		if ( $from_outlet_id === $to_outlet_id ) {
-			return new WP_Error( 'same_outlet', __( 'Cannot transfer to the same outlet.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new WP_Error( 'same_outlet', __( 'Cannot transfer to the same outlet.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		// Validate stock availability
@@ -467,7 +467,7 @@ class AdvancedActions {
 					'insufficient_stock',
 					sprintf(
 						/* translators: %s: product name */
-						__( 'Insufficient stock for %s', 'ready-pos' ),
+						__( 'Insufficient stock for %s', 'ready-pos-for-woocommerce' ),
 						$product ? $product->get_name() : 'Product #' . $item['product_id']
 					),
 					array( 'status' => 400 )
@@ -542,18 +542,18 @@ class AdvancedActions {
 	 */
 	public function approve_transfer( WP_REST_Request $request ) {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Only managers can approve transfers.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Only managers can approve transfers.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$id = intval( $request->get_param( 'id' ) );
 		$transfer = POSStockTransfer::find( $id );
 
 		if ( ! $transfer ) {
-			return new WP_Error( 'not_found', __( 'Stock transfer not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new WP_Error( 'not_found', __( 'Stock transfer not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		if ( $transfer->status !== 'pending' ) {
-			return new WP_Error( 'invalid_status', __( 'Transfer is not pending approval.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new WP_Error( 'invalid_status', __( 'Transfer is not pending approval.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		// Check stock availability again
@@ -569,7 +569,7 @@ class AdvancedActions {
 					'insufficient_stock',
 					sprintf(
 						/* translators: %s: product name */
-						__( 'Stock no longer available for %s', 'ready-pos' ),
+						__( 'Stock no longer available for %s', 'ready-pos-for-woocommerce' ),
 						$product ? $product->get_name() : 'Product #' . $item['product_id']
 					),
 					array( 'status' => 400 )
@@ -612,7 +612,7 @@ class AdvancedActions {
 	 */
 	public function reject_transfer( WP_REST_Request $request ) {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Only managers can reject transfers.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Only managers can reject transfers.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$id = intval( $request->get_param( 'id' ) );
@@ -621,11 +621,11 @@ class AdvancedActions {
 		$transfer = POSStockTransfer::find( $id );
 
 		if ( ! $transfer ) {
-			return new WP_Error( 'not_found', __( 'Stock transfer not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new WP_Error( 'not_found', __( 'Stock transfer not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		if ( $transfer->status !== 'pending' ) {
-			return new WP_Error( 'invalid_status', __( 'Transfer is not pending approval.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new WP_Error( 'invalid_status', __( 'Transfer is not pending approval.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$current_user = wp_get_current_user();
@@ -662,7 +662,7 @@ class AdvancedActions {
 	 */
 	public function ship_transfer( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$id = intval( $request->get_param( 'id' ) );
@@ -673,11 +673,11 @@ class AdvancedActions {
 		$transfer = POSStockTransfer::find( $id );
 
 		if ( ! $transfer ) {
-			return new WP_Error( 'not_found', __( 'Stock transfer not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new WP_Error( 'not_found', __( 'Stock transfer not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		if ( $transfer->status !== 'approved' ) {
-			return new WP_Error( 'invalid_status', __( 'Transfer must be approved before shipping.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new WP_Error( 'invalid_status', __( 'Transfer must be approved before shipping.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$transfer->status = 'in_transit';
@@ -720,7 +720,7 @@ class AdvancedActions {
 	 */
 	public function receive_transfer( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$id = intval( $request->get_param( 'id' ) );
@@ -730,11 +730,11 @@ class AdvancedActions {
 		$transfer = POSStockTransfer::find( $id );
 
 		if ( ! $transfer ) {
-			return new WP_Error( 'not_found', __( 'Stock transfer not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new WP_Error( 'not_found', __( 'Stock transfer not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		if ( ! in_array( $transfer->status, array( 'approved', 'in_transit' ), true ) ) {
-			return new WP_Error( 'invalid_status', __( 'Transfer must be approved or in-transit to receive.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new WP_Error( 'invalid_status', __( 'Transfer must be approved or in-transit to receive.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		$current_user = wp_get_current_user();
@@ -779,7 +779,7 @@ class AdvancedActions {
 	 */
 	public function cancel_transfer( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$id = intval( $request->get_param( 'id' ) );
@@ -788,11 +788,11 @@ class AdvancedActions {
 		$transfer = POSStockTransfer::find( $id );
 
 		if ( ! $transfer ) {
-			return new WP_Error( 'not_found', __( 'Stock transfer not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new WP_Error( 'not_found', __( 'Stock transfer not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		if ( in_array( $transfer->status, array( 'received', 'cancelled' ), true ) ) {
-			return new WP_Error( 'invalid_status', __( 'Cannot cancel a completed or already cancelled transfer.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new WP_Error( 'invalid_status', __( 'Cannot cancel a completed or already cancelled transfer.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		// If transfer was approved or in-transit, restore stock to source outlet
@@ -835,7 +835,7 @@ class AdvancedActions {
 	 */
 	public function update_transfer_status( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$id     = intval( $request->get_param( 'id' ) );
@@ -843,7 +843,7 @@ class AdvancedActions {
 
 		$transfer = POSStockTransfer::find( $id );
 		if ( ! $transfer ) {
-			return new WP_Error( 'not_found', __( 'Stock transfer not found.', 'ready-pos' ), array( 'status' => 404 ) );
+			return new WP_Error( 'not_found', __( 'Stock transfer not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
 		$current_user = wp_get_current_user();
@@ -929,7 +929,7 @@ class AdvancedActions {
 	 */
 	public function get_pending_transfers( WP_REST_Request $request ) {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$outlet_id = $request->get_param( 'outlet_id' );
@@ -978,7 +978,7 @@ class AdvancedActions {
 	 */
 	public function get_in_transit_transfers( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$outlet_id = $request->get_param( 'outlet_id' );
@@ -1015,7 +1015,7 @@ class AdvancedActions {
 	 */
 	public function get_stock_adjustments( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$page       = $request->get_param( 'page' ) ?: 1;
@@ -1098,7 +1098,7 @@ class AdvancedActions {
 	 */
 	public function create_stock_adjustment( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$outlet_id         = intval( $request->get_param( 'outlet_id' ) );
@@ -1108,7 +1108,7 @@ class AdvancedActions {
 		$reason            = sanitize_text_field( $request->get_param( 'reason' ) );
 
 		if ( empty( $outlet_id ) || empty( $product_id ) || empty( $reason ) ) {
-			return new WP_Error( 'missing_fields', __( 'Outlet, product, and reason are required.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new WP_Error( 'missing_fields', __( 'Outlet, product, and reason are required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		// Get current stock
@@ -1196,7 +1196,7 @@ class AdvancedActions {
 	 */
 	public function get_reorder_alerts( WP_REST_Request $request ) {
 		if ( ! $this->check_permissions() ) {
-			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new WP_Error( 'insufficient_permissions', __( 'Permission denied.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$outlet_id = $request->get_param( 'outlet_id' );

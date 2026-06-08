@@ -1,11 +1,11 @@
 === Ready POS for WooCommerce ===
-Contributors: johuniq
-Donate link: https://johuniq.tech/donate
+Contributors: johuniqlabs
 Tags: pos, point of sale, woocommerce, retail, cash register
 Requires at least: 5.8
 Tested up to: 7.0
 Stable tag: 1.0.0
 Requires PHP: 7.4
+Requires Plugins: woocommerce
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -114,7 +114,6 @@ Upgrade to Ready POS Pro for advanced retail management:
 
 * [Visit Website](https://readypos.johuniq.tech/)
 * [Support Forum](https://wordpress.org/support/plugin/ready-pos/)
-* [GitHub Repository](https://github.com/johuniq/ready-pos)
 
 = Privacy & Data =
 

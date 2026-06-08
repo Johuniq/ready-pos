@@ -33,7 +33,7 @@ class Actions {
 	 */
 	public function get( \WP_REST_Request $request ) {
 		if ( ! class_exists( 'WooCommerce' ) ) {
-			return new \WP_Error( 'wc_missing', __( 'WooCommerce is not active.', 'ready-pos' ), array( 'status' => 500 ) );
+			return new \WP_Error( 'wc_missing', __( 'WooCommerce is not active.', 'ready-pos-for-woocommerce' ), array( 'status' => 500 ) );
 		}
 
 		$limit    = $request->get_param( 'limit' ) ? intval( $request->get_param( 'limit' ) ) : 20;
@@ -188,7 +188,7 @@ class Actions {
 	 */
 	public function categories() {
 		if ( ! class_exists( 'WooCommerce' ) ) {
-			return new \WP_Error( 'wc_missing', __( 'WooCommerce is not active.', 'ready-pos' ), array( 'status' => 500 ) );
+			return new \WP_Error( 'wc_missing', __( 'WooCommerce is not active.', 'ready-pos-for-woocommerce' ), array( 'status' => 500 ) );
 		}
 
 		$terms = get_terms(

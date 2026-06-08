@@ -120,7 +120,7 @@ class Actions {
 		if ( 'pro' !== $plan || ! in_array( $status, array( 'active', 'grace' ), true ) || empty( $stored_sig ) ) {
 			return new \WP_Error(
 				'pro_feature_required',
-				__( 'This premium feature requires a valid ReadyPOS Pro license.', 'ready-pos' ),
+				__( 'This premium feature requires a valid ReadyPOS Pro license.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 402 )
 			);
 		}
@@ -143,7 +143,7 @@ class Actions {
 		if ( ! hash_equals( $expected, $stored_sig ) ) {
 			return new \WP_Error(
 				'license_integrity_violation',
-				__( 'License integrity check failed.', 'ready-pos' ),
+				__( 'License integrity check failed.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 402 )
 			);
 		}
@@ -351,7 +351,7 @@ class Actions {
 				$user = get_userdata( $cashier_id );
 				$cashiers[ $cashier_id ] = array(
 					'id'     => $cashier_id,
-					'name'   => $user ? $user->display_name : __( 'Unknown', 'ready-pos' ),
+					'name'   => $user ? $user->display_name : __( 'Unknown', 'ready-pos-for-woocommerce' ),
 					'orders' => 0,
 					'sales'  => 0.0,
 				);
@@ -682,7 +682,7 @@ class Actions {
 				$user = get_userdata( $cashier_id );
 				$cashiers[ $cashier_id ] = array(
 					'id'     => $cashier_id,
-					'name'   => $user ? $user->display_name : __( 'Unknown', 'ready-pos' ),
+					'name'   => $user ? $user->display_name : __( 'Unknown', 'ready-pos-for-woocommerce' ),
 					'orders' => 0,
 					'sales'  => 0.0,
 				);

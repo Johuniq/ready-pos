@@ -6,11 +6,11 @@ import LicenseBanner from "@/admin/components/LicenseBanner";
 export default function LayoutOne() {
   // Determine context (admin vs frontend)
   const isAdmin =
-    typeof readyPosAdmin !== "undefined" ? readyPosAdmin.isAdmin : true;
+    typeof readypos_admin !== "undefined" ? readypos_admin.isAdmin : true;
   const showApplicationLayout = !isAdmin;
   const isCashier =
-    typeof readyPosAdmin !== "undefined" &&
-    readyPosAdmin.userInfo?.roles?.includes("pos_cashier");
+    typeof readypos_admin !== "undefined" &&
+    readypos_admin.userInfo?.roles?.includes("pos_cashier");
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -46,8 +46,8 @@ export default function LayoutOne() {
     } else {
       // Check if onboarding is needed
       const onboardingComplete =
-        typeof readyPosAdmin !== "undefined"
-          ? readyPosAdmin.onboardingComplete
+        typeof readypos_admin !== "undefined"
+          ? readypos_admin.onboardingComplete
           : true;
 
       if (!onboardingComplete && pageTitle !== "onboarding") {
@@ -152,8 +152,8 @@ export default function LayoutOne() {
           <footer className="border-t px-6 py-3 flex items-center justify-between text-[11px] text-muted-foreground bg-background mt-auto">
             <span>
               Ready POS v
-              {typeof readyPosAdmin !== "undefined" && readyPosAdmin.version
-                ? readyPosAdmin.version
+              {typeof readypos_admin !== "undefined" && readypos_admin.version
+                ? readypos_admin.version
                 : "1.0.0"}{" "}
               — Professional WooCommerce Point of Sale
             </span>

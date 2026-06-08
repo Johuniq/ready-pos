@@ -41,8 +41,8 @@ export default function Terminal() {
   const [authenticatedUser, setAuthenticatedUser] = useState(null);
 
   const currentUserRoles =
-    typeof readyPosAdmin !== "undefined"
-      ? readyPosAdmin.userInfo?.roles || []
+    typeof readypos_admin !== "undefined"
+      ? readypos_admin.userInfo?.roles || []
       : [];
   const isCashierRole = currentUserRoles.includes("pos_cashier");
   const isManagerOrAdmin =
@@ -60,16 +60,16 @@ export default function Terminal() {
     setCashierAuthenticated(true);
     setAuthenticatedUser(user);
     // Update the REST nonce for subsequent API calls under this user's session.
-    if (typeof readyPosAdmin !== "undefined" && nonce) {
-      readyPosAdmin.restNonce = nonce;
-      readyPosAdmin.userInfo = {
-        ...readyPosAdmin.userInfo,
+    if (typeof readypos_admin !== "undefined" && nonce) {
+      readypos_admin.restNonce = nonce;
+      readypos_admin.userInfo = {
+        ...readypos_admin.userInfo,
         username: user.name,
         roles: user.roles,
       };
       // Update license data to ensure cashiers see the correct Pro status
       if (license) {
-        readyPosAdmin.license = license;
+        readypos_admin.license = license;
       }
     }
   };
@@ -84,8 +84,8 @@ export default function Terminal() {
     setAuthenticatedUser(null);
     
     // Redirect to WordPress logout
-    window.location.href = typeof readyPosAdmin !== "undefined" 
-      ? readyPosAdmin.logoutUrl || "/wp-login.php?action=logout"
+    window.location.href = typeof readypos_admin !== "undefined" 
+      ? readypos_admin.logoutUrl || "/wp-login.php?action=logout"
       : "/wp-login.php?action=logout";
   };
 

@@ -27,7 +27,7 @@ class Actions {
 	 */
 	public function activate( \WP_REST_Request $request ) {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			return new \WP_Error( 'forbidden', __( 'Only administrators can activate a license.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new \WP_Error( 'forbidden', __( 'Only administrators can activate a license.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$key    = $request->get_param( 'key' ) ?: '';
@@ -51,7 +51,7 @@ class Actions {
 	 */
 	public function deactivate() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			return new \WP_Error( 'forbidden', __( 'Only administrators can deactivate a license.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new \WP_Error( 'forbidden', __( 'Only administrators can deactivate a license.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		License::deactivate();
@@ -70,7 +70,7 @@ class Actions {
 	 */
 	public function revalidate() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			return new \WP_Error( 'forbidden', __( 'Only administrators can re-validate a license.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new \WP_Error( 'forbidden', __( 'Only administrators can re-validate a license.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$result = Manager::revalidate();
@@ -97,7 +97,7 @@ class Actions {
 	 */
 	public function audit() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			return new \WP_Error( 'forbidden', __( 'Only administrators can view the audit log.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new \WP_Error( 'forbidden', __( 'Only administrators can view the audit log.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		return new \WP_REST_Response( Manager::get_audit_log(), 200 );
@@ -111,7 +111,7 @@ class Actions {
 	 */
 	public function reset() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			return new \WP_Error( 'forbidden', __( 'Only administrators can reset license data.', 'ready-pos' ), array( 'status' => 403 ) );
+			return new \WP_Error( 'forbidden', __( 'Only administrators can reset license data.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 
 		$result = Manager::full_reset();
@@ -119,7 +119,7 @@ class Actions {
 		return new \WP_REST_Response(
 			array(
 				'success' => true,
-				'message' => __( 'All license and cache data has been reset.', 'ready-pos' ),
+				'message' => __( 'All license and cache data has been reset.', 'ready-pos-for-woocommerce' ),
 				'data'    => License::frontend_data(),
 			),
 			200

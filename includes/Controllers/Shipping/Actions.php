@@ -27,13 +27,13 @@ class Actions {
 	 */
 	public function calculate( \WP_REST_Request $request ) {
 		if ( ! class_exists( 'WooCommerce' ) ) {
-			return new \WP_Error( 'wc_missing', __( 'WooCommerce is not active.', 'ready-pos' ), array( 'status' => 500 ) );
+			return new \WP_Error( 'wc_missing', __( 'WooCommerce is not active.', 'ready-pos-for-woocommerce' ), array( 'status' => 500 ) );
 		}
 
 		$address = $request->get_param( 'address' );
 
 		if ( empty( $address ) || ! is_array( $address ) ) {
-			return new \WP_Error( 'invalid_address', __( 'Invalid shipping address.', 'ready-pos' ), array( 'status' => 400 ) );
+			return new \WP_Error( 'invalid_address', __( 'Invalid shipping address.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
 		try {
@@ -73,7 +73,7 @@ class Actions {
 							'method_id'   => $rate->get_method_id(),
 							'title'       => $rate->get_label(),
 							'cost'        => $rate->get_cost(),
-							'description' => $rate->get_method_id() === 'free_shipping' ? __( 'Free shipping', 'ready-pos' ) : '',
+							'description' => $rate->get_method_id() === 'free_shipping' ? __( 'Free shipping', 'ready-pos-for-woocommerce' ) : '',
 						);
 					}
 				}
@@ -117,7 +117,7 @@ class Actions {
 	 */
 	public function get_methods() {
 		if ( ! class_exists( 'WooCommerce' ) ) {
-			return new \WP_Error( 'wc_missing', __( 'WooCommerce is not active.', 'ready-pos' ), array( 'status' => 500 ) );
+			return new \WP_Error( 'wc_missing', __( 'WooCommerce is not active.', 'ready-pos-for-woocommerce' ), array( 'status' => 500 ) );
 		}
 
 		$shipping_methods = WC()->shipping()->get_shipping_methods();
