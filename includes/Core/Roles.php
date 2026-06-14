@@ -13,7 +13,11 @@ use Readypos\Traits\Base;
 /**
  * Class Roles
  *
- * Handles creation and removal of custom POS roles (Cashier, POS Manager).
+ * Grants the `use_pos` / `manage_pos` capabilities to the built-in
+ * WordPress roles that are allowed to operate the POS (Administrator
+ * and Shop Manager). The GPL build does not create any custom roles —
+ * POS access is governed entirely by these capabilities on the default
+ * WP roles.
  *
  * @package Readypos\Core
  */
@@ -22,163 +26,71 @@ class Roles {
 	use Base;
 
 	/**
+	 * Capability granted to roles that can use the POS UI.
+	 *
+	 * @var string
+	 */
+	const CAP_USE_POS = 'use_pos';
+
+	/**
+	 * Capability granted to roles that can manage POS configuration.
+	 *
+	 * @var string
+	 */
+	const CAP_MANAGE_POS = 'manage_pos';
+
+	/**
 	 * Initialize role-related hooks.
 	 *
 	 * @return void
 	 */
 	public function init() {
-		add_filter( 'login_redirect', array( $this, 'pos_login_redirect' ), 10, 3 );
-		
-		// Allow POS users to access admin without edit_posts capability
-		add_filter( 'user_has_cap', array( $this, 'allow_pos_user_admin_access' ), 10, 3 );
+		// Grant the POS caps to default WP roles on plugin init.
+		// Safe to call repeatedly — $role->add_cap() is idempotent.
+		add_action( 'init', array( $this, 'grant_pos_caps' ), 20 );
 	}
 
 	/**
-	 * Add admin access capability for POS roles.
+	 * Grant the `use_pos` and `manage_pos` capabilities to the default
+	 * WordPress roles that are allowed to operate the POS.
 	 *
-	 * @param array $all_caps All capabilities for the user.
-	 * @param string $cap Capability being checked.
-	 * @param array $args Capability arguments.
-	 * @return array Modified capabilities.
+	 * @return void
 	 */
-	public function allow_pos_user_admin_access( $all_caps, $cap, $args ) {
-		// Only modify for POS users
-		if ( ! isset( $all_caps['use_pos'] ) || ! $all_caps['use_pos'] ) {
-			return $all_caps;
+	public function grant_pos_caps() {
+		$wp_roles = wp_roles();
+
+		if ( ! $wp_roles ) {
+			return;
 		}
-		
-		// Add the required capability for admin access
-		$all_caps['edit_posts'] = true;
-		
-		return $all_caps;
-	}
 
-	/**
-	 * Redirect POS users to appropriate pages after login.
-	 *
-	 * @param string $redirect_to URL to redirect to.
-	 * @param string $request Requested redirect URL.
-	 * @param object $user WP_User object.
-	 * @return string Modified redirect URL.
-	 */
-	public function pos_login_redirect( $redirect_to, $request, $user ) {
-		// Check if user has POS roles
-		if ( isset( $user->roles ) && is_array( $user->roles ) ) {
-			// POS Cashier - redirect to terminal (locked view)
-			if ( in_array( 'pos_cashier', $user->roles, true ) ) {
-				return admin_url( 'admin.php?page=ready-pos#/terminal' );
-			}
-			
-			// POS Manager - redirect to dashboard (full access)
-			if ( in_array( 'pos_manager', $user->roles, true ) ) {
-				return admin_url( 'admin.php?page=ready-pos#/dashboard' );
+		foreach ( array( 'administrator', 'shop_manager' ) as $role_name ) {
+			$role = $wp_roles->get_role( $role_name );
+			if ( $role ) {
+				$role->add_cap( self::CAP_USE_POS );
+				$role->add_cap( self::CAP_MANAGE_POS );
 			}
 		}
-		return $redirect_to;
 	}
 
 	/**
-	 * Register custom POS roles.
+	 * Remove the `use_pos` and `manage_pos` capabilities from the
+	 * default WordPress roles. Called on plugin uninstall.
 	 *
 	 * @return void
 	 */
-	public function register_roles() {
-		// POS Cashier Role
-		add_role(
-			'pos_cashier',
-			__( 'POS Cashier', 'ready-pos-for-woocommerce' ),
-			array(
-				'read'               => true,
-				'edit_dashboard'     => true,
-				'upload_files'       => true,
-				'level_0'            => true,
-				'use_pos'            => true,
-				'edit_posts'         => false,
-				'delete_posts'       => false,
-				'publish_posts'      => false,
-				'manage_options'     => false,
-				'read_private_posts' => false,
-			)
-		);
+	public function revoke_pos_caps() {
+		$wp_roles = wp_roles();
 
-		// Ensure POS cashier can access admin pages (wp-admin)
-		$cashier = get_role( 'pos_cashier' );
-		if ( $cashier ) {
-			$cashier->add_cap( 'exist' ); // Required for accessing admin
+		if ( ! $wp_roles ) {
+			return;
 		}
 
-		// POS Manager Role
-		add_role(
-			'pos_manager',
-			__( 'POS Manager', 'ready-pos-for-woocommerce' ),
-			array(
-				'read'               => true,
-				'use_pos'            => true,
-				'manage_pos'         => true,
-				'view_pos_reports'   => true,
-				'edit_posts'         => false,
-				'delete_posts'       => false,
-				'publish_posts'      => false,
-				'manage_options'     => false,
-			)
-		);
-
-		// Add POS capabilities to Administrator & Shop Manager
-		$admin = get_role( 'administrator' );
-		if ( $admin ) {
-			$admin->add_cap( 'use_pos' );
-			$admin->add_cap( 'manage_pos' );
-			$admin->add_cap( 'view_pos_reports' );
-		}
-
-		$shop_manager = get_role( 'shop_manager' );
-		if ( $shop_manager ) {
-			$shop_manager->add_cap( 'use_pos' );
-			$shop_manager->add_cap( 'manage_pos' );
-			$shop_manager->add_cap( 'view_pos_reports' );
-		}
-	}
-
-	/**
-	 * Ensure POS cashier has proper admin access capabilities.
-	 * Called during activation and when refreshing roles.
-	 *
-	 * @return void
-	 */
-	public function refresh_pos_cashier_caps() {
-		$cashier = get_role( 'pos_cashier' );
-		if ( $cashier ) {
-			// Ensure all admin access capabilities are present
-			$cashier->add_cap( 'read' );
-			$cashier->add_cap( 'edit_dashboard' );
-			$cashier->add_cap( 'upload_files' );
-			$cashier->add_cap( 'edit_posts' );
-			$cashier->add_cap( 'use_pos' );
-		}
-	}
-
-	/**
-	 * Remove POS roles.
-	 *
-	 * @return void
-	 */
-	public function remove_roles() {
-		remove_role( 'pos_cashier' );
-		remove_role( 'pos_manager' );
-
-		// Remove POS capabilities from Administrator & Shop Manager
-		$admin = get_role( 'administrator' );
-		if ( $admin ) {
-			$admin->remove_cap( 'use_pos' );
-			$admin->remove_cap( 'manage_pos' );
-			$admin->remove_cap( 'view_pos_reports' );
-		}
-
-		$shop_manager = get_role( 'shop_manager' );
-		if ( $shop_manager ) {
-			$shop_manager->remove_cap( 'use_pos' );
-			$shop_manager->remove_cap( 'manage_pos' );
-			$shop_manager->remove_cap( 'view_pos_reports' );
+		foreach ( array( 'administrator', 'shop_manager' ) as $role_name ) {
+			$role = $wp_roles->get_role( $role_name );
+			if ( $role ) {
+				$role->remove_cap( self::CAP_USE_POS );
+				$role->remove_cap( self::CAP_MANAGE_POS );
+			}
 		}
 	}
 
@@ -189,23 +101,24 @@ class Roles {
 	 * @return bool|\WP_Error True if user has access, WP_Error otherwise.
 	 */
 	public function check_pos_access( \WP_REST_Request $request ) {
-		// Run SessionSecurity validation (fingerprint, expiration, idle timeout)
+		// Run SessionSecurity validation (fingerprint, expiration, idle timeout).
 		if ( class_exists( '\Readypos\Core\SessionSecurity' ) ) {
 			$validation = \Readypos\Core\SessionSecurity::validate_request();
 			if ( is_wp_error( $validation ) ) {
 				return $validation;
 			}
-		} else {
-			if ( ! is_user_logged_in() ) {
-				return new \WP_Error(
-					'rest_forbidden',
-					__( 'You must be logged in to access the POS API.', 'ready-pos-for-woocommerce' ),
-					array( 'status' => 401 )
-				);
-			}
+		} elseif ( ! is_user_logged_in() ) {
+			return new \WP_Error(
+				'rest_forbidden',
+				__( 'You must be logged in to access the POS API.', 'ready-pos-for-woocommerce' ),
+				array( 'status' => 401 )
+			);
 		}
 
-		if ( current_user_can( 'use_pos' ) || current_user_can( 'manage_pos' ) || current_user_can( 'manage_options' ) ) {
+		if ( current_user_can( self::CAP_USE_POS )
+			|| current_user_can( self::CAP_MANAGE_POS )
+			|| current_user_can( 'manage_options' )
+		) {
 			return true;
 		}
 

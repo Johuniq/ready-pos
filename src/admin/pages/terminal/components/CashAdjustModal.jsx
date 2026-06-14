@@ -216,7 +216,7 @@ export default function CashAdjustModal({ open, onOpenChange }) {
                 <Textarea
                   placeholder={
                     type === "in"
-                      ? "Replenishing cashier coins change float"
+                      ? "Replenishing change float"
                       : "Office snacks or courier shipping postage costs"
                   }
                   value={reason}
@@ -302,7 +302,7 @@ export default function CashAdjustModal({ open, onOpenChange }) {
                       {log.reason}
                     </p>
                     <div className="flex justify-between text-[8px] text-muted-foreground font-bold border-t border-muted/50 pt-1.5 mt-1">
-                      <span>Cashier ID: #{log.cashierId}</span>
+                      <span>Staff ID: #{log.cashierId}</span>
                       <span>{log.time.split(" ")[1] || log.time}</span>
                     </div>
                   </div>

@@ -34,15 +34,12 @@ import {
   Tag,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { useLicense } from "@/admin/hooks/useLicense";
-import { ProBadge } from "@/admin/components/ProGate";
 
 /**
  * Outlet Configuration Modal
  * Manages pricing, taxes, and payment methods per outlet
  */
 export function OutletConfigurationModal({ outlet, open, onOpenChange, onComplete }) {
-  const license = useLicense();
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("pricing");
@@ -70,17 +67,30 @@ export function OutletConfigurationModal({ outlet, open, onOpenChange, onComplet
   const availablePaymentMethods = [
     { id: "cash", label: "Cash", desc: "Physical cash payments" },
     { id: "card", label: "Card", desc: "Credit/Debit card" },
-    { id: "emv", label: "EMV", desc: "EMV chip reader" },
-    { id: "gift_card", label: "Gift Card", desc: "Store gift cards" },
-    { id: "split", label: "Split Payment", desc: "Multiple payment methods" },
-    { id: "store_credit", label: "Store Credit", desc: "Store credit redemption" },
   ];
+
+  // State for selectors
+  const [allProducts, setAllProducts] = useState([]);
+  const [allCategories, setAllCategories] = useState([]);
 
   useEffect(() => {
     if (open && outlet) {
       fetchConfiguration();
+      fetchProductsAndCategories();
     }
   }, [open, outlet]);
+
+  const fetchProductsAndCategories = async () => {
+    try {
+      const prodData = await api.get("/products/get", { limit: 100 });
+      setAllProducts(prodData?.products || []);
+
+      const catData = await api.get("/products/categories");
+      setAllCategories(catData || []);
+    } catch (err) {
+      // Quietly ignore or log
+    }
+  };
 
   const fetchConfiguration = async () => {
     if (!outlet?.id) return;
@@ -110,13 +120,7 @@ export function OutletConfigurationModal({ outlet, open, onOpenChange, onComplet
 
   const handleSaveConfiguration = async () => {
     if (!outlet?.id) return;
-    
-    // Check license for Pro features
-    if (!license.isPro) {
-      license.requireFeature("outlet_configuration");
-      return;
-    }
-    
+
     setSaving(true);
     try {
       const payload = {
@@ -236,7 +240,6 @@ export function OutletConfigurationModal({ outlet, open, onOpenChange, onComplet
           <DialogTitle className="text-base font-bold flex items-center gap-2">
             <Settings2 className="w-5 h-5 text-primary" />
             <span>Configure {outlet.name}</span>
-            {!license.isPro && <ProBadge />}
           </DialogTitle>
           <p className="text-xs text-muted-foreground mt-1">
             Customize pricing, taxes, and payment methods for this outlet
@@ -289,18 +292,23 @@ export function OutletConfigurationModal({ outlet, open, onOpenChange, onComplet
 
                     {/* Add Product Price Form */}
                     <div className="grid grid-cols-12 gap-2 items-end">
-                      <div className="col-span-4 space-y-1">
-                        <Label className="text-[10px] font-bold">Product ID</Label>
-                        <Input
-                          type="number"
-                          placeholder="123"
-                          value={newProductId}
-                          onChange={(e) => setNewProductId(e.target.value)}
-                          className="h-9 text-xs"
-                        />
+                      <div className="col-span-5 space-y-1">
+                        <Label className="text-[10px] font-bold">Product</Label>
+                        <Select value={newProductId} onValueChange={setNewProductId}>
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue placeholder="Select product..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allProducts.map((p) => (
+                              <SelectItem key={p.id} value={p.id.toString()}>
+                                {p.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div className="col-span-4 space-y-1">
-                        <Label className="text-[10px] font-bold">Custom Price ($)</Label>
+                      <div className="col-span-3 space-y-1">
+                        <Label className="text-[10px] font-bold">Price ($)</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -332,7 +340,9 @@ export function OutletConfigurationModal({ outlet, open, onOpenChange, onComplet
                             <div className="flex items-center gap-2">
                               <Tag className="w-3.5 h-3.5 text-muted-foreground" />
                               <div>
-                                <p className="text-xs font-bold text-foreground">Product #{productId}</p>
+                                <p className="text-xs font-bold text-foreground">
+                                  {allProducts.find((p) => p.id.toString() === productId)?.name || `Product #${productId}`}
+                                </p>
                                 <p className="text-[10px] text-muted-foreground">Custom Price: ${config.price}</p>
                               </div>
                             </div>
@@ -367,15 +377,20 @@ export function OutletConfigurationModal({ outlet, open, onOpenChange, onComplet
 
                     {/* Add Category Modifier Form */}
                     <div className="grid grid-cols-12 gap-2 items-end">
-                      <div className="col-span-2 space-y-1">
-                        <Label className="text-[10px] font-bold">Cat ID</Label>
-                        <Input
-                          type="number"
-                          placeholder="10"
-                          value={newCategoryId}
-                          onChange={(e) => setNewCategoryId(e.target.value)}
-                          className="h-9 text-xs"
-                        />
+                      <div className="col-span-3 space-y-1">
+                        <Label className="text-[10px] font-bold">Category</Label>
+                        <Select value={newCategoryId} onValueChange={setNewCategoryId}>
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue placeholder="Select category..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allCategories.map((c) => (
+                              <SelectItem key={c.id} value={c.id.toString()}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="col-span-3 space-y-1">
                         <Label className="text-[10px] font-bold">Type</Label>
@@ -400,10 +415,10 @@ export function OutletConfigurationModal({ outlet, open, onOpenChange, onComplet
                           className="h-9 text-xs"
                         />
                       </div>
-                      <div className="col-span-3 space-y-1">
+                      <div className="col-span-2 space-y-1">
                         <Label className="text-[10px] font-bold">Description</Label>
                         <Input
-                          placeholder="Premium +15%"
+                          placeholder="Premium"
                           value={newCategoryDesc}
                           onChange={(e) => setNewCategoryDesc(e.target.value)}
                           className="h-9 text-xs"
@@ -435,7 +450,9 @@ export function OutletConfigurationModal({ outlet, open, onOpenChange, onComplet
                                 <DollarSign className="w-3.5 h-3.5 text-muted-foreground" />
                               )}
                               <div>
-                                <p className="text-xs font-bold text-foreground">Category #{categoryId}</p>
+                                <p className="text-xs font-bold text-foreground">
+                                  {allCategories.find((c) => c.id.toString() === categoryId)?.name || `Category #${categoryId}`}
+                                </p>
                                 <p className="text-[10px] text-muted-foreground">
                                   {config.type === 'percent' ? `${config.value > 0 ? '+' : ''}${config.value}%` : `${config.value > 0 ? '+$' : '-$'}${Math.abs(config.value)}`}
                                   {config.description && ` - ${config.description}`}

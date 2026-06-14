@@ -46,6 +46,9 @@ class AddOutletConfiguration {
 			self::$table,
 			function ( Blueprint $table ) {
 				// Check if columns don't exist before adding
+				if ( ! Capsule::schema()->hasColumn( self::$table, 'code' ) ) {
+					$table->string( 'code', 32 )->nullable()->unique()->after( 'name' );
+				}
 				if ( ! Capsule::schema()->hasColumn( self::$table, 'city' ) ) {
 					$table->string( 'city', 100 )->nullable()->after( 'address' );
 				}
@@ -57,6 +60,12 @@ class AddOutletConfiguration {
 				}
 				if ( ! Capsule::schema()->hasColumn( self::$table, 'country' ) ) {
 					$table->string( 'country', 100 )->nullable()->after( 'zip_code' );
+				}
+				if ( ! Capsule::schema()->hasColumn( self::$table, 'manager_id' ) ) {
+					$table->unsignedBigInteger( 'manager_id' )->nullable()->after( 'email' );
+				}
+				if ( ! Capsule::schema()->hasColumn( self::$table, 'default_register_id' ) ) {
+					$table->unsignedBigInteger( 'default_register_id' )->nullable()->after( 'manager_id' );
 				}
 				if ( ! Capsule::schema()->hasColumn( self::$table, 'pricing_config' ) ) {
 					$table->text( 'pricing_config' )->nullable()->comment( 'JSON: outlet-specific pricing rules' );
@@ -82,7 +91,7 @@ class AddOutletConfiguration {
 		Capsule::schema()->table(
 			self::$table,
 			function ( Blueprint $table ) {
-				$columns_to_drop = array( 'city', 'state', 'zip_code', 'country', 'pricing_config', 'tax_config', 'payment_methods' );
+				$columns_to_drop = array( 'code', 'city', 'state', 'zip_code', 'country', 'manager_id', 'default_register_id', 'pricing_config', 'tax_config', 'payment_methods' );
 				foreach ( $columns_to_drop as $column ) {
 					if ( Capsule::schema()->hasColumn( self::$table, $column ) ) {
 						$table->dropColumn( $column );

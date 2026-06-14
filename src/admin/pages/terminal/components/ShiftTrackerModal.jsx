@@ -107,13 +107,13 @@ export default function ShiftTrackerModal({
   const username =
     typeof readypos_admin !== "undefined"
       ? readypos_admin.userInfo.username
-      : "Cashier";
+      : "Staff";
 
   return (
     <Dialog
       open={open}
       onOpenChange={(val) => {
-        // Force cashier to clock in if they have no active shift
+        // Force operator to clock in if they have no active shift
         if (!activeShift) {
           toast.warning(
             "You must clock in for a shift to operate the POS terminal.",

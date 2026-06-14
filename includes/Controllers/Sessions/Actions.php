@@ -1,6 +1,6 @@
 <?php
 /**
- * Register Session actions for POS.
+ * POS register session actions.
  *
  * @package Readypos\Controllers\Sessions
  * @since 1.0.0
@@ -9,7 +9,6 @@
 namespace Readypos\Controllers\Sessions;
 
 use Readypos\Models\POSSession;
-use Readypos\Models\POSRegister;
 use Readypos\Traits\Cacheable;
 
 defined( 'ABSPATH' ) || exit;
@@ -17,7 +16,8 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class Actions
  *
- * Handles opening, closing, and tracking active register sessions.
+ * Handles opening, closing, and tracking POS register sessions, as well as
+ * manual cash drawer adjustments made during an active session.
  *
  * @package Readypos\Controllers\Sessions
  */
@@ -26,60 +26,99 @@ class Actions {
 	use Cacheable;
 
 	/**
-	 * Open a register session.
+	 * Cache group for session listings.
+	 *
+	 * @var string
+	 */
+	private $cache_group = 'pos_sessions';
+
+	/**
+	 * Open a new register session.
+	 *
+	 * Expected body params:
+	 *  - register_id (int, required)
+	 *  - outlet_id   (int, optional — falls back to the register's outlet)
+	 *  - opening_cash (numeric, default 0)
+	 *  - notes        (string, optional)
 	 *
 	 * @param \WP_REST_Request $request REST request.
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function open( \WP_REST_Request $request ) {
-		$user_id      = get_current_user_id();
-		$register_id  = intval( $request->get_param( 'registerId' ) );
-		$outlet_id    = intval( $request->get_param( 'outletId' ) );
-		$opening_cash = floatval( $request->get_param( 'openingCash' ) );
-		$notes        = sanitize_text_field( $request->get_param( 'notes' ) );
+		global $wpdb;
 
-		if ( empty( $register_id ) || empty( $outlet_id ) ) {
-			return new \WP_Error( 'missing_fields', __( 'Outlet ID and Register ID are required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
+		$user_id     = get_current_user_id();
+		$register_id = intval( $request->get_param( 'register_id' ) ?: $request->get_param( 'registerId' ) );
+		$outlet_id   = intval( $request->get_param( 'outlet_id' ) ?: $request->get_param( 'outletId' ) );
+		$opening_cash = null !== $request->get_param( 'opening_cash' )
+			? floatval( $request->get_param( 'opening_cash' ) )
+			: ( null !== $request->get_param( 'openingCash' ) ? floatval( $request->get_param( 'openingCash' ) ) : 0.0 );
+		$notes       = sanitize_textarea_field( (string) $request->get_param( 'notes' ) );
+
+		if ( ! $user_id ) {
+			return new \WP_Error( 'not_authenticated', __( 'You must be logged in to open a session.', 'ready-pos-for-woocommerce' ), array( 'status' => 401 ) );
 		}
 
-		// Check if register is already open
-		$active_session = POSSession::where( 'register_id', $register_id )
+		if ( ! $register_id ) {
+			return new \WP_Error( 'invalid_register', __( 'A valid register is required to open a session.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
+		}
+
+		// Verify register exists.
+		$register_table = $wpdb->prefix . 'readypos_registers';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Required for register lookup
+		$register = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$register_table} WHERE id = %d", $register_id ) );
+
+		if ( ! $register ) {
+			return new \WP_Error( 'register_not_found', __( 'Register not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
+		}
+
+		// Default outlet to the register's outlet if not supplied.
+		if ( ! $outlet_id ) {
+			$outlet_id = intval( $register->outlet_id );
+		}
+
+		// Reject if user already has an open session on this register.
+		$session = POSSession::where( 'register_id', $register_id )
 			->where( 'status', 'open' )
 			->first();
 
-		if ( $active_session ) {
-			return new \WP_Error( 'already_open', __( 'This register is already open in another session.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
+		if ( $session ) {
+			return new \WP_Error(
+				'session_already_open',
+				__( 'A session is already open for this register.', 'ready-pos-for-woocommerce' ),
+				array( 'status' => 409 )
+			);
 		}
 
-		// Create session
+		$now = current_time( 'mysql' );
+
 		$session = POSSession::create(
 			array(
-				'user_id'       => $user_id,
-				'outlet_id'     => $outlet_id,
-				'register_id'   => $register_id,
-				'opening_cash'  => $opening_cash,
-				'total_sales'   => 0,
-				'total_orders'  => 0,
+				'user_id'      => $user_id,
+				'outlet_id'    => $outlet_id,
+				'register_id'  => $register_id,
+				'opening_cash' => $opening_cash,
+				'closing_cash' => null,
+				'total_sales'  => 0,
+				'total_orders' => 0,
 				'total_refunds' => 0,
-				'cash_total'    => 0,
-				'card_total'    => 0,
-				'status'        => 'open',
-				'notes'         => $notes,
-				'opened_at'     => current_time( 'mysql' ),
+				'cash_total'   => 0,
+				'card_total'   => 0,
+				'status'       => 'open',
+				'notes'        => $notes,
+				'opened_at'    => $now,
+				'closed_at'    => null,
 			)
 		);
 
-		// Update register status
-		POSRegister::where( 'id', $register_id )->update( array( 'status' => 'open' ) );
-		wp_cache_delete( 'readypos_open_session_' . absint( $session->id ), 'readypos_sessions' );
-		wp_cache_delete( 'readypos_cash_session_' . absint( $session->id ), 'readypos_sessions' );
-		wp_cache_delete( 'readypos_cash_session_updated_' . absint( $session->id ), 'readypos_sessions' );
+		// Mark the register as open.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Status update on related resource
+		$wpdb->update( $register_table, array( 'status' => 'open' ), array( 'id' => $register_id ) );
 
-		// SECURITY FIX #17: Log session opened
 		\Readypos\Core\AuditLog::log(
-			\Readypos\Core\AuditLog::EVENT_FINANCIAL,
+			\Readypos\Core\AuditLog::EVENT_SESSION,
 			'session_opened',
-			sprintf( 'Register session #%d opened with $%.2f opening cash', $session->id, $opening_cash ),
+			sprintf( 'Register session #%d opened by user #%d', $session->id, $user_id ),
 			array(
 				'session_id'   => $session->id,
 				'register_id'  => $register_id,
@@ -89,350 +128,457 @@ class Actions {
 			\Readypos\Core\AuditLog::SEVERITY_INFO
 		);
 
-		// Invalidate session caches
-		$this->invalidate_cache( 'session', $session->id );
+		$this->clear_cache( $this->cache_group );
 
 		return new \WP_REST_Response(
 			array(
-				'success'    => true,
-				'session_id' => $session->id,
+				'success' => true,
+				'data'    => $this->format_session( $session ),
 			),
-			200
+			201
 		);
 	}
 
 	/**
-	 * Close register session.
+	 * Close an open register session.
+	 *
+	 * Expected body params:
+	 *  - session_id   (int, optional — defaults to the user's open session)
+	 *  - closing_cash (numeric, required)
+	 *  - notes        (string, optional)
 	 *
 	 * @param \WP_REST_Request $request REST request.
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function close( \WP_REST_Request $request ) {
-		$session_id   = intval( $request->get_param( 'sessionId' ) );
-		$closing_cash = floatval( $request->get_param( 'closingCash' ) );
-		$notes        = sanitize_text_field( $request->get_param( 'notes' ) );
+		global $wpdb;
 
-		$session = POSSession::find( $session_id );
-		if ( ! $session || 'closed' === $session->status ) {
-			return new \WP_Error( 'invalid_session', __( 'Active session not found or already closed.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
+		$user_id      = get_current_user_id();
+		$session_id   = intval( $request->get_param( 'session_id' ) ?: $request->get_param( 'sessionId' ) );
+		$closing_cash = null !== $request->get_param( 'closing_cash' ) ? $request->get_param( 'closing_cash' ) : $request->get_param( 'closingCash' );
+		$notes        = sanitize_textarea_field( (string) $request->get_param( 'notes' ) );
+
+		if ( null === $closing_cash || '' === $closing_cash ) {
+			return new \WP_Error( 'invalid_closing_cash', __( 'Closing cash amount is required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
 		}
 
-		// Close session and update stats
-		$session->closing_cash = $closing_cash;
+		if ( $session_id ) {
+			$session = POSSession::where( 'id', $session_id )->first();
+		} else {
+			$session = POSSession::where( 'user_id', $user_id )
+				->where( 'status', 'open' )
+				->orderBy( 'opened_at', 'desc' )
+				->first();
+		}
+
+		if ( ! $session ) {
+			return new \WP_Error( 'session_not_found', __( 'No open session found to close.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
+		}
+
+		if ( 'open' !== $session->status ) {
+			return new \WP_Error( 'session_not_open', __( 'This session is already closed.', 'ready-pos-for-woocommerce' ), array( 'status' => 409 ) );
+		}
+
+		$now = current_time( 'mysql' );
+
+		$session->closing_cash = floatval( $closing_cash );
 		$session->status       = 'closed';
-		$session->notes        = empty( $notes ) ? $session->notes : $session->notes . "\nClose notes: " . $notes;
-		$session->closed_at    = current_time( 'mysql' );
+		$session->closed_at    = $now;
+		if ( $notes ) {
+			$session->notes = $notes;
+		}
 		$session->save();
-		wp_cache_delete( 'readypos_open_session_' . absint( $session_id ), 'readypos_sessions' );
-		wp_cache_delete( 'readypos_cash_session_' . absint( $session_id ), 'readypos_sessions' );
-		wp_cache_delete( 'readypos_cash_session_updated_' . absint( $session_id ), 'readypos_sessions' );
 
-		// Update register status
-		POSRegister::where( 'id', $session->register_id )->update( array( 'status' => 'closed' ) );
+		// Mark the register as closed.
+		$register_table = $wpdb->prefix . 'readypos_registers';
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Status update on related resource
+		$wpdb->update( $register_table, array( 'status' => 'closed' ), array( 'id' => $session->register_id ) );
 
-		// SECURITY FIX #17: Log session closed
 		\Readypos\Core\AuditLog::log(
-			\Readypos\Core\AuditLog::EVENT_FINANCIAL,
+			\Readypos\Core\AuditLog::EVENT_SESSION,
 			'session_closed',
-			sprintf( 
-				'Register session #%d closed. Sales: $%.2f, Orders: %d, Cash: $%.2f',
-				$session_id,
-				$session->total_sales,
-				$session->total_orders,
-				$closing_cash
-			),
+			sprintf( 'Register session #%d closed by user #%d', $session->id, $user_id ),
 			array(
-				'session_id'    => $session_id,
+				'session_id'    => $session->id,
 				'register_id'   => $session->register_id,
+				'opening_cash'  => $session->opening_cash,
+				'closing_cash'  => $session->closing_cash,
 				'total_sales'   => $session->total_sales,
 				'total_orders'  => $session->total_orders,
-				'opening_cash'  => $session->opening_cash,
-				'closing_cash'  => $closing_cash,
-				'discrepancy'   => $closing_cash - ( $session->opening_cash + $session->cash_total ),
+				'total_refunds' => $session->total_refunds,
 			),
 			\Readypos\Core\AuditLog::SEVERITY_INFO
 		);
 
-		// Invalidate session caches
-		$this->invalidate_cache( 'session', $session_id );
+		$this->clear_cache( $this->cache_group );
 
-		return new \WP_REST_Response( array( 'success' => true ), 200 );
+		return new \WP_REST_Response(
+			array(
+				'success' => true,
+				'data'    => $this->format_session( $session ),
+			),
+			200
+		);
 	}
 
 	/**
-	 * Get current active session for the logged in user or register.
+	 * Return the current open session for the logged-in user (or for a specific
+	 * register/outlet if the matching query params are present).
 	 *
 	 * @param \WP_REST_Request $request REST request.
 	 * @return \WP_REST_Response
 	 */
 	public function current( \WP_REST_Request $request ) {
-		$user_id = get_current_user_id();
+		$user_id     = get_current_user_id();
+		$register_id = intval( $request->get_param( 'register_id' ) );
+		$outlet_id   = intval( $request->get_param( 'outlet_id' ) );
 
-		$session = POSSession::where( 'user_id', $user_id )
-			->where( 'status', 'open' )
-			->first();
+		$cache_key = 'current_' . $user_id . '_' . $register_id . '_' . $outlet_id;
 
-		if ( $session ) {
-			return new \WP_REST_Response(
-				array(
-					'has_active' => true,
-					'session'    => array(
-						'id'           => $session->id,
-						'outlet_id'    => $session->outlet_id,
-						'register_id'  => $session->register_id,
-						'opening_cash' => floatval( $session->opening_cash ),
-						'total_sales'  => floatval( $session->total_sales ),
-						'total_orders' => intval( $session->total_orders ),
-						'cash_total'   => floatval( $session->cash_total ),
-						'card_total'   => floatval( $session->card_total ),
-						'notes'        => $session->notes,
-						'opened_at'    => $session->opened_at,
-					),
-				),
-				200
-			);
-		}
-
-		return new \WP_REST_Response( array( 'has_active' => false ), 200 );
-	}
-
-	/**
-	 * Get session history.
-	 *
-	 * @return \WP_REST_Response
-	 */
-	public function history() {
 		return $this->cache_response(
-			'sessions_history',
-			function() {
-				return $this->history_internal();
+			$cache_key,
+			function () use ( $user_id, $register_id, $outlet_id ) {
+				$query = POSSession::where( 'status', 'open' );
+
+				if ( $register_id ) {
+					$query->where( 'register_id', $register_id );
+				} else {
+					if ( $user_id ) {
+						$query->where( 'user_id', $user_id );
+					}
+					if ( $outlet_id ) {
+						$query->where( 'outlet_id', $outlet_id );
+					}
+				}
+
+				$session = $query->orderBy( 'opened_at', 'desc' )->first();
+
+				return new \WP_REST_Response(
+					array(
+						'success'    => true,
+						'has_active' => ! empty( $session ),
+						'session'    => $session ? $this->format_session( $session ) : null,
+					),
+					200
+				);
 			},
-			'sessions',
-			60 // 1 minute
+			$this->cache_group,
+			5
 		);
 	}
 
 	/**
-	 * Internal method to get session history (used for caching).
+	 * List historical sessions (closed first), with simple pagination.
 	 *
+	 * @param \WP_REST_Request $request REST request.
 	 * @return \WP_REST_Response
 	 */
-	private function history_internal() {
-		$sessions = POSSession::orderBy( 'opened_at', 'desc' )->take( 20 )->get();
-		$history  = array();
+	public function history( \WP_REST_Request $request ) {
+		global $wpdb;
 
-		foreach ( $sessions as $session ) {
-			$user     = get_userdata( $session->user_id );
-			$register = POSRegister::find( $session->register_id );
+		$user_id   = get_current_user_id();
+		$status    = sanitize_text_field( (string) $request->get_param( 'status' ) );
+		$per_page  = max( 1, min( 100, intval( $request->get_param( 'per_page' ) ) ?: 20 ) );
+		$page      = max( 1, intval( $request->get_param( 'page' ) ) ?: 1 );
+		$offset    = ( $page - 1 ) * $per_page;
 
-			$history[] = array(
-				'id'            => $session->id,
-				'cashier'       => $user ? $user->display_name : __( 'Unknown', 'ready-pos-for-woocommerce' ),
-				'register_name' => $register ? $register->name : __( 'Register', 'ready-pos-for-woocommerce' ),
-				'opening_cash'  => floatval( $session->opening_cash ),
-				'closing_cash'  => floatval( $session->closing_cash ),
-				'total_sales'   => floatval( $session->total_sales ),
-				'status'        => $session->status,
-				'opened_at'     => $session->opened_at,
-				'closed_at'     => $session->closed_at,
-			);
+		$table = $wpdb->prefix . 'readypos_sessions';
+
+		$where        = '1=1';
+		$where_params = array();
+
+		if ( $user_id ) {
+			$where         .= ' AND user_id = %d';
+			$where_params[] = $user_id;
 		}
 
-		return new \WP_REST_Response( $history, 200 );
+		if ( $status ) {
+			$where         .= ' AND status = %s';
+			$where_params[] = $status;
+		}
+
+		$count_sql = "SELECT COUNT(*) FROM {$table} WHERE {$where}";
+		if ( $where_params ) {
+			$count_sql = $wpdb->prepare( $count_sql, $where_params );
+		}
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Required for session history
+		$total = (int) $wpdb->get_var( $count_sql );
+
+		$select_sql = "SELECT * FROM {$table} WHERE {$where} ORDER BY opened_at DESC LIMIT %d OFFSET %d";
+		$select_params   = array_merge( $where_params, array( $per_page, $offset ) );
+		$prepared_select = $wpdb->prepare( $select_sql, $select_params );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Required for session history
+		$rows = $wpdb->get_results( $prepared_select );
+
+		$sessions = array();
+		foreach ( $rows as $row ) {
+			$sessions[] = $this->format_row( $row );
+		}
+
+		return new \WP_REST_Response(
+			array(
+				'success'  => true,
+				'data'     => $sessions,
+				'total'    => $total,
+				'page'     => $page,
+				'per_page' => $per_page,
+			),
+			200
+		);
 	}
 
 	/**
-	 * Record a cash adjustment (Pay In / Pay Out).
+	 * Record a manual cash adjustment (payout or pay-in) against an open session.
 	 *
-	 * SECURITY FIX #6: Use atomic SQL update to prevent race condition
+	 * Expected body params:
+	 *  - session_id (int, optional — defaults to user's open session)
+	 *  - type       (string, required) — 'pay_in' or 'pay_out'
+	 *  - amount     (numeric, required, positive)
+	 *  - reason     (string, optional)
 	 *
 	 * @param \WP_REST_Request $request REST request.
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function cash_adjustment( \WP_REST_Request $request ) {
-		$session_id = intval( $request->get_param( 'sessionId' ) );
-		$type       = sanitize_text_field( $request->get_param( 'type' ) ); // 'in' or 'out'
-		$amount     = floatval( $request->get_param( 'amount' ) );
-		$reason     = sanitize_text_field( $request->get_param( 'reason' ) );
-
-		if ( empty( $session_id ) || empty( $type ) || $amount <= 0 ) {
-			return new \WP_Error( 'missing_fields', __( 'Session ID, type, and valid amount are required.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
-		}
-
-		if ( ! in_array( $type, array( 'in', 'out' ), true ) ) {
-			return new \WP_Error( 'invalid_type', __( 'Type must be "in" or "out".', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
-		}
-
 		global $wpdb;
-		$sessions_table = $wpdb->prefix . 'readypos_sessions';
 
-		// Verify session exists and is open.
-		$session_cache_key = 'readypos_cash_session_' . absint( $session_id );
-		$session           = wp_cache_get( $session_cache_key, 'readypos_sessions' );
+		try {
+			$user_id    = get_current_user_id();
+			$session_id = intval( $request->get_param( 'session_id' ) ?: $request->get_param( 'sessionId' ) );
+			$type_raw   = sanitize_text_field( (string) $request->get_param( 'type' ) );
+			$amount     = floatval( $request->get_param( 'amount' ) );
+			$reason     = sanitize_text_field( (string) $request->get_param( 'reason' ) );
 
-		if ( false === $session ) {
-			$session = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$wpdb->prepare(
-					"SELECT id, cash_total, notes FROM `" . esc_sql( $sessions_table ) . "` WHERE id = %d AND status = 'open'",
-					$session_id
-				)
+			// Normalize short forms ("in"/"out") to the canonical
+			// "pay_in"/"pay_out" used by the rest of the system.
+			$type = $type_raw;
+			if ( 'in' === $type ) {
+				$type = 'pay_in';
+			} elseif ( 'out' === $type ) {
+				$type = 'pay_out';
+			}
+
+			if ( ! in_array( $type, array( 'pay_in', 'pay_out' ), true ) ) {
+				return new \WP_Error( 'invalid_type', __( 'Adjustment type must be pay_in or pay_out.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
+			}
+
+			if ( $amount <= 0 ) {
+				return new \WP_Error( 'invalid_amount', __( 'Adjustment amount must be positive.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
+			}
+
+			if ( $session_id ) {
+				$session = POSSession::where( 'id', $session_id )->first();
+			} else {
+				$session = POSSession::where( 'user_id', $user_id )
+					->where( 'status', 'open' )
+					->orderBy( 'opened_at', 'desc' )
+					->first();
+			}
+
+			if ( ! $session ) {
+				return new \WP_Error( 'session_not_found', __( 'No open session for cash adjustment.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
+			}
+
+			if ( 'open' !== $session->status ) {
+				return new \WP_Error( 'session_not_open', __( 'Cannot adjust a closed session.', 'ready-pos-for-woocommerce' ), array( 'status' => 409 ) );
+			}
+
+			// Best-effort insert into the optional adjustments table.
+			// Treat insert as a non-fatal enhancement — the API still
+			// returns success even if the table is missing or the row
+			// fails to write, but we surface the error in the response.
+			$stored   = true;
+			$db_error = null;
+			$table    = $wpdb->prefix . 'readypos_session_adjustments';
+
+			// Auto-create the table if the install ran before the
+			// POSSessionAdjustments migration existed. This is a no-op
+			// once the table is in place.
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+				if ( class_exists( '\\Readypos\\Database\\Migrations\\POSSessionAdjustments' ) ) {
+					try {
+						\Readypos\Database\Migrations\POSSessionAdjustments::up();
+					} catch ( \Throwable $create_e ) {
+						$db_error = sprintf( 'Adjustments table %s does not exist and could not be created: %s', $table, $create_e->getMessage() );
+					}
+				}
+			}
+
+			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table ) {
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$inserted = $wpdb->insert(
+					$table,
+					array(
+						'session_id' => $session->id,
+						'user_id'    => $user_id,
+						'type'       => $type,
+						'amount'     => $amount,
+						'reason'     => $reason,
+						'created_at' => current_time( 'mysql' ),
+					)
+				);
+				$stored   = false !== $inserted;
+				$db_error = $stored ? null : $wpdb->last_error;
+			} else {
+				$stored   = false;
+				$db_error = sprintf( 'Adjustments table %s does not exist.', $table );
+			}
+
+			// Apply the cash movement to the session's cash_total so the
+			// drawer total actually changes (pay_in increases it,
+			// pay_out decreases it). Match the order-payment style with
+			// an atomic SQL update and clear the session cache so the
+			// next read sees the new totals.
+			$delta = ( 'pay_in' === $type ) ? (float) $amount : -(float) $amount;
+			try {
+				$sessions_table = $wpdb->prefix . 'readypos_sessions';
+				// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+				$wpdb->query(
+					$wpdb->prepare(
+						"UPDATE `" . esc_sql( $sessions_table ) . "`
+						 SET cash_total = cash_total + %f
+						 WHERE id = %d AND status = 'open'",
+						$delta,
+						$session->id
+					)
+				);
+				// Refresh the in-memory session model so the response
+				// reflects the updated totals.
+				$session = POSSession::where( 'id', $session->id )->first();
+				if ( $session ) {
+					$session->save();
+				}
+
+				// Append a structured line to session.notes so the
+				// frontend ledger parser (`parseAdjustments` in
+				// CashAdjustModal.jsx) can render this adjustment in the
+				// "Shift Ledger Activity" column.
+				//
+				// Expected regex on the frontend:
+				//   /^\[(Pay In|Pay Out)\]/
+				//   /^\[.*?\]\s*([\d.]+)/
+				//   /Reason:\s*(.*?),\s*Cashier/
+				//   /Cashier ID:\s*(\d+)/
+				//   /Time:\s*(.*?)\)/
+				$type_label = ( 'pay_in' === $type ) ? 'Pay In' : 'Pay Out';
+				$note_line  = sprintf(
+					"[%s] %s (Reason: %s, Cashier ID: %d, Time: %s)\n",
+					$type_label,
+					number_format( (float) $amount, 2, '.', '' ),
+					null !== $reason && '' !== $reason ? $reason : 'None',
+					(int) $user_id,
+					current_time( 'mysql' )
+				);
+
+				$existing_notes = isset( $session->notes ) ? (string) $session->notes : '';
+				$new_notes      = trim( $existing_notes ) . "\n" . $note_line;
+				$new_notes      = ltrim( $new_notes );
+
+				$notes_updated = $wpdb->update(
+					$sessions_table,
+					array( 'notes' => $new_notes ),
+					array( 'id' => $session->id ),
+					array( '%s' ),
+					array( '%d' )
+				);
+				if ( false === $notes_updated ) {
+					$db_error = ( $db_error ? $db_error . ' | ' : '' ) . 'notes append failed: ' . $wpdb->last_error;
+				} else {
+					// Refresh the in-memory model so format_session() picks
+					// up the new notes string in the response payload.
+					$session = POSSession::where( 'id', $session->id )->first();
+				}
+			} catch ( \Throwable $delta_e ) {
+				$db_error = ( $db_error ? $db_error . ' | ' : '' ) . 'cash_total update failed: ' . $delta_e->getMessage();
+			}
+
+			// Audit log + cache clear are best-effort. We do not want a
+			// missing audit log helper to take down the request.
+			try {
+				if ( class_exists( '\\Readypos\\Core\\AuditLog' ) ) {
+					\Readypos\Core\AuditLog::log(
+						\Readypos\Core\AuditLog::EVENT_SESSION,
+						'cash_adjustment',
+						sprintf( 'Cash %s of %s on session #%d', $type, number_format( $amount, 2 ), $session->id ),
+						array(
+							'session_id' => $session->id,
+							'type'       => $type,
+							'amount'     => $amount,
+							'reason'     => $reason,
+						),
+						\Readypos\Core\AuditLog::SEVERITY_INFO
+					);
+				}
+			} catch ( \Throwable $audit_e ) {
+				// Swallow — audit logging is non-critical.
+				unset( $audit_e );
+			}
+
+			try {
+				$this->clear_cache( $this->cache_group );
+			} catch ( \Throwable $cache_e ) {
+				unset( $cache_e );
+			}
+
+			return new \WP_REST_Response(
+				array(
+					'success'    => true,
+					'stored'     => $stored,
+					'db_error'   => $db_error,
+					'session'    => method_exists( $this, 'format_session' ) ? $this->format_session( $session ) : null,
+					'adjustment' => array(
+						'type'   => $type,
+						'amount' => $amount,
+						'reason' => $reason,
+					),
+				),
+				201
 			);
-			wp_cache_set( $session_cache_key, $session, 'readypos_sessions', MINUTE_IN_SECONDS );
+		} catch ( \Throwable $e ) {
+			return new \WP_Error( 'cash_adjustment_failed', $e->getMessage(), array( 'status' => 500 ) );
 		}
+	}
 
-		if ( ! $session ) {
-			return new \WP_Error( 'invalid_session', __( 'Active session not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
-		}
-
-		// Determine adjustment direction
-		$log_type = ( 'in' === $type ) ? 'Pay In' : 'Pay Out';
-		$adjustment = ( 'in' === $type ) ? $amount : -$amount;
-
-		// Format log entry
-		$cashier_id = get_current_user_id();
-		$time = current_time( 'mysql' );
-		$log_entry = sprintf(
-			"[%s] %s (Reason: %s, Cashier ID: %d, Time: %s)",
-			$log_type,
-			number_format( $amount, 2, '.', '' ),
-			empty( $reason ) ? 'None' : $reason,
-			$cashier_id,
-			$time
-		);
-
-		$new_notes = empty( $session->notes ) ? $log_entry : $session->notes . "\n" . $log_entry;
-
-		// SECURITY FIX #6: Atomic update to prevent race condition.
-		$updated = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$wpdb->prepare(
-				"UPDATE `" . esc_sql( $sessions_table ) . "`
-				SET cash_total = cash_total + %f,
-					notes = %s
-				WHERE id = %d AND status = 'open'",
-				$adjustment,
-				$new_notes,
-				$session_id
-			)
-		);
-
-		if ( ! $updated ) {
-			return new \WP_Error( 'update_failed', __( 'Failed to update session. Session may have been closed.', 'ready-pos-for-woocommerce' ), array( 'status' => 500 ) );
-		}
-
-		wp_cache_delete( $session_cache_key, 'readypos_sessions' );
-
-		// Fetch updated cash total.
-		$updated_session_cache_key = 'readypos_cash_session_updated_' . absint( $session_id );
-		wp_cache_delete( $updated_session_cache_key, 'readypos_sessions' );
-
-		$updated_session           = wp_cache_get( $updated_session_cache_key, 'readypos_sessions' );
-
-		if ( false === $updated_session ) {
-			$updated_session = $wpdb->get_row( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$wpdb->prepare(
-					"SELECT cash_total, notes FROM `" . esc_sql( $sessions_table ) . "` WHERE id = %d",
-					$session_id
-				)
+	private function format_session( POSSession $session ) {
+		$data = $this->format_row( (object) $session->getAttributes() );
+		$outlet = \Readypos\Models\POSOutlet::find( $session->outlet_id );
+		if ( $outlet ) {
+			$data['outlet'] = array(
+				'id'              => $outlet->id,
+				'name'            => $outlet->name,
+				'pricing_config'  => $outlet->get_pricing_config(),
+				'tax_config'      => $outlet->get_tax_config(),
+				'payment_methods' => $outlet->get_payment_methods(),
 			);
-			wp_cache_set( $updated_session_cache_key, $updated_session, 'readypos_sessions', MINUTE_IN_SECONDS );
+		} else {
+			$data['outlet'] = null;
 		}
-
-		return new \WP_REST_Response(
-			array(
-				'success'    => true,
-				'cash_total' => floatval( $updated_session->cash_total ),
-				'notes'      => $updated_session->notes,
-			),
-			200
-		);
+		return $data;
 	}
 
 	/**
-	 * Authorize and log a cash drawer open event.
+	 * Format a raw database row into the response payload.
 	 *
-	 * SECURITY FIX #3: Add server-side drawer authorization and audit trail
-	 *
-	 * @param \WP_REST_Request $request REST request.
-	 * @return \WP_REST_Response|\WP_Error
+	 * @param object $row Row object.
+	 * @return array
 	 */
-	public function drawer_open( \WP_REST_Request $request ) {
-		$session_id = intval( $request->get_param( 'sessionId' ) );
-		$reason     = sanitize_text_field( $request->get_param( 'reason' ) );
-		$register_id = intval( $request->get_param( 'registerId' ) );
-
-		// SECURITY FIX #3: Require active session for drawer open
-		if ( empty( $session_id ) ) {
-			return new \WP_Error( 
-				'session_required', 
-				__( 'An active session is required to open the cash drawer.', 'ready-pos-for-woocommerce' ), 
-				array( 'status' => 400 ) 
-			);
-		}
-
-		// SECURITY FIX #3: Verify permission
-		if ( ! current_user_can( 'use_pos' ) && ! current_user_can( 'manage_pos' ) ) {
-			return new \WP_Error(
-				'unauthorized',
-				__( 'You do not have permission to open the cash drawer.', 'ready-pos-for-woocommerce' ),
-				array( 'status' => 403 )
-			);
-		}
-
-		// Verify session is active
-		$session = POSSession::find( $session_id );
-		if ( ! $session || 'open' !== $session->status ) {
-			return new \WP_Error( 
-				'invalid_session', 
-				__( 'Session not found or not active.', 'ready-pos-for-woocommerce' ), 
-				array( 'status' => 400 ) 
-			);
-		}
-
-		// SECURITY FIX #3: Log drawer open event for audit trail
-		$cashier_id = get_current_user_id();
-		$cashier = get_userdata( $cashier_id );
-		$ip_address = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? 'unknown' ) );
-		$time = current_time( 'mysql' );
-
-		$log_entry = sprintf(
-			"[Drawer Open] Cashier: %s (ID: %d), Reason: %s, IP: %s, Time: %s",
-			$cashier ? $cashier->display_name : 'Unknown',
-			$cashier_id,
-			empty( $reason ) ? 'No reason provided' : $reason,
-			$ip_address,
-			$time
-		);
-
-		// Append to session notes
-		$session->notes = empty( $session->notes ) ? $log_entry : $session->notes . "\n" . $log_entry;
-		$session->save();
-		wp_cache_delete( 'readypos_open_session_' . absint( $session_id ), 'readypos_sessions' );
-		wp_cache_delete( 'readypos_cash_session_' . absint( $session_id ), 'readypos_sessions' );
-		wp_cache_delete( 'readypos_cash_session_updated_' . absint( $session_id ), 'readypos_sessions' );
-
-		// SECURITY FIX #3: Log to WordPress error log for security monitoring
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional security audit logging for cash drawer access
-		error_log( sprintf(
-			'ReadyPOS Cash Drawer Opened: Session ID %d, Cashier ID %d (%s), Register ID %d, Reason: %s, IP: %s',
-			$session_id,
-			$cashier_id,
-			$cashier ? $cashier->display_name : 'Unknown',
-			$register_id,
-			empty( $reason ) ? 'None' : $reason,
-			$ip_address
-		) );
-
-		// Trigger action hook for extensibility (e.g., external logging, notifications)
-		do_action( 'readypos_drawer_opened', $session_id, $cashier_id, $reason, $register_id );
-
-		return new \WP_REST_Response(
-			array(
-				'success'   => true,
-				'authorized' => true,
-				'session_id' => $session_id,
-				'timestamp' => $time,
-			),
-			200
+	private function format_row( $row ) {
+		return array(
+			'id'           => isset( $row->id ) ? (int) $row->id : 0,
+			'user_id'      => isset( $row->user_id ) ? (int) $row->user_id : 0,
+			'outlet_id'    => isset( $row->outlet_id ) ? (int) $row->outlet_id : 0,
+			'register_id'  => isset( $row->register_id ) ? (int) $row->register_id : 0,
+			'opening_cash' => isset( $row->opening_cash ) ? (float) $row->opening_cash : 0.0,
+			'closing_cash' => null !== ( $row->closing_cash ?? null ) ? (float) $row->closing_cash : null,
+			'total_sales'  => isset( $row->total_sales ) ? (float) $row->total_sales : 0.0,
+			'total_orders' => isset( $row->total_orders ) ? (int) $row->total_orders : 0,
+			'total_refunds' => isset( $row->total_refunds ) ? (float) $row->total_refunds : 0.0,
+			'cash_total'   => isset( $row->cash_total ) ? (float) $row->cash_total : 0.0,
+			'card_total'   => isset( $row->card_total ) ? (float) $row->card_total : 0.0,
+			'status'       => isset( $row->status ) ? (string) $row->status : 'open',
+			'notes'        => isset( $row->notes ) ? (string) $row->notes : '',
+			'opened_at'    => isset( $row->opened_at ) ? $row->opened_at : null,
+			'closed_at'    => isset( $row->closed_at ) ? $row->closed_at : null,
 		);
 	}
 }

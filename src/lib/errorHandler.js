@@ -23,7 +23,6 @@ export const ErrorType = {
   VALIDATION: "validation",
   PERMISSION: "permission",
   NOT_FOUND: "not_found",
-  LICENSE: "license",
   TIMEOUT: "timeout",
   GENERIC: "generic",
 };
@@ -54,13 +53,6 @@ export function parseApiError(error) {
       return new AppError(
         "Your session has expired. Please refresh the page.",
         ErrorType.PERMISSION,
-        error,
-      );
-
-    case 402:
-      return new AppError(
-        error.message || "This feature requires a license upgrade.",
-        ErrorType.LICENSE,
         error,
       );
 
@@ -136,9 +128,6 @@ export function handleError(error, options = {}) {
         break;
       case ErrorType.VALIDATION:
         toast.warning(message);
-        break;
-      case ErrorType.LICENSE:
-        // License errors are handled by LicenseProvider
         break;
       default:
         toast.error(message);

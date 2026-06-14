@@ -51,7 +51,7 @@ export default function CustomerSelect() {
   };
 
   // After a successful create from the shared modal, auto-assign the new
-  // customer to the current cart so the cashier can keep checking out.
+  // customer to the current cart so the operator can keep checking out.
   const handleCustomerCreated = (created) => {
     setCustomer(created);
     toast.success(`Assigned customer: ${created.first_name}`);

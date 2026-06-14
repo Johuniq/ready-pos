@@ -26,19 +26,25 @@ import { Truck, MapPin, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/currency";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function ShippingModal({ open, onOpenChange }) {
   const [shipping, setShipping] = useAtom(shippingAtom);
   const [customer] = useAtom(customerAtom);
   const [settings] = useAtom(settingsAtom);
 
-  const [step, setStep] = useState("address"); // "address" | "method"
+  // Radix Dialog unmounts its children when closed, so the local state
+  // (step, address, etc.) is destroyed and re-created on every reopen.
+  // Lazy-initialize both from the shipping atom so the first render after
+  // reopen already reflects any shipping the user has already saved,
+  // instead of briefly flashing the address step.
+  const [step, setStep] = useState(() =>
+    shipping.address ? "method" : "address",
+  );
   const [loading, setLoading] = useState(false);
   const [shippingMethods, setShippingMethods] = useState([]);
 
   // Address form state
-  const [address, setAddress] = useState({
+  const [address, setAddress] = useState(() => shipping.address || {
     first_name: "",
     last_name: "",
     address_1: "",
@@ -50,47 +56,57 @@ export default function ShippingModal({ open, onOpenChange }) {
     phone: "",
   });
 
-  // Load customer address when modal opens
+  // Keep the method step's address in sync with the saved shipping address
+  // when the modal is reopened. Only re-sync when opening or when the saved
+  // address actually changes — never while the user is typing, otherwise
+  // their in-progress edits would be wiped out on every keystroke.
   useEffect(() => {
-    if (open) {
-      if (shipping.address) {
-        // Load existing shipping address
-        setAddress(shipping.address);
-        setStep("method");
-        fetchShippingMethods(shipping.address);
-      } else if (customer) {
-        // Load customer's default address
-        setAddress({
-          first_name: customer.first_name || "",
-          last_name: customer.last_name || "",
-          address_1:
-            customer.billing_address_1 || customer.shipping_address_1 || "",
-          address_2:
-            customer.billing_address_2 || customer.shipping_address_2 || "",
-          city: customer.billing_city || customer.shipping_city || "",
-          state: customer.billing_state || customer.shipping_state || "",
-          postcode:
-            customer.billing_postcode || customer.shipping_postcode || "",
-          country:
-            customer.billing_country || customer.shipping_country || "US",
-          phone: customer.phone || "",
-        });
-      } else {
-        // Reset to empty
-        setAddress({
-          first_name: "",
-          last_name: "",
-          address_1: "",
-          address_2: "",
-          city: "",
-          state: "",
-          postcode: "",
-          country: "US",
-          phone: "",
-        });
-      }
+    if (!open) return;
+
+    if (shipping.address) {
+      // Resume on the method step with saved address (+ saved method, if any)
+      setAddress((prev) => {
+        // Avoid clobbering local edits if the saved address is the same object
+        // the user is currently editing.
+        if (prev === shipping.address) return prev;
+        return shipping.address;
+      });
+      setStep("method");
+      fetchShippingMethods(shipping.address);
+    } else if (customer) {
+      // No saved shipping — prefill from customer and start on address step
+      setAddress({
+        first_name: customer.first_name || "",
+        last_name: customer.last_name || "",
+        address_1:
+          customer.billing_address_1 || customer.shipping_address_1 || "",
+        address_2:
+          customer.billing_address_2 || customer.shipping_address_2 || "",
+        city: customer.billing_city || customer.shipping_city || "",
+        state: customer.billing_state || customer.shipping_state || "",
+        postcode:
+          customer.billing_postcode || customer.shipping_postcode || "",
+        country:
+          customer.billing_country || customer.shipping_country || "US",
+        phone: customer.phone || "",
+      });
+      setStep("address");
+    } else {
+      // No customer, no saved shipping — start with empty form on address step
+      setAddress({
+        first_name: "",
+        last_name: "",
+        address_1: "",
+        address_2: "",
+        city: "",
+        state: "",
+        postcode: "",
+        country: "US",
+        phone: "",
+      });
       setStep("address");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, customer, shipping.address]);
 
   const fetchShippingMethods = async (shippingAddress) => {
@@ -157,7 +173,7 @@ export default function ShippingModal({ open, onOpenChange }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl rounded-xl select-none max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-2xl rounded-xl select-none h-[90vh] max-h-[90vh] !flex !flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="text-base font-bold flex items-center gap-2">
             <Truck className="w-5 h-5 text-primary" />
@@ -199,12 +215,12 @@ export default function ShippingModal({ open, onOpenChange }) {
         </div>
 
         {/* Step Content */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden">
           {step === "address" && (
             <form
               onSubmit={handleContinueToMethods}
-              className="h-full flex flex-col">
-              <ScrollArea className="flex-1 pr-4">
+              className="h-full min-h-0 flex flex-col">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-4">
                 <div className="space-y-4 py-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -331,7 +347,7 @@ export default function ShippingModal({ open, onOpenChange }) {
                     />
                   </div>
                 </div>
-              </ScrollArea>
+              </div>
 
               <DialogFooter className="border-t pt-4 mt-4">
                 <Button
@@ -350,7 +366,7 @@ export default function ShippingModal({ open, onOpenChange }) {
           )}
 
           {step === "method" && (
-            <div className="h-full flex flex-col">
+            <div className="h-full min-h-0 flex flex-col">
               <div className="bg-muted/30 rounded-lg p-3 mb-4 border">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -402,7 +418,7 @@ export default function ShippingModal({ open, onOpenChange }) {
                   </Button>
                 </div>
               ) : (
-                <ScrollArea className="flex-1">
+                <div className="flex-1 min-h-0 overflow-y-auto pr-4">
                   <div className="space-y-2 pr-4">
                     {shippingMethods.map((method) => (
                       <button
@@ -439,7 +455,7 @@ export default function ShippingModal({ open, onOpenChange }) {
                       </button>
                     ))}
                   </div>
-                </ScrollArea>
+                </div>
               )}
 
               <DialogFooter className="border-t pt-4 mt-4 flex justify-between">

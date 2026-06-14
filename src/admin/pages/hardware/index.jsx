@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useHardware } from "@/admin/hooks/useHardware";
-import { useLicense } from "@/admin/hooks/useLicense";
 import { toast } from "sonner";
 import {
   Printer,
@@ -22,14 +21,12 @@ import {
   Plug,
   Unplug,
   TestTube,
-  Cpu,
   Loader2,
 } from "lucide-react";
 import { PageHeader } from "@/admin/components/PageLayout";
 
 export default function HardwarePage() {
   const hw = useHardware();
-  const license = useLicense();
   const [busy, setBusy] = useState({});
   const [scaleReading, setScaleReading] = useState(null);
   const [pollingScale, setPollingScale] = useState(false);
@@ -73,15 +70,6 @@ export default function HardwarePage() {
     }
   };
 
-  /**
-   * Gate a hardware connect action behind the Pro license. If Free, opens
-   * the upgrade modal instead of invoking the connect.
-   */
-  const proAction = (feature, fn) => () => {
-    if (!license.requireFeature(feature)) return;
-    return fn();
-  };
-
   const StatusBadge = ({ connected, supported }) => {
     if (!supported) {
       return (
@@ -114,29 +102,6 @@ export default function HardwarePage() {
         title="Hardware"
         description="Pair physical retail hardware: thermal printers, cash drawers, barcode scanners, and weight scales."
       />
-
-      {!license.isPro && (
-        <div className="rounded-xl border-2 border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-card to-card p-6 text-center space-y-3">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30">
-            <Cpu className="w-6 h-6 text-amber-500" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-base font-bold text-foreground">
-              Hardware integration is a Pro feature
-            </p>
-            <p className="text-xs text-muted-foreground max-w-md mx-auto">
-              Upgrade to Ready POS Pro to pair USB thermal printers, cash
-              drawers, barcode scanners, and weight scales directly with your
-              terminal.
-            </p>
-          </div>
-          <Button
-            onClick={() => license.openUpgrade("hardware_panel")}
-            className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-md transition-all">
-            Upgrade to unlock Hardware
-          </Button>
-        </div>
-      )}
 
       {!hw.printerSupported && !hw.scannerHIDSupported && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-xs flex items-start gap-3">
@@ -180,13 +145,13 @@ export default function HardwarePage() {
                 <Button
                   size="sm"
                   disabled={!hw.printerSupported || busy.printer}
-                  onClick={proAction("thermal_printer", () =>
+                  onClick={() =>
                     wrap(
                       "printer",
                       () => hw.connectPrinter(),
                       "Printer connected",
-                    ),
-                  )}
+                    )
+                  }
                   className="text-xs font-bold gap-1.5">
                   {busy.printer ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -309,13 +274,13 @@ export default function HardwarePage() {
                   <Button
                     size="sm"
                     disabled={!hw.scannerHIDSupported || busy.scanner}
-                    onClick={proAction("usb_scanner", () =>
+                    onClick={() =>
                       wrap(
                         "scanner",
                         () => hw.connectScanner("hid"),
                         "Scanner paired (HID mode)",
-                      ),
-                    )}
+                      )
+                    }
                     className="text-xs font-bold gap-1.5">
                     {busy.scanner ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -328,13 +293,13 @@ export default function HardwarePage() {
                     variant="outline"
                     size="sm"
                     disabled={!hw.scannerSerialSupported || busy.scanner}
-                    onClick={proAction("usb_scanner", () =>
+                    onClick={() =>
                       wrap(
                         "scanner",
                         () => hw.connectScanner("serial"),
                         "Scanner paired (Serial mode)",
-                      ),
-                    )}
+                      )
+                    }
                     className="text-xs font-semibold gap-1.5">
                     <Plug className="w-3.5 h-3.5" />
                     Pair Serial
@@ -400,9 +365,9 @@ export default function HardwarePage() {
                 <Button
                   size="sm"
                   disabled={!hw.scaleSupported || busy.scale}
-                  onClick={proAction("weight_scale", () =>
-                    wrap("scale", () => hw.connectScale(), "Scale connected"),
-                  )}
+                  onClick={() =>
+                    wrap("scale", () => hw.connectScale(), "Scale connected")
+                  }
                   className="text-xs font-bold gap-1.5">
                   {busy.scale ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />

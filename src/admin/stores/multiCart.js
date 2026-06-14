@@ -3,7 +3,7 @@ import { atom } from "jotai";
 /**
  * Multi-cart management store.
  *
- * Allows cashiers to have multiple carts open simultaneously (like browser tabs).
+ * Allows the operator to have multiple carts open simultaneously (like browser tabs).
  * Each cart has its own items, customer, discount, coupons, and notes.
  *
  * The "active" cart is synced to the existing posStore atoms so all existing

@@ -26,8 +26,6 @@ import {
 } from "@/components/ui/dialog";
 
 import { useOfflineSync } from "@/admin/hooks/useOfflineSync";
-import { useHardware } from "@/admin/hooks/useHardware";
-import { useLicense } from "@/admin/hooks/useLicense";
 import { useAlert } from "@/components/ui/alert-provider";
 import {
   Wifi,
@@ -35,8 +33,6 @@ import {
   AlertTriangle,
   RefreshCw,
   Trash2,
-  Printer,
-  ScanBarcode,
   Crown,
   Monitor,
 } from "lucide-react";
@@ -62,8 +58,6 @@ export default function POSHeader({
     retryFailedOrder,
     discardFailedOrder,
   } = useOfflineSync();
-  const hw = useHardware();
-  const license = useLicense();
   const [cashAdjustOpen, setCashAdjustOpen] = useState(false);
   const [failedOrdersOpen, setFailedOrdersOpen] = useState(false);
   const [failedOrders, setFailedOrders] = useState([]);
@@ -93,13 +87,25 @@ export default function POSHeader({
   const userName =
     typeof readypos_admin !== "undefined"
       ? readypos_admin.userInfo.username
-      : "Cashier";
+      : "Staff";
   const userRole =
     typeof readypos_admin !== "undefined"
       ? readypos_admin.userInfo.roles.join(", ")
       : "Staff";
 
+  const customerDisplayEnabled =
+    settings?.customer_display_enabled === undefined
+      ? true
+      : settings.customer_display_enabled !== "no";
+
   const handleOpenCustomerDisplay = () => {
+    if (!customerDisplayEnabled) {
+      toast.error(
+        "Customer display is disabled. Enable it in POS Settings → Terminal."
+      );
+      return;
+    }
+
     // Check if user needs to see the guide first
     const needsGuide = checkAndShowGuide();
     if (needsGuide) {
@@ -214,22 +220,6 @@ export default function POSHeader({
               <span className="text-[10px] font-bold">{failedCount}</span>
             </Button>
           )}
-
-          {/* Hardware status */}
-          {hw.printerConnected && (
-            <div
-              title="Thermal printer connected"
-              className="flex items-center justify-center w-8 h-8 bg-blue-500/10 text-blue-600 rounded-full">
-              <Printer className="w-3.5 h-3.5" />
-            </div>
-          )}
-          {hw.scannerConnected && (
-            <div
-              title={`Scanner connected (${hw.scannerMode})`}
-              className="flex items-center justify-center w-8 h-8 bg-purple-500/10 text-purple-600 rounded-full">
-              <ScanBarcode className="w-3.5 h-3.5" />
-            </div>
-          )}
         </div>
 
         {/* === Drawer info (only when register is open) === */}
@@ -250,24 +240,6 @@ export default function POSHeader({
                 )}
               </span>
             </Button>
-
-            {hw.printerConnected && (
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={async () => {
-                  try {
-                    await hw.openDrawer();
-                    toast.success("Drawer opened");
-                  } catch (err) {
-                    toast.error(err.message || "Failed to open drawer");
-                  }
-                }}
-                className="h-9 w-9"
-                title="Open cash drawer">
-                <Wallet className="w-4 h-4 text-emerald-500" />
-              </Button>
-            )}
           </>
         )}
 
@@ -278,8 +250,13 @@ export default function POSHeader({
             variant="ghost"
             size="sm"
             onClick={handleOpenCustomerDisplay}
-            className="h-8 gap-1.5 text-xs font-semibold hover:bg-background"
-            title="Open Customer Display (Second Screen)">
+            disabled={!customerDisplayEnabled}
+            className="h-8 gap-1.5 text-xs font-semibold hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed"
+            title={
+              customerDisplayEnabled
+                ? "Open Customer Display (Second Screen)"
+                : "Customer display is disabled in POS Settings → Terminal"
+            }>
             <Monitor className="w-3.5 h-3.5" />
             <span className="hidden xl:inline">Display</span>
           </Button>

@@ -9,7 +9,6 @@
 namespace Readypos\Controllers\GiftCards;
 
 use Readypos\Models\POSGiftCard;
-use Readypos\Core\License;
 use Readypos\Traits\Cacheable;
 
 defined( 'ABSPATH' ) || exit;
@@ -26,64 +25,12 @@ class Actions {
 	use Cacheable;
 
 	/**
-	 * Secure integrity check to prevent license bypass.
-	 *
-	 * Checks the option plan, status, and recalculates the SHA-256 HMAC signature
-	 * of the license data using WordPress AUTH_KEY and the current site domain host.
-	 *
-	 * @return bool|\WP_Error
-	 */
-	private function verify_gated_access() {
-		$plan       = get_option( 'readypos_license_plan', 'free' );
-		$status     = get_option( 'readypos_license_status', 'free' );
-		$stored_sig = get_option( 'readypos_license_sig', '' );
-
-		if ( 'pro' !== $plan || ! in_array( $status, array( 'active', 'grace' ), true ) || empty( $stored_sig ) ) {
-			return new \WP_Error(
-				'pro_feature_required',
-				__( 'This premium feature requires a valid ReadyPOS Pro license.', 'ready-pos-for-woocommerce' ),
-				array( 'status' => 402 )
-			);
-		}
-
-		$auth_key = defined( 'AUTH_KEY' ) ? AUTH_KEY : 'readypos-fallback-key';
-		$host     = wp_parse_url( home_url(), PHP_URL_HOST ) ?: '';
-		$key      = hash( 'sha256', $auth_key . '|readypos-license-integrity|' . $host, true );
-
-		$fields = array(
-			'plan'       => $plan,
-			'status'     => $status,
-			'key'        => get_option( 'readypos_license_key', '' ),
-			'expires_at' => get_option( 'readypos_license_expires_at', '' ),
-			'type'       => get_option( 'readypos_license_type', '' ),
-		);
-		ksort( $fields );
-		$payload = implode( '|', $fields );
-		$expected = hash_hmac( 'sha256', $payload, $key );
-
-		if ( ! hash_equals( $expected, $stored_sig ) ) {
-			return new \WP_Error(
-				'license_integrity_violation',
-				__( 'License integrity check failed.', 'ready-pos-for-woocommerce' ),
-				array( 'status' => 402 )
-			);
-		}
-
-		return true;
-	}
-
-	/**
 	 * List all gift cards / store credits with pagination.
 	 *
 	 * @param \WP_REST_Request $request REST request.
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function list( \WP_REST_Request $request ) {
-		$gate = $this->verify_gated_access();
-		if ( is_wp_error( $gate ) ) {
-			return $gate;
-		}
-
 		$page   = max( 1, intval( $request->get_param( 'page' ) ?: 1 ) );
 		$limit  = max( 1, min( 100, intval( $request->get_param( 'limit' ) ?: 20 ) ) );
 		$type   = $request->get_param( 'type' ); // 'gift_card' or 'store_credit' or null for all.
@@ -125,11 +72,6 @@ class Actions {
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function create( \WP_REST_Request $request ) {
-		$gate = $this->verify_gated_access();
-		if ( is_wp_error( $gate ) ) {
-			return $gate;
-		}
-
 		$type    = sanitize_text_field( $request->get_param( 'type' ) ?: 'gift_card' );
 		$balance = floatval( $request->get_param( 'balance' ) );
 		$code    = sanitize_text_field( $request->get_param( 'code' ) );
@@ -175,11 +117,6 @@ class Actions {
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function check_balance( \WP_REST_Request $request ) {
-		$gate = $this->verify_gated_access();
-		if ( is_wp_error( $gate ) ) {
-			return $gate;
-		}
-
 		$code = strtoupper( sanitize_text_field( $request->get_param( 'code' ) ) );
 
 		if ( empty( $code ) ) {
@@ -210,11 +147,6 @@ class Actions {
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function redeem( \WP_REST_Request $request ) {
-		$gate = $this->verify_gated_access();
-		if ( is_wp_error( $gate ) ) {
-			return $gate;
-		}
-
 		$code   = strtoupper( sanitize_text_field( $request->get_param( 'code' ) ) );
 		$amount = floatval( $request->get_param( 'amount' ) );
 
@@ -263,11 +195,6 @@ class Actions {
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function topup( \WP_REST_Request $request ) {
-		$gate = $this->verify_gated_access();
-		if ( is_wp_error( $gate ) ) {
-			return $gate;
-		}
-
 		$code   = strtoupper( sanitize_text_field( $request->get_param( 'code' ) ) );
 		$amount = floatval( $request->get_param( 'amount' ) );
 

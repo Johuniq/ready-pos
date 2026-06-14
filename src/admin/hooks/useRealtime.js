@@ -130,7 +130,7 @@ export const useRealtime = (config = {}) => {
         wsManager.on(WS_EVENTS.CART_TRANSFERRED, (data) => {
           if (showNotifications && data.toRegisterId === session?.register?.id) {
             toast.info(
-              `Cart transferred to you from ${data.fromCashierName}`,
+              `Cart transferred to you from ${data.fromUserName}`,
               { duration: 5000 }
             );
           }
@@ -145,7 +145,7 @@ export const useRealtime = (config = {}) => {
         wsManager.on(WS_EVENTS.SESSION_OPENED, (data) => {
           if (showNotifications && data.registerId !== session?.register?.id) {
             toast.info(
-              `${data.cashierName} opened session at ${data.registerName}`,
+              `${data.userName} opened session at ${data.registerName}`,
             );
           }
           onSessionOpened(data);
@@ -158,7 +158,7 @@ export const useRealtime = (config = {}) => {
         wsManager.on(WS_EVENTS.SESSION_CLOSED, (data) => {
           if (showNotifications && data.registerId !== session?.register?.id) {
             toast.info(
-              `${data.cashierName} closed session at ${data.registerName}`,
+              `${data.userName} closed session at ${data.registerName}`,
             );
           }
           onSessionClosed(data);
@@ -223,7 +223,7 @@ export const useRealtime = (config = {}) => {
         })),
         registerId: session?.register?.id,
         registerName: session?.register?.name,
-        cashierName: session?.user?.display_name,
+        userName: session?.user?.display_name,
       });
     },
     [broadcast, session],
@@ -256,16 +256,16 @@ export const useRealtime = (config = {}) => {
   );
 
   const broadcastCartTransferred = useCallback(
-    (cartData, toRegisterId, toCashierId, toCashierName) => {
+    (cartData, toRegisterId, toUserId, toUserName) => {
       broadcast(WS_EVENTS.CART_TRANSFERRED, {
         cartId: cartData.id,
         cartLabel: cartData.label,
         itemCount: cartData.items?.length || 0,
         fromRegisterId: session?.register?.id,
-        fromCashierName: session?.user?.display_name,
+        fromUserName: session?.user?.display_name,
         toRegisterId,
-        toCashierId,
-        toCashierName,
+        toUserId,
+        toUserName,
       });
     },
     [broadcast, session],

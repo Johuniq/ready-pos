@@ -177,22 +177,6 @@ export function useMultiCart() {
   }, [sessions, activeId, removeCart, setSessions, loadSession]);
 
   /**
-   * Transfer a cart to another cashier.
-   */
-  const transferCart = useCallback(
-    (targetId, targetCashierId, targetCashierName) => {
-      setSessions((prev) =>
-        prev.map((s) =>
-          s.id === targetId
-            ? { ...s, ownerId: targetCashierId, ownerName: targetCashierName }
-            : s,
-        ),
-      );
-    },
-    [setSessions],
-  );
-
-  /**
    * Save a cart to server for persistence (unlimited carts).
    */
   const saveCartToServer = useCallback(
@@ -246,7 +230,6 @@ export function useMultiCart() {
     renameCart,
     saveCurrentToSession,
     clearActiveAfterCheckout,
-    transferCart,
     saveCartToServer,
     loadCartsFromServer,
     deleteCartFromServer,

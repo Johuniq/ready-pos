@@ -15,13 +15,6 @@ interface CurrencyData {
   decimal: string;
 }
 
-interface LicenseData {
-  status: string;
-  key?: string;
-  expires?: string;
-  [key: string]: any;
-}
-
 interface ReadyPosAdminData {
   isAdmin: boolean;
   apiUrl: string;
@@ -29,8 +22,6 @@ interface ReadyPosAdminData {
   userInfo: UserInfo;
   currency: CurrencyData;
   onboardingComplete: boolean;
-  license: LicenseData;
-  upgradeUrl: string;
   pluginUrl: string;
   assetsUrl: string;
   version?: string;

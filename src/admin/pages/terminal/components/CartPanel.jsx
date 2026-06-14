@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { isPaymentMethodEnabled } from "@/lib/paymentMethods";
 import ShippingModal from "./ShippingModal";
 
 export default function CartPanel({ onOpenPayment, onOpenHeldCarts }) {
@@ -67,6 +68,20 @@ export default function CartPanel({ onOpenPayment, onOpenHeldCarts }) {
   const [total] = useAtom(cartTotalAtom);
   const [settings] = useAtom(settingsAtom);
   const [shipping] = useAtom(shippingAtom);
+
+  // Honor the global POS Settings → Payments toggles so the "Pay" button
+  // reflects the operator's choice. The PaymentModal itself also checks
+  // these (and the outlet's per-location allow-list) — this is a quick
+  // visual cue that the action will be blocked. We delegate the
+  // "is this enabled?" decision to the shared helper so the Settings
+  // page, the modal, and this button can never disagree.
+  const { cash: cashEnabledInSettings, card: cardEnabledInSettings } =
+    {
+      cash: isPaymentMethodEnabled(settings?.payment_cash),
+      card: isPaymentMethodEnabled(settings?.payment_card),
+    };
+  const isAnyPaymentMethodEnabled =
+    cashEnabledInSettings || cardEnabledInSettings;
 
   const [showDiscountModal, setShowDiscountModal] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
@@ -444,8 +459,15 @@ export default function CartPanel({ onOpenPayment, onOpenHeldCarts }) {
           <Button
             type="button"
             onClick={onOpenPayment}
-            disabled={cart.length === 0}
-            className="flex-1 h-11 text-xs font-bold rounded-xl shadow-md bg-primary text-primary-foreground hover:bg-primary/95 flex items-center justify-center gap-2">
+            disabled={cart.length === 0 || !isAnyPaymentMethodEnabled}
+            title={
+              cart.length === 0
+                ? "Add items to the cart to checkout"
+                : !isAnyPaymentMethodEnabled
+                  ? "All payment methods are disabled in POS Settings → Payments"
+                  : undefined
+            }
+            className="flex-1 h-11 text-xs font-bold rounded-xl shadow-md bg-primary text-primary-foreground hover:bg-primary/95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
             <CreditCard className="w-4.5 h-4.5" />
             <span>Pay {formatPrice(total)}</span>
           </Button>
@@ -525,7 +547,7 @@ export default function CartPanel({ onOpenPayment, onOpenHeldCarts }) {
                 Notes (prints on receipt)
               </label>
               <Textarea
-                placeholder="Enter order comments, cashier instructions..."
+                placeholder="Enter order comments or special instructions..."
                 value={tempNotes}
                 onChange={(e) => setTempNotes(e.target.value)}
                 className="text-xs min-h-24 resize-none"

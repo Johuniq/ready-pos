@@ -75,12 +75,21 @@ class Actions {
 
 		$tax_query = array();
 
-		// Search by name / content
+		// Search by name / content / SKU / barcode
 		if ( ! empty( $search ) ) {
-			// Check SKU/barcode first
+			// Check SKU first
 			$sku_product_id = wc_get_product_id_by_sku( $search );
+			if ( ! $sku_product_id ) {
+				// Check barcode directly via postmeta index lookup
+				global $wpdb;
+				$sku_product_id = $wpdb->get_var( $wpdb->prepare(
+					"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ('_barcode', 'barcode') AND meta_value = %s LIMIT 1",
+					$search
+				) );
+			}
+
 			if ( $sku_product_id ) {
-				// SKU match found — return this product directly, ignore category filter.
+				// SKU/Barcode match found — return this product directly, ignore category filter.
 				$query_args['p'] = $sku_product_id;
 			} else {
 				$query_args['s'] = $search;
@@ -231,33 +240,11 @@ class Actions {
 
 		// Check if it's a barcode custom field search if SKU is not found
 		if ( ! $product_id ) {
-			$meta_queries = array(
-				'relation' => 'OR',
-				array(
-					'key'     => '_barcode',
-					'value'   => $code,
-					'compare' => '=',
-				),
-				array(
-					'key'     => 'barcode',
-					'value'   => $code,
-					'compare' => '=',
-				),
-			);
-
-			$posts = get_posts(
-				array(
-					'post_type'  => array( 'product', 'product_variation' ),
-					// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Barcode fields are merchant-defined product identifiers.
-					'meta_query' => $meta_queries,
-					'fields'     => 'ids',
-					'limit'      => 1,
-				)
-			);
-
-			if ( ! empty( $posts ) ) {
-				$product_id = $posts[0];
-			}
+			global $wpdb;
+			$product_id = $wpdb->get_var( $wpdb->prepare(
+				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ('_barcode', 'barcode') AND meta_value = %s LIMIT 1",
+				$code
+			) );
 		}
 
 		if ( $product_id ) {
@@ -327,9 +314,13 @@ class Actions {
 		if ( $product->is_type( 'variable' ) ) {
 			$children = $product->get_children();
 			$variations = array();
-			foreach ( $children as $child_id ) {
-				$variation = wc_get_product( $child_id );
-				if ( $variation ) {
+			if ( ! empty( $children ) ) {
+				$variation_products = wc_get_products( array(
+					'include' => $children,
+					'limit'   => -1,
+					'type'    => 'variation',
+				) );
+				foreach ( $variation_products as $variation ) {
 					$var_image_id = $variation->get_image_id();
 					$var_image_url = $var_image_id ? wp_get_attachment_image_url( $var_image_id, 'medium' ) : $image_url;
 

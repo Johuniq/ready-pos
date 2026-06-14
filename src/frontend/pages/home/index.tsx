@@ -363,13 +363,7 @@ export default function ReadyPOSLanding() {
                     Benefits
                   </a>
                 </li>
-                <li>
-                  <a
-                    href="#"
-                    className="hover:text-foreground transition-colors">
-                    Pricing
-                  </a>
-                </li>
+
                 <li>
                   <a
                     href="#"

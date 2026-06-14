@@ -50,6 +50,7 @@ release
 
 # Development files
 plugin-config.json
+**/vite-dev-server.json
 
 # OS files
 .DS_Store

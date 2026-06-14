@@ -21,6 +21,10 @@ import {
 import { api } from "@/lib/api";
 import { getCurrencySymbol } from "@/lib/currency";
 import { resetOfflineStorage } from "@/admin/lib/db";
+import {
+  isPaymentMethodEnabled,
+  normalizeYesNo,
+} from "@/lib/paymentMethods";
 import { toast } from "sonner";
 import {
   Store,
@@ -35,7 +39,6 @@ import {
   Phone,
   Mail,
   Info,
-  Cable,
   PackagePlus,
   DollarSign,
   ShoppingCart,
@@ -57,12 +60,6 @@ const STEPS = [
     title: "Register",
     icon: Monitor,
     description: "First register",
-  },
-  {
-    id: "hardware",
-    title: "Hardware",
-    icon: Cable,
-    description: "Devices",
   },
   {
     id: "payments",
@@ -105,21 +102,10 @@ export default function Onboarding() {
     openingCash: "0",
   });
 
-  // Hardware settings
-  const [hardware, setHardware] = useState({
-    printer: "none",
-    printerName: "",
-    cashDrawer: false,
-    barcodeScanner: "keyboard",
-    scale: "none",
-  });
-
   // Payment settings
   const [payments, setPayments] = useState({
     cash: true,
     card: true,
-    mobile: false,
-    giftCard: false,
   });
 
   // Receipt settings
@@ -150,6 +136,37 @@ export default function Onboarding() {
           const existingOutlets = await api.get("/settings/outlets");
           if (existingOutlets?.data?.length > 0) {
             hasExistingData = true;
+            
+            // Sync settings to onboarding state
+            try {
+              const settingsData = await api.get("/settings/get");
+              if (settingsData) {
+                setOutlet(prev => ({
+                  ...prev,
+                  name: settingsData.site_name || prev.name,
+                  address: settingsData.site_address || prev.address,
+                  phone: settingsData.site_phone || prev.phone,
+                  email: settingsData.site_email || prev.email,
+                }));
+                
+                setPayments(prev => ({
+                  ...prev,
+                  cash: isPaymentMethodEnabled(settingsData.payment_cash),
+                  card: isPaymentMethodEnabled(settingsData.payment_card),
+                }));
+                
+                setReceipt(prev => ({
+                  ...prev,
+                  header: settingsData.receipt_header || prev.header,
+                  footer: settingsData.receipt_footer || prev.footer,
+                  paperWidth: settingsData.receipt_paper_width || prev.paperWidth,
+                  showLogo: settingsData.receipt_show_logo === "yes",
+                  showBarcode: settingsData.receipt_show_barcode === "yes",
+                }));
+              }
+            } catch (settingsError) {
+              // Ignore settings fetch error
+            }
           }
         } catch (e) {
           // If checking for existing data fails, proceed with reset
@@ -158,20 +175,7 @@ export default function Onboarding() {
 
         // Only do full reset if there's no existing data
         if (!hasExistingData) {
-          // Call the reset endpoint to clear all cached license and data
-          await api.post("/license/reset");
           await resetOfflineStorage();
-
-          if (typeof readypos_admin !== "undefined") {
-            readypos_admin.license = {
-              ...(readypos_admin.license || {}),
-              plan: "free",
-              status: "free",
-              isPro: false,
-              maskedKey: "",
-              customer: {},
-            };
-          }
         } else {
           // Just clear the onboarding flag if data exists
           await api.post("/settings/update", { onboarding_complete: "no" });
@@ -224,79 +228,168 @@ export default function Onboarding() {
     }
   };
 
+  // Normalize the GET /settings/outlets response. The controller
+  // returns a bare PHP array, but older/dev responses may be wrapped
+  // in { data: [...] }, so accept both shapes defensively.
+  const toOutletList = (resp) => {
+    if (Array.isArray(resp)) return resp;
+    if (resp && Array.isArray(resp.data)) return resp.data;
+    return [];
+  };
+
   const handleFinish = async () => {
     setSaving(true);
     try {
-      let outletId = 1;
+      let outletId = null;
 
       // First, always try to get existing outlets (for reinstall scenarios)
       try {
         const existingOutlets = await api.get("/settings/outlets");
-        if (existingOutlets?.data?.length > 0) {
+        const existingList = toOutletList(existingOutlets);
+        if (existingList.length > 0) {
           // Use existing outlet from previous installation
-          outletId = existingOutlets.data[0].id;
+          outletId = existingList[0].id;
         } else {
-          // No existing outlets, try to create a new one
+          // No existing outlets, try to create a new one. Fall back to
+          // a sensible default name if the user skipped the Store Setup
+          // step, otherwise the backend will 400 with "Name is required".
+          const fallbackName =
+            (outlet.name && outlet.name.trim()) ||
+            (register.name && register.name.trim()) ||
+            "Main Outlet";
           try {
             const outletResponse = await api.post("/settings/outlets/create", {
-              name: outlet.name,
+              name: fallbackName,
               address: outlet.address,
               phone: outlet.phone,
               email: outlet.email,
               receipt_header: receipt.header,
               receipt_footer: receipt.footer,
             });
-            outletId = outletResponse?.data?.id || 1;
+            // New hardened endpoint returns { success, id, data: {...} }.
+            // Older shapes may return the id directly. Be defensive.
+            const created = outletResponse?.data?.data || outletResponse?.data || outletResponse;
+            outletId = created?.id ?? outletResponse?.id ?? null;
+            if (!outletId) {
+              throw new Error("Outlet was created but no id was returned.");
+            }
           } catch (createError) {
-            // If creation fails (e.g., license limit or quota), try one more time to get existing outlets
-            const retryOutlets = await api.get("/settings/outlets");
-            if (retryOutlets?.data?.length > 0) {
-              outletId = retryOutlets.data[0].id;
+            // If creation failed because of a validation error, surface
+            // the real server message instead of a generic DB one.
+            const reason =
+              createError?.message ||
+              createError?.data?.message ||
+              "Failed to create outlet.";
+            // Final retry: maybe another request created it in the meantime.
+            const retryOutlets = await api.get("/settings/outlets").catch(() => []);
+            const retryList = toOutletList(retryOutlets);
+            if (retryList.length > 0) {
+              outletId = retryList[0].id;
             } else {
-              throw new Error("Failed to create or find an outlet. Please check your database and license status.");
+              throw new Error(reason);
             }
           }
         }
       } catch (e) {
-        throw new Error("Unable to set up outlet. Please ensure your database is accessible and try again.");
+        // Preserve the most specific message we have; only fall back to
+        // the generic DB error when we genuinely have no detail.
+        const detail = e?.message || "Unable to set up outlet.";
+        throw new Error(
+          detail.toLowerCase().includes("database")
+            ? detail
+            : `${detail} Please ensure your database is accessible and try again.`
+        );
       }
 
-      // 2. Create the register (or update if exists)
+      // 2. Create the register (or update if exists) and immediately open
+      //    a session + clock in a shift so the POS terminal doesn't force the
+      //    user to re-enter outlet, register, and opening balance again.
+      let registerId = null;
       try {
-        await api.post("/settings/registers/create", {
+        const registerResponse = await api.post("/settings/registers/create", {
           name: register.name,
           outlet_id: outletId,
-          opening_cash: parseFloat(register.openingCash) || 0,
-          status: "open",
         });
+        const created =
+          registerResponse?.data?.data ||
+          registerResponse?.data ||
+          registerResponse;
+        registerId = created?.id ?? null;
       } catch (registerError) {
         // Continue even if register creation fails
       }
 
-      // 3. Save hardware settings
+      // 2a. If we don't know the register id, fetch the first register for
+      //     this outlet so the session/shift calls below still work.
+      if (!registerId && outletId) {
+        try {
+          const regsResp = await api.get(
+            `/settings/outlets/${outletId}/registers`
+          );
+          const regsList = Array.isArray(regsResp?.data)
+            ? regsResp.data
+            : Array.isArray(regsResp)
+              ? regsResp
+              : [];
+          registerId = regsList[0]?.id ?? null;
+        } catch (e) {
+          registerId = null;
+        }
+      }
+
+      // 2b. Open the register session with the opening cash the user entered.
+      //     Failures here are non-fatal: the user can still open it manually
+      //     from the terminal.
+      let sessionId = null;
+      if (registerId) {
+        try {
+          const sessionResp = await api.post("/sessions/open", {
+            register_id: registerId,
+            outlet_id: outletId,
+            opening_cash: parseFloat(register.openingCash) || 0,
+            notes: "Opened during onboarding",
+          });
+          const sessionData =
+            sessionResp?.data?.data || sessionResp?.data || sessionResp;
+          sessionId = sessionData?.id ?? null;
+        } catch (sessionError) {
+          // Non-fatal: terminal will prompt to open session
+        }
+
+        // 2c. Clock the cashier into a shift attached to the new session.
+        try {
+          await api.post("/shifts/clock-in", {
+            session_id: sessionId || undefined,
+            notes: "Clocked in during onboarding",
+          });
+        } catch (shiftError) {
+          // Non-fatal: terminal will prompt to clock in
+        }
+      }
+
+      // 3. Save payment settings
       await api.post("/settings/update", {
-        hardware_printer_type: hardware.printer,
-        hardware_printer_name: hardware.printerName,
-        hardware_cash_drawer: hardware.cashDrawer ? "yes" : "no",
-        hardware_barcode_scanner: hardware.barcodeScanner,
-        hardware_scale: hardware.scale,
+        payment_cash: normalizeYesNo(payments.cash),
+        payment_card: normalizeYesNo(payments.card),
       });
 
-      // 4. Save payment settings
+      // 5. Save global site settings and receipt settings.
+      //    Re-send the payment fields here too: a partial update that
+      //    omits them must not blank out the value the user just chose
+      //    in step 3 (defense in depth on top of the server-side guard
+      //    that only writes fields actually present in the request).
       await api.post("/settings/update", {
-        payment_cash: payments.cash ? "yes" : "no",
-        payment_card: payments.card ? "yes" : "no",
-        payment_mobile: payments.mobile ? "yes" : "no",
-        payment_giftcard: payments.giftCard ? "yes" : "no",
-      });
-
-      // 5. Save receipt settings
-      await api.post("/settings/update", {
+        site_name: outlet.name,
+        site_address: outlet.address,
+        site_phone: outlet.phone,
+        site_email: outlet.email,
         receipt_header: receipt.header,
         receipt_footer: receipt.footer,
         receipt_paper_width: receipt.paperWidth,
-        receipt_show_logo: receipt.showLogo ? "yes" : "no",
-        receipt_show_barcode: receipt.showBarcode ? "yes" : "no",
+        receipt_show_logo: normalizeYesNo(receipt.showLogo),
+        receipt_show_barcode: normalizeYesNo(receipt.showBarcode),
+        payment_cash: normalizeYesNo(payments.cash),
+        payment_card: normalizeYesNo(payments.card),
         onboarding_complete: "yes",
       });
 
@@ -376,15 +469,12 @@ export default function Onboarding() {
                 </h1>
                 <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
                   Let's configure your point of sale system in a few minutes.
-                  We'll guide you through store setup, hardware, payments, and
+                  We'll guide you through store setup, payments, and
                   more.
                 </p>
                 <div className="grid grid-cols-2 gap-3 pt-4 text-xs text-muted-foreground max-w-sm">
                   <span className="flex items-center gap-1.5 p-3 bg-muted/30 rounded-lg">
                     <Store className="w-4 h-4 text-primary" /> Store & Register
-                  </span>
-                  <span className="flex items-center gap-1.5 p-3 bg-muted/30 rounded-lg">
-                    <Cable className="w-4 h-4 text-primary" /> Hardware
                   </span>
                   <span className="flex items-center gap-1.5 p-3 bg-muted/30 rounded-lg">
                     <CreditCard className="w-4 h-4 text-primary" /> Payments
@@ -591,144 +681,13 @@ export default function Onboarding() {
                       Register Quick Tips
                     </p>
                     <ul className="list-disc list-inside space-y-0.5 text-[11px] ml-5">
-                      <li>Each cashier can open their own shift session</li>
+                      <li>Each register can open its own shift session</li>
                       <li>Opening cash helps track starting balance</li>
                       <li>
                         Multiple registers can operate simultaneously at one
                         outlet
                       </li>
                     </ul>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Hardware Setup */}
-            {currentStep.id === "hardware" && (
-              <div className="flex-1 space-y-6">
-                <div className="space-y-1">
-                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                    <Cable className="w-5 h-5 text-primary" />
-                    Connect your hardware
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    Configure printers, scanners, and other POS devices. You can
-                    skip and set up later.
-                  </p>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5">
-                      <Printer className="w-3 h-3" /> Receipt Printer
-                    </label>
-                    <Select
-                      value={hardware.printer}
-                      onValueChange={(value) =>
-                        setHardware((prev) => ({ ...prev, printer: value }))
-                      }>
-                      <SelectTrigger className="h-10 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">
-                          None - Print from browser
-                        </SelectItem>
-                        <SelectItem value="esc-pos">ESC/POS Printer</SelectItem>
-                        <SelectItem value="star">Star Printer</SelectItem>
-                        <SelectItem value="epson">Epson TM Series</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {hardware.printer !== "none" && (
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-muted-foreground uppercase">
-                        Printer Device Name
-                      </label>
-                      <Input
-                        placeholder="e.g. TM-T20, TSP100"
-                        value={hardware.printerName}
-                        onChange={(e) =>
-                          setHardware((prev) => ({
-                            ...prev,
-                            printerName: e.target.value,
-                          }))
-                        }
-                        className="h-10 text-xs"
-                      />
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between border p-4 rounded-xl bg-muted/5">
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                        <Cable className="w-3.5 h-3.5" />
-                        Cash Drawer
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        Automatically open when printing receipts
-                      </p>
-                    </div>
-                    <Switch
-                      checked={hardware.cashDrawer}
-                      onCheckedChange={(checked) =>
-                        setHardware((prev) => ({ ...prev, cashDrawer: checked }))
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-muted-foreground uppercase flex items-center gap-1.5">
-                      <Barcode className="w-3 h-3" /> Barcode Scanner
-                    </label>
-                    <Select
-                      value={hardware.barcodeScanner}
-                      onValueChange={(value) =>
-                        setHardware((prev) => ({
-                          ...prev,
-                          barcodeScanner: value,
-                        }))
-                      }>
-                      <SelectTrigger className="h-10 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="keyboard">
-                          Keyboard Wedge (Recommended)
-                        </SelectItem>
-                        <SelectItem value="usb">USB HID Scanner</SelectItem>
-                        <SelectItem value="bluetooth">
-                          Bluetooth Scanner
-                        </SelectItem>
-                        <SelectItem value="none">None</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-[10px] text-muted-foreground">
-                      Most scanners work as "Keyboard Wedge" - no special setup
-                      needed
-                    </p>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-muted-foreground uppercase">
-                      Scale Integration
-                    </label>
-                    <Select
-                      value={hardware.scale}
-                      onValueChange={(value) =>
-                        setHardware((prev) => ({ ...prev, scale: value }))
-                      }>
-                      <SelectTrigger className="h-10 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        <SelectItem value="toledo">Toledo Scale</SelectItem>
-                        <SelectItem value="mettler">Mettler Toledo</SelectItem>
-                        <SelectItem value="cas">CAS Scale</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
                 </div>
               </div>
@@ -787,53 +746,6 @@ export default function Onboarding() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between border p-5 rounded-xl bg-muted/5 hover:bg-muted/10 transition-colors">
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                        <Phone className="w-4 h-4 text-purple-600" />
-                        Mobile Payments
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Apple Pay, Google Pay, Samsung Pay and other contactless
-                        wallets.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={payments.mobile}
-                      onCheckedChange={(checked) =>
-                        setPayments((prev) => ({ ...prev, mobile: checked }))
-                      }
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between border p-5 rounded-xl bg-muted/5 hover:bg-muted/10 transition-colors">
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                        <ShoppingCart className="w-4 h-4 text-orange-600" />
-                        Gift Cards
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Accept and sell store gift cards with balance tracking.
-                      </p>
-                    </div>
-                    <Switch
-                      checked={payments.giftCard}
-                      onCheckedChange={(checked) =>
-                        setPayments((prev) => ({ ...prev, giftCard: checked }))
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-700 dark:text-amber-300">
-                  <p className="font-semibold flex items-center gap-1.5 mb-1">
-                    <Info className="w-3.5 h-3.5" />
-                    Split Payments
-                  </p>
-                  <p className="text-[11px]">
-                    Customers can pay with multiple methods in a single
-                    transaction (e.g. $50 cash + $30 card).
-                  </p>
                 </div>
               </div>
             )}
@@ -1156,25 +1068,10 @@ export default function Onboarding() {
                       </div>
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground flex items-center gap-1.5">
-                          <Printer className="w-3 h-3" /> Printer:
-                        </span>
-                        <span className="font-semibold text-foreground">
-                          {hardware.printer === "none"
-                            ? "Browser"
-                            : hardware.printer.toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground flex items-center gap-1.5">
                           <CreditCard className="w-3 h-3" /> Payments:
                         </span>
                         <span className="font-semibold text-foreground">
-                          {[
-                            payments.cash && "Cash",
-                            payments.card && "Card",
-                            payments.mobile && "Mobile",
-                            payments.giftCard && "Gift Card",
-                          ]
+                          {[payments.cash && "Cash", payments.card && "Card"]
                             .filter(Boolean)
                             .join(", ")}
                         </span>
@@ -1191,16 +1088,6 @@ export default function Onboarding() {
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 justify-center text-[10px] text-muted-foreground pt-2">
-                  {hardware.cashDrawer && (
-                    <span className="px-2 py-1 bg-muted rounded-md flex items-center gap-1">
-                      <Check className="w-3 h-3" /> Cash Drawer
-                    </span>
-                  )}
-                  {hardware.barcodeScanner !== "none" && (
-                    <span className="px-2 py-1 bg-muted rounded-md flex items-center gap-1">
-                      <Check className="w-3 h-3" /> Barcode Scanner
-                    </span>
-                  )}
                   {receipt.showBarcode && (
                     <span className="px-2 py-1 bg-muted rounded-md flex items-center gap-1">
                       <Check className="w-3 h-3" /> Order Barcodes

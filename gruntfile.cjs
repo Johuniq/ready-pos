@@ -53,6 +53,7 @@ const distFiles = [
   "!.vscode/**",
   "!**/.github/**",
   "!**/.git/**",
+  "!**/vite-dev-server.json",
   
   // Config files (not needed in production)
   "!.DS_Store",
@@ -345,6 +346,16 @@ grunt.initConfig({
   // Task to delete .js.map files
   clean: {
     mapFiles: ["release/ready-pos/js/dist/assets/**/*.js.map"],
+    // Stale Vite dev-server markers left behind by `vite dev` runs.
+    // The v4wp manifest loader prefers this file over the production
+    // manifest.json, which causes a blank page in production. Remove
+    // them from the dist folders before packaging the release.
+    devMarkers: {
+      src: [
+        "assets/admin/dist/vite-dev-server.json",
+        "assets/frontend/dist/vite-dev-server.json",
+      ],
+    },
   },
 
   // Task to compress the release directory into a zip file
@@ -384,6 +395,7 @@ loadGruntTasks(grunt);
 
 // Register 'release' task to copy files and create a zip archive
 grunt.registerTask("release", [
+  "clean:devMarkers",
   "copy:main",
   "compress:main",
   "compress:version",

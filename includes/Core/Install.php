@@ -11,6 +11,7 @@
 namespace Readypos\Core;
 
 use Readypos\Database\Migrations\POSOutlets;
+use Readypos\Database\Migrations\AddOutletConfiguration;
 use Readypos\Database\Migrations\POSRegisters;
 use Readypos\Database\Migrations\POSSessions;
 use Readypos\Database\Migrations\POSOrderMeta;
@@ -26,6 +27,7 @@ use Readypos\Database\Migrations\POSStockAdjustments;
 use Readypos\Database\Migrations\POSInventoryCounts;
 use Readypos\Database\Migrations\POSInventoryCountItems;
 use Readypos\Database\Migrations\POSInventoryHistory;
+use Readypos\Database\Migrations\POSSessionAdjustments;
 use Readypos\Core\Roles;
 use Readypos\Traits\Base;
 
@@ -69,6 +71,7 @@ class Install {
 	 */
 	private function install_tables() {
 		POSOutlets::up();
+		AddOutletConfiguration::up();
 		POSRegisters::up();
 		POSSessions::up();
 		POSOrderMeta::up();
@@ -84,7 +87,8 @@ class Install {
 		POSInventoryCounts::up();
 		POSInventoryCountItems::up();
 		POSInventoryHistory::up();
-		
+		POSSessionAdjustments::up();
+
 		// SECURITY FIX #17: Install audit log table
 		\Readypos\Database\Migrations\AuditLog::up();
 		
@@ -95,12 +99,14 @@ class Install {
 	}
 
 	/**
-	 * Setup POS-specific roles.
+	 * Grant POS capabilities to default WordPress roles
+	 * (Administrator and Shop Manager).
 	 *
 	 * @return void
 	 */
 	private function setup_roles() {
-		Roles::get_instance()->register_roles();
-		Roles::get_instance()->refresh_pos_cashier_caps();
+		if ( class_exists( '\Readypos\Core\Roles' ) ) {
+			\Readypos\Core\Roles::get_instance()->grant_pos_caps();
+		}
 	}
 }

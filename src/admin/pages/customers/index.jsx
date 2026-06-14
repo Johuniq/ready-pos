@@ -43,8 +43,6 @@ import {
 } from "lucide-react";
 import CustomerFormModal from "./components/CustomerFormModal";
 import CustomerDetailModal from "./components/CustomerDetailModal";
-import { useLicense } from "@/admin/hooks/useLicense";
-import { ProBadge } from "@/admin/components/ProGate";
 import {
   DataPanel,
   PageHeader,
@@ -83,7 +81,6 @@ export default function Customers() {
 
   // Detail modal state
   const [detailCustomer, setDetailCustomer] = useState(null);
-  const license = useLicense();
 
   // Sort
   const [sortBy, setSortBy] = useState("recent");
@@ -154,7 +151,6 @@ export default function Customers() {
   }, [search]);
 
   const handleOpenCreate = () => {
-    if (!license.requireQuota("customers")) return;
     setFormMode("create");
     setEditing(null);
     setShowForm(true);
@@ -169,8 +165,6 @@ export default function Customers() {
   const handleSaved = async () => {
     // Reload current page so totals stay accurate
     await fetchCustomers(page, search);
-    // Refresh license data to update usage count
-    await license.refresh();
   };
 
   const handleDelete = async () => {
@@ -253,15 +247,7 @@ export default function Customers() {
             size="sm"
             className="h-9 font-bold flex items-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/95 btn-premium">
             <Plus className="w-4 h-4" /> Add Customer
-            {!license.isPro && !license.canCreate("customers") && (
-              <ProBadge className="ml-1" />
-            )}
           </Button>
-          {!license.isPro && (
-            <span className="text-[11px] font-semibold text-muted-foreground bg-muted/40 px-2.5 py-1 rounded-md">
-              {license.usage?.customers || 0} / {license.limits?.customers || 0}
-            </span>
-          )}
           </>
         }
       />
@@ -421,16 +407,11 @@ export default function Customers() {
                               size="icon"
                               className="h-8 w-8 rounded-full btn-premium"
                               onClick={() => {
-                                if (!license.requireFeature("purchase_history"))
-                                  return;
                                 setDetailCustomer(c);
                               }}
                               title="View Details">
                               <Eye className="w-3.5 h-3.5" />
                             </Button>
-                            {!license.isPro && (
-                              <ProBadge className="absolute -top-1.5 -right-1.5 pointer-events-none" />
-                            )}
                           </div>
                           <Button
                             variant="outline"

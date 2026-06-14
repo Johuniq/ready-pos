@@ -37,77 +37,188 @@ class Actions {
 		}
 
 		try {
-			// Get WooCommerce shipping zones
-			$shipping_zones = \WC_Shipping_Zones::get_zones();
+			$country  = isset( $address['country'] ) ? (string) $address['country'] : '';
+			$state    = isset( $address['state'] ) ? (string) $address['state'] : '';
+			$postcode = isset( $address['postcode'] ) ? (string) $address['postcode'] : '';
+			$city     = isset( $address['city'] ) ? (string) $address['city'] : '';
+
+			// Make sure session + cart are available so the WC shipping
+			// engine can build a proper package for the destination.
+			if ( ! WC()->session ) {
+				WC()->initialize_session();
+			}
+			if ( ! WC()->cart ) {
+				WC()->initialize_cart();
+			}
+
+			// Bootstrap a real WC_Customer in REST context.
+			$customer = WC()->customer;
+			if ( ! $customer ) {
+				$customer_id = WC()->session ? WC()->session->get_customer_id() : 0;
+				$customer    = $customer_id ? new \WC_Customer( $customer_id ) : new \WC_Customer( 0 );
+				WC()->customer = $customer;
+			}
+
+			if ( $customer ) {
+				if ( '' !== $country ) {
+					$customer->set_shipping_country( $country );
+				}
+				if ( '' !== $state ) {
+					$customer->set_shipping_state( $state );
+				}
+				if ( '' !== $postcode ) {
+					$customer->set_shipping_postcode( $postcode );
+				}
+				if ( '' !== $city ) {
+					$customer->set_shipping_city( $city );
+				}
+				if ( isset( $address['address_1'] ) ) {
+					$customer->set_shipping_address( (string) $address['address_1'] );
+				}
+				if ( isset( $address['address_2'] ) ) {
+					$customer->set_shipping_address_2( (string) $address['address_2'] );
+				}
+				if ( method_exists( $customer, 'set_calculated_shipping' ) ) {
+					$customer->set_calculated_shipping( true );
+				}
+				if ( method_exists( $customer, 'save' ) ) {
+					$customer->save();
+				}
+			}
+
+			$cart = WC()->cart;
+
+			// Pick the zone that matches the destination, falling back to
+			// the "Rest of the world" zone (zone id 0).
+			$zone      = $this->find_matching_zone( $country, $state, $postcode, $city );
+			$zone_data = $zone instanceof \WC_Shipping_Zone ? $zone->get_data() : array();
+			$zone_id   = $zone_data['id'] ?? ( $zone ? (int) $zone : 0 );
+
+			// Read the actual shipping methods configured in
+			// WooCommerce → Settings → Shipping for this zone.
+			$zone_methods = $zone instanceof \WC_Shipping_Zone ? $zone->get_shipping_methods( true ) : array();
+			$zone_methods = is_array( $zone_methods ) ? $zone_methods : array();
+
 			$available_methods = array();
 
-			// Get cart contents from session or create temporary cart
-			$cart = WC()->cart;
-			if ( ! $cart ) {
-				WC()->initialize_cart();
-				$cart = WC()->cart;
-			}
+			if ( ! empty( $zone_methods ) ) {
+				// Build a proper package so configured methods can compute
+				// a real rate (flat_rate, free_shipping, local_pickup, etc.).
+				$contents = ( $cart && method_exists( $cart, 'get_cart' ) ) ? $cart->get_cart() : array();
 
-			// Set shipping address for calculation
-			$cart->get_customer()->set_shipping_country( $address['country'] ?? 'US' );
-			$cart->get_customer()->set_shipping_state( $address['state'] ?? '' );
-			$cart->get_customer()->set_shipping_postcode( $address['postcode'] ?? '' );
-			$cart->get_customer()->set_shipping_city( $address['city'] ?? '' );
-			$cart->get_customer()->set_shipping_address( $address['address_1'] ?? '' );
-			$cart->get_customer()->set_shipping_address_2( $address['address_2'] ?? '' );
+				$package = array(
+					'contents'        => $contents,
+					'contents_cost'   => $cart && method_exists( $cart, 'get_cart_contents_total' ) ? (float) $cart->get_cart_contents_total() : 0.0,
+					'applied_coupons' => $cart && method_exists( $cart, 'get_applied_coupons' ) ? $cart->get_applied_coupons() : array(),
+					'destination'     => array(
+						'country'   => $country,
+						'state'     => $state,
+						'postcode'  => $postcode,
+						'city'      => $city,
+						'address'   => isset( $address['address_1'] ) ? (string) $address['address_1'] : '',
+						'address_2' => isset( $address['address_2'] ) ? (string) $address['address_2'] : '',
+					),
+					'user' => array( 'ID' => get_current_user_id() ),
+				);
 
-			// Calculate shipping
-			$cart->calculate_shipping();
-			$packages = $cart->get_shipping_packages();
+				$rates_result = WC()->shipping()->calculate_shipping_for_package( $package );
+				$rates        = ( is_array( $rates_result ) && ! empty( $rates_result['rates'] ) ) ? $rates_result['rates'] : array();
 
-			if ( ! empty( $packages ) ) {
-				$package = $packages[0];
-				
-				// Get shipping methods for this package
-				$shipping_methods = WC()->shipping()->calculate_shipping_for_package( $package );
-
-				if ( ! empty( $shipping_methods['rates'] ) ) {
-					foreach ( $shipping_methods['rates'] as $rate ) {
-						$available_methods[] = array(
-							'id'          => $rate->get_id(),
-							'method_id'   => $rate->get_method_id(),
-							'title'       => $rate->get_label(),
-							'cost'        => $rate->get_cost(),
-							'description' => $rate->get_method_id() === 'free_shipping' ? __( 'Free shipping', 'ready-pos-for-woocommerce' ) : '',
-						);
+				// First, surface rates that the engine actually computed.
+				foreach ( $rates as $rate ) {
+					if ( ! method_exists( $rate, 'get_method_id' ) ) {
+						continue;
 					}
+					$available_methods[] = array(
+						'id'          => method_exists( $rate, 'get_id' ) ? $rate->get_id() : $rate->get_method_id(),
+						'method_id'   => $rate->get_method_id(),
+						'instance_id' => method_exists( $rate, 'get_instance_id' ) ? (int) $rate->get_instance_id() : 0,
+						'title'       => method_exists( $rate, 'get_label' ) ? $rate->get_label() : (string) ( $zone_methods[ $rate->get_method_id() ]->title ?? $rate->get_method_id() ),
+						'cost'        => method_exists( $rate, 'get_cost' ) ? (float) $rate->get_cost() : 0.0,
+						'tax_status'  => method_exists( $rate, 'get_tax_status' ) ? $rate->get_tax_status() : '',
+						'description' => 'free_shipping' === $rate->get_method_id() ? __( 'Free shipping', 'ready-pos-for-woocommerce' ) : '',
+					);
+				}
+
+				// Then append the remaining enabled methods in the zone
+				// (no computed rate — e.g. methods that need manual quotes).
+				$rated_ids = array();
+				foreach ( $available_methods as $m ) {
+					$rated_ids[] = $m['method_id'] . ':' . ( $m['instance_id'] ?? 0 );
+				}
+				foreach ( $zone_methods as $instance_id => $method ) {
+					$key = $method->id . ':' . (int) $instance_id;
+					if ( in_array( $key, $rated_ids, true ) ) {
+						continue;
+					}
+					$available_methods[] = array(
+						'id'          => $method->id . ':' . $instance_id,
+						'method_id'   => $method->id,
+						'instance_id' => (int) $instance_id,
+						'title'       => $method->get_title() ?: $method->get_method_title(),
+						'cost'        => 0.0,
+						'tax_status'  => method_exists( $method, 'get_tax_status' ) ? $method->get_tax_status() : '',
+						'description' => $method->get_method_description(),
+					);
 				}
 			}
 
-			// If no methods found, try to get default/fallback methods
 			if ( empty( $available_methods ) ) {
-				// Get all enabled shipping methods as fallback
-				$shipping_methods = WC()->shipping()->get_shipping_methods();
-				
-				foreach ( $shipping_methods as $method ) {
-					if ( 'yes' === $method->enabled ) {
-						$available_methods[] = array(
-							'id'          => $method->id,
-							'method_id'   => $method->id,
-							'title'       => $method->get_method_title(),
-							'cost'        => 0, // Default cost, should be configured in WooCommerce
-							'description' => $method->get_method_description(),
-						);
-					}
-				}
+				return new \WP_REST_Response(
+					array(
+						'success'        => false,
+						'code'           => 'not_configured',
+						'message'        => __( 'No shipping methods are configured for this destination. Please configure shipping zones and methods in WooCommerce → Settings → Shipping.', 'ready-pos-for-woocommerce' ),
+						'methods'        => array(),
+						'zone'           => $zone_data,
+						'zone_id'        => $zone_id,
+						'configure_url'  => admin_url( 'admin.php?page=wc-settings&tab=shipping' ),
+					),
+					200
+				);
 			}
 
 			return new \WP_REST_Response(
 				array(
 					'success' => true,
 					'methods' => $available_methods,
+					'zone'    => $zone_data,
+					'zone_id' => $zone_id,
 				),
 				200
 			);
 
-		} catch ( \Exception $e ) {
+		} catch ( \Throwable $e ) {
 			return new \WP_Error( 'calculation_failed', $e->getMessage(), array( 'status' => 500 ) );
 		}
+	}
+
+	/**
+	 * Find the WC_Shipping_Zone that matches the given destination.
+	 *
+	 * @param string $country
+	 * @param string $state
+	 * @param string $postcode
+	 * @param string $city
+	 * @return \WC_Shipping_Zone|null
+	 */
+	protected function find_matching_zone( $country, $state, $postcode, $city ) {
+		if ( ! class_exists( '\\WC_Shipping_Zones' ) ) {
+			return null;
+		}
+
+		$package = array(
+			'destination' => array(
+				'country'  => $country,
+				'state'    => $state,
+				'postcode' => $postcode,
+				'city'     => $city,
+			),
+		);
+
+		$zone = \WC_Shipping_Zones::get_zone_matching_package( $package );
+
+		return $zone instanceof \WC_Shipping_Zone ? $zone : null;
 	}
 
 	/**

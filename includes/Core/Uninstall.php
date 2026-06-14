@@ -42,6 +42,11 @@ class Uninstall {
 		// Default to 'yes' to preserve data - safer for users
 		$keep_data = get_option( 'readypos_keep_data_on_uninstall', 'yes' );
 
+		// Always strip POS capabilities / legacy custom roles from WP roles.
+		// These are plugin-specific and should be cleaned up even when the
+		// user opts to keep POS data on uninstall.
+		self::clear_roles();
+
 		if ( 'yes' === $keep_data ) {
 			// Only clear caches, keep all data
 			self::clear_caches();
@@ -55,6 +60,23 @@ class Uninstall {
 		self::clear_user_meta();
 		self::drop_tables();
 		self::clear_scheduled_events();
+	}
+
+	/**
+	 * Remove POS-specific roles and strip POS capabilities from default
+	 * WordPress roles. Safe to call when those roles don't exist.
+	 *
+	 * @return void
+	 */
+	public static function clear_roles() {
+		// Remove legacy custom roles from the GPL build.
+		remove_role( 'pos_cashier' );
+		remove_role( 'pos_manager' );
+
+		// Strip POS caps from default WP roles.
+		if ( class_exists( '\Readypos\Core\Roles' ) ) {
+			\Readypos\Core\Roles::get_instance()->revoke_pos_caps();
+		}
 	}
 
 	/**
@@ -195,14 +217,7 @@ class Uninstall {
 	 * @return void
 	 */
 	private static function clear_scheduled_events() {
-		// Clear license validation cron
-		$timestamp = wp_next_scheduled( 'readypos_license_check' );
-		if ( $timestamp ) {
-			wp_unschedule_event( $timestamp, 'readypos_license_check' );
-		}
-
 		// Clear any other scheduled events
-		wp_clear_scheduled_hook( 'readypos_license_check' );
 		wp_clear_scheduled_hook( 'readypos_daily_cleanup' );
 		wp_clear_scheduled_hook( 'readypos_sync_inventory' );
 	}

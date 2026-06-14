@@ -13,7 +13,6 @@ use Readypos\Core\Template;
 use Readypos\Assets\Frontend;
 use Readypos\Assets\Admin;
 use Readypos\Core\WooCommerceChecker;
-use Readypos\Core\License;
 use Readypos\Core\Roles;
 use Readypos\Traits\Base;
 
@@ -55,21 +54,46 @@ final class Readypos {
 		// Initialize core modules.
 		Frontend::get_instance()->bootstrap();
 		Template::get_instance()->init();
-		License::get_instance()->init();
-		Roles::get_instance()->init();
 
-		add_action( 'init', array( $this, 'i18n' ) );
 
 		// Initialize real-time sync system (if class exists)
 		if ( class_exists( '\Readypos\Realtime\WebSocketServer' ) ) {
 			\Readypos\Realtime\WebSocketServer::init();
 		}
 
-		// Register hooks to clear reports transients on order changes
-		add_action( 'woocommerce_new_order', array( '\Readypos\Controllers\Reports\Actions', 'clear_reports_cache' ) );
-		add_action( 'woocommerce_update_order', array( '\Readypos\Controllers\Reports\Actions', 'clear_reports_cache' ) );
-		add_action( 'woocommerce_trash_order', array( '\Readypos\Controllers\Reports\Actions', 'clear_reports_cache' ) );
-		add_action( 'woocommerce_delete_order', array( '\Readypos\Controllers\Reports\Actions', 'clear_reports_cache' ) );
+		// Initialize & Bootstrap DI Container bindings
+		$container = \Readypos\Core\Architecture\Container::get_instance();
+		$container->singleton( \Readypos\Core\Architecture\Container::class, $container );
+		
+		// Event Dispatcher & Transactions
+		$container->singleton( \Readypos\Core\Architecture\EventDispatcher::class );
+		$container->singleton( \Readypos\Core\Architecture\Transaction\Manager::class );
+		$container->singleton( \Readypos\Core\Architecture\Queue\JobQueue::class );
+
+		// Repositories
+		$container->bind( \Readypos\Interfaces\Repositories\ProductRepositoryInterface::class, \Readypos\Repositories\ProductRepository::class );
+		$container->bind( \Readypos\Interfaces\Repositories\OrderRepositoryInterface::class, \Readypos\Repositories\OrderRepository::class );
+
+		// Services
+		$container->bind( \Readypos\Interfaces\Services\InventoryServiceInterface::class, \Readypos\Services\InventoryService::class );
+		$container->bind( \Readypos\Interfaces\Services\CheckoutServiceInterface::class, \Readypos\Services\CheckoutService::class );
+
+		// Initialize JobQueue Background runner
+		$container->get( \Readypos\Core\Architecture\Queue\JobQueue::class )->init();
+
+		// Register hooks to clear dashboard reports transients on order changes
+		add_action( 'woocommerce_new_order', array( $this, 'clear_dashboard_reports_cache' ) );
+		add_action( 'woocommerce_update_order', array( $this, 'clear_dashboard_reports_cache' ) );
+		add_action( 'woocommerce_trash_order', array( $this, 'clear_dashboard_reports_cache' ) );
+		add_action( 'woocommerce_delete_order', array( $this, 'clear_dashboard_reports_cache' ) );
+	}
+
+	/**
+	 * Clear dashboard reports transients (free cache only).
+	 */
+	public function clear_dashboard_reports_cache() {
+		global $wpdb;
+		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_readypos_report_%_free_%' OR option_name LIKE '_transient_timeout_readypos_report_%_free_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 	}
 
 	/**

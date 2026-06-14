@@ -20,7 +20,6 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import CartPanel from "./components/CartPanel";
 import CartTabs from "./components/CartTabs";
-import CashierLoginPanel from "./components/CashierLoginPanel";
 import HeldCartsModal from "./components/HeldCartsModal";
 import PaymentModal from "./components/PaymentModal";
 import POSHeader from "./components/POSHeader";
@@ -33,61 +32,6 @@ export default function Terminal() {
   const setSettings = useSetAtom(settingsAtom);
   const setHeldCount = useSetAtom(heldOrdersCountAtom);
   const { addToCart } = useCart();
-
-  // Cashier PIN login state.
-  // If the current WP user is a cashier (not admin/manager), they must
-  // authenticate via PIN before accessing the terminal.
-  const [cashierAuthenticated, setCashierAuthenticated] = useState(false);
-  const [authenticatedUser, setAuthenticatedUser] = useState(null);
-
-  const currentUserRoles =
-    typeof readypos_admin !== "undefined"
-      ? readypos_admin.userInfo?.roles || []
-      : [];
-  const isCashierRole = currentUserRoles.includes("pos_cashier");
-  const isManagerOrAdmin =
-    currentUserRoles.includes("administrator") ||
-    currentUserRoles.includes("shop_manager") ||
-    currentUserRoles.includes("pos_manager");
-
-  // Managers/admins can optionally skip PIN login; cashiers must always PIN in.
-  const requiresPinLogin =
-    isCashierRole || (!isManagerOrAdmin && !cashierAuthenticated);
-  const showLoginPanel =
-    !cashierAuthenticated && (isCashierRole || !isManagerOrAdmin);
-
-  const handleCashierLogin = (user, nonce, license) => {
-    setCashierAuthenticated(true);
-    setAuthenticatedUser(user);
-    // Update the REST nonce for subsequent API calls under this user's session.
-    if (typeof readypos_admin !== "undefined" && nonce) {
-      readypos_admin.restNonce = nonce;
-      readypos_admin.userInfo = {
-        ...readypos_admin.userInfo,
-        username: user.name,
-        roles: user.roles,
-      };
-      // Update license data to ensure cashiers see the correct Pro status
-      if (license) {
-        readypos_admin.license = license;
-      }
-    }
-  };
-
-  const handleSkipLogin = () => {
-    setCashierAuthenticated(true);
-  };
-
-  const handleLogout = () => {
-    // Clear authentication state
-    setCashierAuthenticated(false);
-    setAuthenticatedUser(null);
-    
-    // Redirect to WordPress logout
-    window.location.href = typeof readypos_admin !== "undefined" 
-      ? readypos_admin.logoutUrl || "/wp-login.php?action=logout"
-      : "/wp-login.php?action=logout";
-  };
 
   // Read cart states to broadcast to customer-display
   const [cart] = useAtom(cartAtom);
@@ -161,18 +105,20 @@ export default function Terminal() {
     setInitializing(true);
     setInitError(null);
     try {
-      // 1. Fetch settings (currency, tax, etc.)
-      const settingsData = await api.get("/settings/get");
+      // Fetch settings, session, shift, and held orders concurrently to optimize POS initialization
+      const [settingsData, sessionData, shiftData, heldData] = await Promise.all([
+        api.get("/settings/get"),
+        api.get("/sessions/current"),
+        api.get("/shifts/current"),
+        api.get("/orders/held"),
+      ]);
+
       if (settingsData) {
         setSettings(settingsData);
       }
 
-      // 2. Fetch active session
-      const sessionData = await api.get("/sessions/current");
       setSession(sessionData || { has_active: false, session: null });
 
-      // 2.5 Fetch active shift
-      const shiftData = await api.get("/shifts/current");
       const hasShift = shiftData && shiftData.has_active;
       if (hasShift) {
         setActiveShift(shiftData.shift);
@@ -181,11 +127,9 @@ export default function Terminal() {
         setShowShiftModal(true);
       }
 
-      // 3. Fetch held count
-      const heldData = await api.get("/orders/held");
       setHeldCount(heldData?.length || 0);
 
-      // 4. Force session modal open if there's no active session AND shift is clocked in
+      // Force session modal open if there's no active session AND shift is clocked in
       if ((!sessionData || !sessionData.has_active) && hasShift) {
         setSessionModalMode("open");
         setShowSessionModal(true);
@@ -206,7 +150,69 @@ export default function Terminal() {
     initializePOS();
   }, [setSession, setSettings, setHeldCount]);
 
-  // Sequential lock: force register session open once cashier is clocked in
+  // Refresh settings when another tab signals an update, or when the
+  // window regains focus. Ensures customer display message/promos and
+  // other settings are always in sync.
+  useEffect(() => {
+    let channel;
+    try {
+      channel = new BroadcastChannel("readypos_settings");
+      channel.onmessage = async (ev) => {
+        if (ev?.data?.type === "SETTINGS_UPDATED") {
+          try {
+            const data = await api.get("/settings/get");
+            if (data) setSettings(data);
+          } catch (e) {
+            /* ignore */
+          }
+        }
+      };
+    } catch (e) {
+      /* BroadcastChannel not supported */
+    }
+
+    const onStorage = (ev) => {
+      if (ev.key === "readypos_settings_updated") {
+        api
+          .get("/settings/get")
+          .then((data) => data && setSettings(data))
+          .catch(() => {});
+      }
+    };
+    const onFocus = () => {
+      api
+        .get("/settings/get")
+        .then((data) => data && setSettings(data))
+        .catch(() => {});
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        api
+          .get("/settings/get")
+          .then((data) => data && setSettings(data))
+          .catch(() => {});
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      if (channel) {
+        try {
+          channel.close();
+        } catch (e) {
+          /* ignore */
+        }
+      }
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [setSettings]);
+
+  // Sequential lock: force register session open once a shift is active
   useEffect(() => {
     if (!initializing && activeShift && (!session || !session.has_active)) {
       setSessionModalMode("open");
@@ -303,19 +309,6 @@ export default function Terminal() {
     }
     setShowSessionModal(true);
   };
-
-  // Show the PIN login panel for cashiers (or when not yet authenticated).
-  // NOTE: The BroadcastChannel useEffect above still runs even when this
-  // returns early, because React hooks execute before the return statement.
-  if (showLoginPanel) {
-    return (
-      <CashierLoginPanel
-        onLogin={handleCashierLogin}
-        onSkip={handleSkipLogin}
-        onLogout={handleLogout}
-      />
-    );
-  }
 
   if (initializing) {
     return <TerminalSkeleton />;

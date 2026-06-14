@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class Actions
  *
- * Handles saving, loading, transferring, and managing unlimited carts.
+ * Handles saving, loading, and managing unlimited carts.
  *
  * @package Readypos\Controllers\Carts
  */
@@ -128,10 +128,7 @@ class Actions {
 		$table_name = $wpdb->prefix . 'readypos_saved_carts';
 
 		// Check if user is manager/admin - they can see all carts
-		$user = wp_get_current_user();
-		$is_manager = in_array( 'administrator', $user->roles, true ) || 
-		              in_array( 'shop_manager', $user->roles, true ) || 
-		              in_array( 'pos_manager', $user->roles, true );
+		$is_manager = current_user_can( 'manage_pos' ) || current_user_can( 'manage_options' );
 
 		if ( $is_manager ) {
 			// Get all carts
@@ -194,10 +191,7 @@ class Actions {
 		}
 
 		// Check if user is manager/admin or owner
-		$user = wp_get_current_user();
-		$is_manager = in_array( 'administrator', $user->roles, true ) || 
-		              in_array( 'shop_manager', $user->roles, true ) || 
-		              in_array( 'pos_manager', $user->roles, true );
+		$is_manager = current_user_can( 'manage_pos' ) || current_user_can( 'manage_options' );
 
 		if ( ! $is_manager && intval( $cart->user_id ) !== $user_id ) {
 			return new \WP_Error( 'unauthorized', __( 'You do not have permission to delete this cart.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
@@ -223,134 +217,6 @@ class Actions {
 			array(
 				'success' => true,
 				'message' => __( 'Cart deleted successfully.', 'ready-pos-for-woocommerce' ),
-			),
-			200
-		);
-	}
-
-	/**
-	 * Transfer a cart to another cashier.
-	 *
-	 * @param \WP_REST_Request $request REST request.
-	 * @return \WP_REST_Response|\WP_Error
-	 */
-	public function transfer( \WP_REST_Request $request ) {
-		global $wpdb;
-		
-		$cart_id        = intval( $request->get_param( 'cartId' ) );
-		$target_user_id = intval( $request->get_param( 'targetUserId' ) );
-		$current_user   = get_current_user_id();
-		$table_name     = $wpdb->prefix . 'readypos_saved_carts';
-
-		// Validate target user exists and is a cashier
-		$target_user = get_userdata( $target_user_id );
-		if ( ! $target_user ) {
-			return new \WP_Error( 'invalid_user', __( 'Target cashier not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
-		}
-
-		$target_roles = $target_user->roles;
-		$is_pos_user  = in_array( 'pos_cashier', $target_roles, true ) || 
-		                in_array( 'pos_manager', $target_roles, true ) || 
-		                in_array( 'administrator', $target_roles, true ) || 
-		                in_array( 'shop_manager', $target_roles, true );
-
-		if ( ! $is_pos_user ) {
-			return new \WP_Error( 'invalid_target', __( 'Target user is not a POS cashier.', 'ready-pos-for-woocommerce' ), array( 'status' => 400 ) );
-		}
-
-		// Verify ownership
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Required for cart verification
-		$cart = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table_name} WHERE id = %d", $cart_id ) );
-
-		if ( ! $cart ) {
-			return new \WP_Error(
-				'cart_not_found',
-				__( 'Cart not found. Empty carts are not saved to the database. Add items to the cart before transferring.', 'ready-pos-for-woocommerce' ),
-				array( 'status' => 404 )
-			);
-		}
-
-		// Update cart owner
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Required for cart transfer
-		$wpdb->update(
-			$table_name,
-			array(
-				'user_id'    => $target_user_id,
-				'updated_at' => current_time( 'mysql' ),
-			),
-			array( 'id' => $cart_id )
-		);
-
-		// Update cart content to reflect new owner
-		$content = json_decode( $cart->cart_content, true );
-		$content['owner_id']   = $target_user_id;
-		$content['owner_name'] = $target_user->user_login;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Required for cart content update
-		$wpdb->update(
-			$table_name,
-			array( 'cart_content' => wp_json_encode( $content ) ),
-			array( 'id' => $cart_id )
-		);
-
-		// SECURITY FIX: Log cart transfer
-		\Readypos\Core\AuditLog::log(
-			\Readypos\Core\AuditLog::EVENT_CART,
-			'cart_transferred',
-			sprintf( 'Cart "%s" transferred from user #%d to user #%d (%s)', $cart->label, $current_user, $target_user_id, $target_user->user_login ),
-			array(
-				'cart_id'        => $cart_id,
-				'label'          => $cart->label,
-				'from_user_id'   => $current_user,
-				'to_user_id'     => $target_user_id,
-				'to_user_name'   => $target_user->user_login,
-			),
-			\Readypos\Core\AuditLog::SEVERITY_INFO
-		);
-
-		return new \WP_REST_Response(
-			array(
-				'success'    => true,
-				'message'    => __( 'Cart transferred successfully.', 'ready-pos-for-woocommerce' ),
-				'owner_id'   => $target_user_id,
-				'owner_name' => $target_user->user_login,
-			),
-			200
-		);
-	}
-
-	/**
-	 * Get list of available cashiers for cart transfer.
-	 *
-	 * @param \WP_REST_Request $request REST request.
-	 * @return \WP_REST_Response
-	 */
-	public function get_cashiers( \WP_REST_Request $request ) {
-		$current_user = get_current_user_id();
-
-		// Get all users with POS roles
-		$users = get_users(
-			array(
-				'role__in' => array( 'pos_cashier', 'pos_manager', 'administrator', 'shop_manager' ),
-				'exclude'  => array( $current_user ), // Exclude current user
-				'orderby'  => 'display_name',
-				'order'    => 'ASC',
-			)
-		);
-
-		$cashiers = array();
-		foreach ( $users as $user ) {
-			$cashiers[] = array(
-				'id'    => $user->ID,
-				'name'  => $user->display_name,
-				'login' => $user->user_login,
-				'roles' => $user->roles,
-			);
-		}
-
-		return new \WP_REST_Response(
-			array(
-				'cashiers' => $cashiers,
 			),
 			200
 		);

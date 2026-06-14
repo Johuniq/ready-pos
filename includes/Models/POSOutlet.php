@@ -33,6 +33,7 @@ class POSOutlet extends Model {
 	 */
 	protected $fillable = array(
 		'name',
+		'code',
 		'address',
 		'city',
 		'state',
@@ -40,6 +41,8 @@ class POSOutlet extends Model {
 		'country',
 		'phone',
 		'email',
+		'manager_id',
+		'default_register_id',
 		'receipt_header',
 		'receipt_footer',
 		'status',
@@ -47,6 +50,50 @@ class POSOutlet extends Model {
 		'tax_config',
 		'payment_methods',
 	);
+
+	/**
+	 * Status constants.
+	 */
+	const STATUS_ACTIVE   = 'active';
+	const STATUS_INACTIVE = 'inactive';
+
+	/**
+	 * Check if a code is already in use by another outlet.
+	 *
+	 * @param string $code  Outlet code (will be normalized to upper-case).
+	 * @param int    $ignore_id Outlet ID to ignore (for updates).
+	 * @return bool
+	 */
+	public static function code_exists( $code, $ignore_id = 0 ) {
+		if ( '' === $code ) {
+			return false;
+		}
+		$code = strtoupper( trim( (string) $code ) );
+		$query = static::where( 'code', $code );
+		if ( $ignore_id ) {
+			$query->where( 'id', '!=', (int) $ignore_id );
+		}
+		return null !== $query->first();
+	}
+
+	/**
+	 * Check if a name is already in use by another outlet.
+	 *
+	 * @param string $name  Outlet name.
+	 * @param int    $ignore_id Outlet ID to ignore (for updates).
+	 * @return bool
+	 */
+	public static function name_exists( $name, $ignore_id = 0 ) {
+		$name = trim( (string) $name );
+		if ( '' === $name ) {
+			return false;
+		}
+		$query = static::where( 'name', $name );
+		if ( $ignore_id ) {
+			$query->where( 'id', '!=', (int) $ignore_id );
+		}
+		return null !== $query->first();
+	}
 
 	/**
 	 * Get pricing configuration for this outlet.

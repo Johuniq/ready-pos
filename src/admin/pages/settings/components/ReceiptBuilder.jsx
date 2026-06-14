@@ -547,7 +547,7 @@ function BlockEditor({ block, onChange }) {
             {[
               ["showOrderNumber", "Order Number"],
               ["showDate", "Date & Time"],
-              ["showCashier", "Cashier Name"],
+              ["showCashier", "Staff Name"],
             ].map(([key, label]) => (
               <div key={key} className="flex items-center justify-between">
                 <span className="text-xs text-foreground">{label}</span>
@@ -740,7 +740,7 @@ function ReceiptPreview({ blocks, paperWidth }) {
             )}
             {config.showDate !== false && <div>Date: {sample.date}</div>}
             {config.showCashier !== false && (
-              <div>Cashier: {sample.cashier}</div>
+              <div>Staff: {sample.cashier}</div>
             )}
           </div>
         );

@@ -1,66 +1,34 @@
 import { useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import LicenseBanner from "@/admin/components/LicenseBanner";
 
 export default function LayoutOne() {
   // Determine context (admin vs frontend)
   const isAdmin =
     typeof readypos_admin !== "undefined" ? readypos_admin.isAdmin : true;
   const showApplicationLayout = !isAdmin;
-  const isCashier =
-    typeof readypos_admin !== "undefined" &&
-    readypos_admin.userInfo?.roles?.includes("pos_cashier");
 
   const location = useLocation();
   const navigate = useNavigate();
   const pageTitle = location.pathname.split("/")[1];
 
   useEffect(() => {
-    if (isCashier) {
-      // Cashier role lockdown: lock cashiers in the terminal view
-      const restrictedPaths = [
-        "",
-        "dashboard",
-        "orders",
-        "reports",
-        "outlets",
-        "settings",
-        "customers",
-        "hardware",
-        "license",
-        "staff",
-      ];
-      if (restrictedPaths.includes(pageTitle || "")) {
-        navigate("terminal");
-        if (
-          pageTitle &&
-          pageTitle !== "terminal" &&
-          pageTitle !== "customer-display"
-        ) {
-          toast.error(
-            "Access denied. Standard cashiers are restricted from back-office areas.",
-          );
-        }
-      }
-    } else {
-      // Check if onboarding is needed
-      const onboardingComplete =
-        typeof readypos_admin !== "undefined"
-          ? readypos_admin.onboardingComplete
-          : true;
+    // Check if onboarding is needed
+    const onboardingComplete =
+      typeof readypos_admin !== "undefined"
+        ? readypos_admin.onboardingComplete
+        : true;
 
-      if (!onboardingComplete && pageTitle !== "onboarding") {
-        navigate("onboarding");
-        return;
-      }
-
-      // Standard Shop Manager / Admin redirect
-      if (!pageTitle || pageTitle === "") {
-        navigate("dashboard");
-      }
+    if (!onboardingComplete && pageTitle !== "onboarding") {
+      navigate("onboarding");
+      return;
     }
-  }, [pageTitle, navigate, isCashier]);
+
+    // Standard Shop Manager / Admin redirect
+    if (!pageTitle || pageTitle === "") {
+      navigate("dashboard");
+    }
+  }, [pageTitle, navigate]);
 
   // Handle full-screen layout styles for WP admin area
   useEffect(() => {
@@ -138,10 +106,6 @@ export default function LayoutOne() {
 
   return (
     <div className="w-full min-h-screen bg-background font-sans antialiased text-foreground flex flex-col">
-      {/* Hide the banner inside the fullscreen POS terminal, where space is precious */}
-      {!location.pathname.includes("/terminal") &&
-        !location.pathname.includes("/customer-display") &&
-        !location.pathname.includes("/onboarding") && <LicenseBanner />}
       <main className="w-full flex-1">
         <Outlet />
       </main>

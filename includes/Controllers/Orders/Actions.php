@@ -58,6 +58,17 @@ class Actions {
 			// Initialize WooCommerce order
 			$order = wc_create_order();
 
+			// Resolve active session's outlet
+			$outlet_id = null;
+			$outlet    = null;
+			if ( $session_id ) {
+				$session = \Readypos\Models\POSSession::find( $session_id );
+				if ( $session && 'open' === $session->status ) {
+					$outlet_id = intval( $session->outlet_id );
+					$outlet    = \Readypos\Models\POSOutlet::find( $outlet_id );
+				}
+			}
+
 			// Validate and add products to order
 			// SECURITY FIX: Always use server-side product prices, never trust client data
 			$validated_items = array();
@@ -83,6 +94,12 @@ class Actions {
 
 				// Get actual server-side price (prevents price manipulation)
 				$server_price = floatval( $product->get_price() );
+				if ( $outlet ) {
+					$custom_price = $outlet->get_product_price( $product_id );
+					if ( null !== $custom_price ) {
+						$server_price = floatval( $custom_price );
+					}
+				}
 				
 				// Check stock availability
 				if ( $product->managing_stock() && ! $product->has_enough_stock( $quantity ) ) {
@@ -251,9 +268,8 @@ class Actions {
 			$order->set_payment_method( $mapped_method );
 			$order->set_payment_method_title( $mapped_title );
 
-			// Add cashier info
+			// Add cashier info (GPL: cashier is the logged-in user).
 			$current_user_id = get_current_user_id();
-			$order->add_meta_data( '_readypos_cashier_id', $current_user_id );
 			$order->add_meta_data( '_readypos_is_pos_order', 'yes' );
 
 			// Store split payment breakdown when applicable.
@@ -312,6 +328,44 @@ class Actions {
 				
 				$order->add_order_note( $truncated_notes );
 				$order->set_customer_note( $truncated_notes );
+			}
+
+			// Apply outlet custom tax rates if defined
+			$tax_config = $outlet ? $outlet->get_tax_config() : array();
+			$rates      = $tax_config['rates'] ?? array();
+			if ( ! empty( $rates ) ) {
+				$subtotal = $order->get_subtotal();
+				// Calculate discount
+				$discount = 0;
+				if ( ! empty( $discount_value ) && floatval( $discount_value ) > 0 ) {
+					$discount = ( 'percent' === $discount_type ) 
+						? ( $subtotal * floatval( $discount_value ) ) / 100
+						: floatval( $discount_value );
+					$discount = min( $discount, $subtotal );
+				}
+				$taxable_amount = max( 0, $subtotal - $discount );
+
+				$tax_total = 0;
+				foreach ( $rates as $rate_info ) {
+					$rate_val = floatval( $rate_info['rate'] );
+					if ( $rate_info['type'] === 'percent' ) {
+						if ( $tax_config['tax_included_in_prices'] ?? false ) {
+							$tax_total += $taxable_amount * ( $rate_val / ( 100 + $rate_val ) );
+						} else {
+							$tax_total += $taxable_amount * ( $rate_val / 100 );
+						}
+					} else { // Fixed
+						$tax_total += $rate_val;
+					}
+				}
+
+				if ( $tax_total > 0 && ! ($tax_config['tax_included_in_prices'] ?? false) ) {
+					$fee = new \WC_Order_Item_Fee();
+					$fee->set_name( __( 'Outlet Tax', 'ready-pos-for-woocommerce' ) );
+					$fee->set_total( $tax_total );
+					$fee->set_taxes( array() ); // Clear WooCommerce default taxes for this item
+					$order->add_item( $fee );
+				}
 			}
 
 			// Calculate totals server-side (never trust client calculations)
@@ -427,13 +481,34 @@ class Actions {
 
 			// Award loyalty points to customer (1 point per $1 spent).
 			if ( ! empty( $customer_id ) ) {
-				$pos_customer = POSCustomer::where( 'wc_customer_id', intval( $customer_id ) )->first();
+				$customer_id_int = intval( $customer_id );
+				$order_total     = floatval( $order->get_total() );
+				$points_earned   = (int) floor( $order_total );
+				$pos_customer    = POSCustomer::where( 'wc_customer_id', $customer_id_int )->first();
+
 				if ( $pos_customer ) {
-					$points_earned = (int) floor( floatval( $order->get_total() ) );
 					$pos_customer->loyalty_points += $points_earned;
-					$pos_customer->total_spent    += floatval( $order->get_total() );
+					$pos_customer->total_spent    += $order_total;
 					$pos_customer->visit_count    += 1;
 					$pos_customer->save();
+				} else {
+					// No POS profile exists yet for this WP user (e.g. customer
+					// was added via the POS picker as a WP user only). Create
+					// the row seeded with this order's contribution so future
+					// reads stay in sync instead of always recomputing.
+					$wp_user = get_userdata( $customer_id_int );
+					POSCustomer::create(
+						array(
+							'wc_customer_id' => $customer_id_int,
+							'first_name'     => $wp_user ? $wp_user->first_name : '',
+							'last_name'      => $wp_user ? $wp_user->last_name : '',
+							'email'          => $wp_user ? $wp_user->user_email : '',
+							'phone'          => $wp_user ? get_user_meta( $customer_id_int, 'billing_phone', true ) : '',
+							'loyalty_points' => $points_earned,
+							'total_spent'    => $order_total,
+							'visit_count'    => 1,
+						)
+					);
 				}
 			}
 
@@ -506,11 +581,31 @@ class Actions {
 						}
 					}
 
+					$cashier_ids = array();
+					foreach ( $results->orders as $wc_order ) {
+						$order_id   = $wc_order->get_id();
+						$pos_meta   = isset( $pos_metas[ $order_id ] ) ? $pos_metas[ $order_id ] : null;
+						$cashier_id = $pos_meta ? $pos_meta->cashier_id : get_current_user_id();
+						if ( $cashier_id ) {
+							$cashier_ids[] = $cashier_id;
+						}
+					}
+
+					$cashiers = array();
+					if ( ! empty( $cashier_ids ) ) {
+						$user_query = new \WP_User_Query( array(
+							'include' => array_unique( $cashier_ids ),
+						) );
+						foreach ( $user_query->get_results() as $user ) {
+							$cashiers[ $user->ID ] = $user;
+						}
+					}
+
 					foreach ( $results->orders as $wc_order ) {
 						$order_id    = $wc_order->get_id();
 						$pos_meta    = isset( $pos_metas[ $order_id ] ) ? $pos_metas[ $order_id ] : null;
-						$cashier_id  = $pos_meta ? $pos_meta->cashier_id : intval( $wc_order->get_meta( '_readypos_cashier_id' ) );
-						$cashier     = $cashier_id ? get_userdata( $cashier_id ) : null;
+						$cashier_id  = $pos_meta ? $pos_meta->cashier_id : get_current_user_id();
+						$cashier     = isset( $cashiers[ $cashier_id ] ) ? $cashiers[ $cashier_id ] : null;
 						$payment     = $pos_meta ? $pos_meta->payment_method : ( $wc_order->get_payment_method() ?: 'unknown' );
 						$order_date  = $wc_order->get_date_created();
 

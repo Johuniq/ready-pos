@@ -1,6 +1,4 @@
-import { ProBadge } from "@/admin/components/ProGate";
 import { useCart } from "@/admin/hooks/useCart";
-import { useLicense } from "@/admin/hooks/useLicense";
 import { useMultiCart } from "@/admin/hooks/useMultiCart";
 import { useOfflineSync } from "@/admin/hooks/useOfflineSync";
 import { useRealtime } from "@/admin/hooks/useRealtime";
@@ -26,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/currency";
-import { printManager } from "@/lib/printing/PrintManager";
+import { isPaymentMethodEnabled } from "@/lib/paymentMethods";
 import { useAtom } from "jotai";
 import {
     Banknote,
@@ -36,13 +34,11 @@ import {
     Gift,
     Loader2,
     Plus,
-    Sparkles,
     Split,
     Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import EMVReaderPanel from "./EMVReaderPanel";
 
 export default function PaymentModal({ open, onOpenChange }) {
   const [session] = useAtom(sessionAtom);
@@ -56,32 +52,35 @@ export default function PaymentModal({ open, onOpenChange }) {
   const [cardRef, setCardRef] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Gift card / store credit states
-  const [giftCardCode, setGiftCardCode] = useState("");
-  const [giftCardInfo, setGiftCardInfo] = useState(null);
-  const [giftCardChecking, setGiftCardChecking] = useState(false);
-
-  // Split payment states - array of { method, amount, ref? }
-  const [splitPayments, setSplitPayments] = useState([
-    { method: "cash", amount: "", ref: "" },
-  ]);
-
-  // EMV reader states
-  const [emvTransactionResult, setEmvTransactionResult] = useState(null);
-
   // Reset fields when modal opens
   useEffect(() => {
     if (open) {
-      setPaymentMethod("cash");
+      // Combine global POS Settings toggles with the outlet's configured
+      // payment methods. A method is only available if BOTH are enabled —
+      // Settings → Payments is the master switch, the outlet is the
+      // per-location allow-list. Fall back to "enabled" when the global
+      // setting is undefined so first-load behavior matches the server
+      // default of "yes".
+      const outletEnabled = session?.session?.outlet?.payment_methods || [
+        "cash",
+        "card",
+      ];
+      const cashOk = isPaymentMethodEnabled(settings?.payment_cash);
+      const cardOk = isPaymentMethodEnabled(settings?.payment_card);
+
+      if (cashOk && outletEnabled.includes("cash")) {
+        setPaymentMethod("cash");
+      } else if (cardOk && outletEnabled.includes("card")) {
+        setPaymentMethod("card");
+      } else if (cashOk) {
+        setPaymentMethod("cash");
+      } else if (cardOk) {
+        setPaymentMethod("card");
+      }
       setCashReceived("");
       setCardRef("");
-      setGiftCardCode("");
-      setGiftCardInfo(null);
-      setGiftCardChecking(false);
-      setSplitPayments([{ method: "cash", amount: "", ref: "" }]);
-      setEmvTransactionResult(null);
     }
-  }, [open]);
+  }, [open, session, settings]);
 
   // Focus sensible input when the modal opens for keyboard-first flow
   useEffect(() => {
@@ -107,15 +106,6 @@ export default function PaymentModal({ open, onOpenChange }) {
   const numCashReceived = parseFloat(cashReceived) || 0;
   const changeGiven = Math.max(0, numCashReceived - numTotal);
   const isAmountSufficient = numCashReceived >= numTotal;
-
-  // Split payment derived values
-  const splitTotal = splitPayments.reduce(
-    (sum, p) => sum + (parseFloat(p.amount) || 0),
-    0,
-  );
-  const splitRemaining = Math.max(0, numTotal - splitTotal);
-  const splitOverpaid = Math.max(0, splitTotal - numTotal);
-  const isSplitComplete = Math.abs(splitTotal - numTotal) < 0.01;
 
   // Fast cash presets
   const getPresets = () => {
@@ -147,37 +137,50 @@ export default function PaymentModal({ open, onOpenChange }) {
   };
 
   const { saveOfflineOrder } = useOfflineSync();
-  const { can, openUpgrade } = useLicense();
   const { clearActiveAfterCheckout } = useMultiCart();
 
   /**
-   * Print receipt using the configured merchant printing method.
+   * Print receipt using the browser print dialog.
    */
   const handlePrintReceipt = async (orderDetail) => {
-    await printManager.printReceipt(orderDetail, {
-      ...settings,
-      kickDrawer:
-        settings.cash_drawer_pulse !== "none" &&
-        (orderDetail.payment_method === "cash" ||
-          orderDetail.payment_method === "split"),
-    });
+    const { printReceipt } = await import("@/lib/receipt");
+    await printReceipt(orderDetail, settings);
   };
 
   const handleCheckout = async (forcedCardRef = "") => {
-    if (paymentMethod === "cash" && !isAmountSufficient) {
-      toast.error("Tendered cash is less than the total amount");
+    // Defense-in-depth: refuse to submit a method that the operator just
+    // disabled in POS Settings while the modal was open.
+    const outletEnabled = session?.session?.outlet?.payment_methods || [
+      "cash",
+      "card",
+    ];
+    const cashOk =
+      isPaymentMethodEnabled(settings?.payment_cash) &&
+      outletEnabled.includes("cash");
+    const cardOk =
+      isPaymentMethodEnabled(settings?.payment_card) &&
+      outletEnabled.includes("card");
+    if (paymentMethod === "cash" && !cashOk) {
+      toast.error(
+        "Cash payment is disabled in POS Settings → Payments. Enable it or switch to Card."
+      );
       return;
     }
-    if (paymentMethod === "split" && !isSplitComplete) {
-      if (splitOverpaid > 0) {
-        toast.error(
-          `Overpaid by ${formatPrice(splitOverpaid)}. Adjust amounts.`,
-        );
-      } else {
-        toast.error(
-          `Still need ${formatPrice(splitRemaining)} to complete payment.`,
-        );
-      }
+    if (paymentMethod === "card" && !cardOk) {
+      toast.error(
+        "Card payment is disabled in POS Settings → Payments. Enable it or switch to Cash."
+      );
+      return;
+    }
+    if (!cashOk && !cardOk) {
+      toast.error(
+        "No payment methods are enabled. Update POS Settings → Payments."
+      );
+      return;
+    }
+
+    if (paymentMethod === "cash" && !isAmountSufficient) {
+      toast.error("Tendered cash is less than the total amount");
       return;
     }
     
@@ -197,32 +200,15 @@ export default function PaymentModal({ open, onOpenChange }) {
       }));
 
       const activeCardRef =
-        paymentMethod === "card_emv"
-          ? emvTransactionResult?.authorizationCode || ""
-          : paymentMethod === "card"
+        paymentMethod === "card"
           ? cardRef || forcedCardRef || `CARD-${Date.now().toString().slice(-8)}`
           : "";
 
       // Build payload
-      let effectivePaymentMethod =
-        paymentMethod === "card_emv" ? "card" : paymentMethod;
+      let effectivePaymentMethod = paymentMethod;
       let cashPortion = paymentMethod === "cash" ? numCashReceived : 0;
       let changePortion = paymentMethod === "cash" ? changeGiven : 0;
       let splitBreakdown = null;
-
-      if (paymentMethod === "split") {
-        effectivePaymentMethod = "split";
-        splitBreakdown = splitPayments.map((p) => ({
-          method: p.method,
-          amount: parseFloat(p.amount) || 0,
-          ref: p.ref || "",
-        }));
-        // Sum cash portions for the cash drawer / receipt
-        cashPortion = splitBreakdown
-          .filter((p) => p.method === "cash")
-          .reduce((sum, p) => sum + p.amount, 0);
-        changePortion = 0;
-      }
 
       const payload = {
         items: apiItems,
@@ -290,8 +276,7 @@ export default function PaymentModal({ open, onOpenChange }) {
               total: numTotal,
               discount: discount.value || 0,
               tax: 0,
-              payment_method:
-                paymentMethod === "card_emv" ? "card" : paymentMethod,
+              payment_method: paymentMethod,
               cash_received: payload.cashReceived,
               change_given: payload.changeGiven,
               notes: notes,
@@ -316,7 +301,7 @@ export default function PaymentModal({ open, onOpenChange }) {
           total: numTotal,
           discount: discount.value || 0,
           tax: 0,
-          payment_method: paymentMethod === "card_emv" ? "card" : paymentMethod,
+          payment_method: paymentMethod,
           cash_received: payload.cashReceived,
           change_given: payload.changeGiven,
           notes: notes,
@@ -395,102 +380,78 @@ export default function PaymentModal({ open, onOpenChange }) {
         <div className="flex-1 p-6 flex flex-col justify-between font-sans">
           <div className="space-y-4">
             {/* Selector Tabs — segmented control style */}
-            <div className="grid grid-cols-5 gap-1.5 p-1 bg-muted/40 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("cash")}
-                className={`h-16 rounded-lg flex flex-col items-center justify-center gap-1 text-[11px] font-bold transition-all ${
-                  paymentMethod === "cash"
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/60"
-                }`}>
-                <Banknote className="w-4 h-4" />
-                <span>Cash</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("card")}
-                className={`h-16 rounded-lg flex flex-col items-center justify-center gap-1 text-[11px] font-bold transition-all ${
-                  paymentMethod === "card"
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/60"
-                }`}>
-                <CreditCard className="w-4 h-4" />
-                <span>Card</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!can("emv_reader")) {
-                    openUpgrade("emv_reader");
-                    return;
-                  }
-                  setPaymentMethod("card_emv");
-                }}
-                className={`relative h-16 rounded-lg flex flex-col items-center justify-center gap-1 text-[11px] font-bold transition-all ${
-                  paymentMethod === "card_emv"
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/60"
-                }`}>
-                <Sparkles
-                  className={`w-4 h-4 ${
-                    paymentMethod === "card_emv" ? "" : "text-amber-500"
-                  }`}
-                />
-                <span>Reader</span>
-                {!can("emv_reader") && (
-                  <ProBadge className="absolute -top-1 -right-1" />
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!can("gift_cards")) {
-                    openUpgrade("gift_cards");
-                    return;
-                  }
-                  setPaymentMethod("gift_card");
-                }}
-                className={`relative h-16 rounded-lg flex flex-col items-center justify-center gap-1 text-[11px] font-bold transition-all ${
-                  paymentMethod === "gift_card"
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/60"
-                }`}>
-                <Gift
-                  className={`w-4 h-4 ${
-                    paymentMethod === "gift_card" ? "" : "text-purple-500"
-                  }`}
-                />
-                <span>Gift</span>
-                {!can("gift_cards") && (
-                  <ProBadge className="absolute -top-1 -right-1" />
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!can("split_payment")) {
-                    openUpgrade("split_payment");
-                    return;
-                  }
-                  setPaymentMethod("split");
-                }}
-                className={`relative h-16 rounded-lg flex flex-col items-center justify-center gap-1 text-[11px] font-bold transition-all ${
-                  paymentMethod === "split"
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/60"
-                }`}>
-                <Split
-                  className={`w-4 h-4 ${
-                    paymentMethod === "split" ? "" : "text-emerald-500"
-                  }`}
-                />
-                <span>Split</span>
-                {!can("split_payment") && (
-                  <ProBadge className="absolute -top-1 -right-1" />
-                )}
-              </button>
-            </div>
+            {(() => {
+              const outletEnabled = session?.session?.outlet?.payment_methods || [
+                "cash",
+                "card",
+              ];
+              // Honor the global POS Settings toggles as the master switch;
+              // the outlet config is the per-location allow-list.
+              const isCashEnabled =
+                isPaymentMethodEnabled(settings?.payment_cash) &&
+                outletEnabled.includes("cash");
+              const isCardEnabled =
+                isPaymentMethodEnabled(settings?.payment_card) &&
+                outletEnabled.includes("card");
+              const columnsClass = isCashEnabled && isCardEnabled ? "grid-cols-2" : "grid-cols-1";
+              const noMethodsEnabled = !isCashEnabled && !isCardEnabled;
+              
+              return (
+                <div className={`grid ${columnsClass} gap-1.5 p-1 bg-muted/40 rounded-xl`}>
+                  {isCashEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("cash")}
+                      className={`h-16 rounded-lg flex flex-col items-center justify-center gap-1 text-[11px] font-bold transition-all ${
+                        paymentMethod === "cash"
+                          ? "bg-primary text-primary-foreground shadow-md"
+                          : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+                      }`}>
+                      <Banknote className="w-4 h-4" />
+                      <span>Cash</span>
+                    </button>
+                  )}
+                  {isCardEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod("card")}
+                      className={`h-16 rounded-lg flex flex-col items-center justify-center gap-1 text-[11px] font-bold transition-all ${
+                        paymentMethod === "card"
+                          ? "bg-primary text-primary-foreground shadow-md"
+                          : "text-muted-foreground hover:text-foreground hover:bg-background/60"
+                      }`}>
+                      <CreditCard className="w-4 h-4" />
+                      <span>Card</span>
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+
+            {(() => {
+              const outletEnabled = session?.session?.outlet?.payment_methods || [
+                "cash",
+                "card",
+              ];
+              const cashOk =
+                isPaymentMethodEnabled(settings?.payment_cash) &&
+                outletEnabled.includes("cash");
+              const cardOk =
+                isPaymentMethodEnabled(settings?.payment_card) &&
+                outletEnabled.includes("card");
+              if (cashOk || cardOk) return null;
+              return (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 p-3 text-xs font-medium leading-relaxed">
+                  <p className="font-bold mb-1">No payment methods enabled</p>
+                  <p>
+                    Both Cash and Card are turned off in{" "}
+                    <span className="font-semibold">POS Settings → Payments</span>{" "}
+                    (or disabled for this outlet). Enable at least one method to
+                    complete checkout.
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Payment Inputs */}
             {paymentMethod === "cash" && (
@@ -620,271 +581,6 @@ export default function PaymentModal({ open, onOpenChange }) {
               </div>
             )}
 
-            {paymentMethod === "card_emv" && (
-              <div className="space-y-4 py-4 animate-in fade-in duration-300">
-                <EMVReaderPanel
-                  amount={numTotal}
-                  onSuccess={(result) => {
-                    setEmvTransactionResult(result);
-                    // Auto-proceed to checkout with the transaction result
-                    handleCheckout();
-                  }}
-                  onCancel={() => {
-                    setPaymentMethod("cash");
-                    toast.info("EMV payment cancelled");
-                  }}
-                />
-              </div>
-            )}
-
-            {paymentMethod === "gift_card" && (
-              <div className="space-y-4 py-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase">
-                    Gift Card / Store Credit Code
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={giftCardCode}
-                      onChange={(e) =>
-                        setGiftCardCode(e.target.value.toUpperCase())
-                      }
-                      placeholder="GC-XXXX-XXXX or SC-XXXX-XXXX"
-                      className="h-11 text-xs font-mono uppercase flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={!giftCardCode.trim() || giftCardChecking}
-                      className="h-11 px-4 text-xs font-bold"
-                      onClick={async () => {
-                        setGiftCardChecking(true);
-                        setGiftCardInfo(null);
-                        try {
-                          const res = await api.get("/gift-cards/check", {
-                            code: giftCardCode.trim(),
-                          });
-                          setGiftCardInfo(res);
-                        } catch (err) {
-                          toast.error(
-                            err.message || "Card not found or invalid",
-                          );
-                          setGiftCardInfo(null);
-                        } finally {
-                          setGiftCardChecking(false);
-                        }
-                      }}>
-                      {giftCardChecking ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        "Check"
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                {giftCardInfo && (
-                  <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-4 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                        <Gift className="w-3.5 h-3.5 text-purple-500" />
-                        {giftCardInfo.type === "store_credit"
-                          ? "Store Credit"
-                          : "Gift Card"}
-                      </span>
-                      <span className="text-[10px] font-mono text-muted-foreground">
-                        {giftCardInfo.code}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-muted-foreground">
-                        Available Balance
-                      </span>
-                      <span className="text-lg font-black text-purple-600">
-                        {formatPrice(giftCardInfo.balance)}
-                      </span>
-                    </div>
-                    {giftCardInfo.balance < numTotal && (
-                      <p className="text-[10px] text-amber-600 font-semibold bg-amber-500/10 rounded-md p-2">
-                        Balance is less than total. The remaining{" "}
-                        {formatPrice(numTotal - giftCardInfo.balance)} will need
-                        to be paid by another method.
-                      </p>
-                    )}
-                    {giftCardInfo.balance >= numTotal && (
-                      <p className="text-[10px] text-emerald-600 font-semibold bg-emerald-500/10 rounded-md p-2">
-                        Sufficient balance.{" "}
-                        {formatPrice(giftCardInfo.balance - numTotal)} will
-                        remain after this transaction.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {paymentMethod === "split" && (
-              <div className="space-y-3 py-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                    <Split className="w-3.5 h-3.5 text-emerald-500" />
-                    Split Payment
-                  </h4>
-                  <div
-                    className={`text-[11px] font-bold px-2 py-1 rounded-md ${
-                      isSplitComplete
-                        ? "bg-emerald-500/10 text-emerald-600"
-                        : splitOverpaid > 0
-                        ? "bg-rose-500/10 text-rose-600"
-                        : "bg-amber-500/10 text-amber-600"
-                    }`}>
-                    {isSplitComplete
-                      ? `Balanced ${formatPrice(splitTotal)}`
-                      : splitOverpaid > 0
-                      ? `Overpaid by ${formatPrice(splitOverpaid)}`
-                      : `Remaining ${formatPrice(splitRemaining)}`}
-                  </div>
-                </div>
-
-                <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
-                  {splitPayments.map((p, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-2 border rounded-lg p-2 bg-muted/5">
-                      <Select
-                        value={p.method}
-                        onValueChange={(value) => {
-                          const next = [...splitPayments];
-                          next[idx] = { ...next[idx], method: value };
-                          setSplitPayments(next);
-                        }}>
-                        <SelectTrigger className="h-9 text-xs w-[110px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="z-[100000]">
-                          <SelectItem value="cash" className="text-xs">
-                            Cash
-                          </SelectItem>
-                          <SelectItem value="card" className="text-xs">
-                            Card
-                          </SelectItem>
-                          <SelectItem value="gift_card" className="text-xs">
-                            Gift Card
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={p.amount}
-                        onChange={(e) => {
-                          const next = [...splitPayments];
-                          next[idx] = { ...next[idx], amount: e.target.value };
-                          setSplitPayments(next);
-                        }}
-                        placeholder="0.00"
-                        className="h-9 text-xs font-bold flex-1"
-                      />
-
-                      <Input
-                        value={p.ref}
-                        onChange={(e) => {
-                          const next = [...splitPayments];
-                          next[idx] = { ...next[idx], ref: e.target.value };
-                          setSplitPayments(next);
-                        }}
-                        placeholder={
-                          p.method === "gift_card"
-                            ? "GC code"
-                            : p.method === "card"
-                            ? "Auth ref"
-                            : "—"
-                        }
-                        disabled={p.method === "cash"}
-                        className="h-9 text-xs flex-1"
-                      />
-
-                      {splitPayments.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
-                            setSplitPayments(
-                              splitPayments.filter((_, i) => i !== idx),
-                            )
-                          }
-                          className="h-8 w-8 text-rose-500 hover:bg-rose-500/10 shrink-0"
-                          title="Remove">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setSplitPayments([
-                        ...splitPayments,
-                        {
-                          method: "card",
-                          amount:
-                            splitRemaining > 0 ? splitRemaining.toFixed(2) : "",
-                          ref: "",
-                        },
-                      ])
-                    }
-                    className="text-xs font-semibold gap-1 flex-1">
-                    <Plus className="w-3.5 h-3.5" />
-                    Add Payment
-                  </Button>
-                  {splitRemaining > 0 && splitPayments.length > 0 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const next = [...splitPayments];
-                        const last = next.length - 1;
-                        const currentAmount =
-                          parseFloat(next[last].amount) || 0;
-                        next[last] = {
-                          ...next[last],
-                          amount: (currentAmount + splitRemaining).toFixed(2),
-                        };
-                        setSplitPayments(next);
-                      }}
-                      className="text-xs font-semibold flex-1">
-                      Fill Remaining
-                    </Button>
-                  )}
-                </div>
-
-                <div className="bg-muted/20 rounded-lg p-3 text-xs space-y-1 border">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total Due</span>
-                    <span className="font-bold text-foreground">
-                      {formatPrice(numTotal)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">
-                      Total Tendered
-                    </span>
-                    <span className="font-bold text-foreground">
-                      {formatPrice(splitTotal)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Actions footer */}
@@ -901,74 +597,35 @@ export default function PaymentModal({ open, onOpenChange }) {
               disabled={
                 loading ||
                 (paymentMethod === "cash" && !isAmountSufficient) ||
-                (paymentMethod === "gift_card" &&
-                  (!giftCardInfo || giftCardInfo.balance <= 0)) ||
-                (paymentMethod === "split" && !isSplitComplete) ||
-                (paymentMethod === "card_emv" && !emvTransactionResult)
+                (() => {
+                  const outletEnabled =
+                    session?.session?.outlet?.payment_methods || ["cash", "card"];
+                  const cashOk =
+                    isPaymentMethodEnabled(settings?.payment_cash) &&
+                    outletEnabled.includes("cash");
+                  const cardOk =
+                    isPaymentMethodEnabled(settings?.payment_card) &&
+                    outletEnabled.includes("card");
+                  if (paymentMethod === "cash") return !cashOk;
+                  if (paymentMethod === "card") return !cardOk;
+                  return true;
+                })()
               }
-              className={`flex-1 h-11 rounded-xl font-bold flex items-center justify-center gap-1.5 shadow-md ${
-                paymentMethod === "card_emv"
-                  ? "bg-blue-600 hover:bg-blue-700 text-white"
-                  : "bg-primary text-primary-foreground hover:bg-primary/95"
-              }`}
+              className="flex-1 h-11 rounded-xl font-bold flex items-center justify-center gap-1.5 shadow-md bg-primary text-primary-foreground hover:bg-primary/95"
               onClick={async () => {
-                if (paymentMethod === "gift_card" && giftCardInfo) {
-                  // Redeem gift card first, then checkout
-                  setLoading(true);
-                  try {
-                    const deductAmount = Math.min(
-                      giftCardInfo.balance,
-                      numTotal,
-                    );
-                    await api.post("/gift-cards/redeem", {
-                      code: giftCardInfo.code,
-                      amount: deductAmount,
-                    });
-                    await handleCheckout();
-                  } catch (err) {
-                    toast.error(err.message || "Gift card redemption failed");
-                    setLoading(false);
-                  }
-                } else if (paymentMethod === "split") {
-                  // Redeem any gift card portions first
-                  setLoading(true);
-                  try {
-                    for (const p of splitPayments) {
-                      if (
-                        p.method === "gift_card" &&
-                        p.ref &&
-                        parseFloat(p.amount) > 0
-                      ) {
-                        await api.post("/gift-cards/redeem", {
-                          code: p.ref.toUpperCase(),
-                          amount: parseFloat(p.amount),
-                        });
-                      }
-                    }
-                    await handleCheckout();
-                  } catch (err) {
-                    toast.error(err.message || "Split payment failed");
-                    setLoading(false);
-                  }
-                } else {
-                  handleCheckout();
-                }
+                handleCheckout();
               }}>
-              {paymentMethod === "card_emv" && !emvTransactionResult ? (
+              {loading ? (
                 <>
                   <Loader2 className="w-4.5 h-4.5 animate-spin" />
-                  <span>Processing EMV...</span>
+                  <span>Processing...</span>
                 </>
               ) : (
                 <>
                   <Check className="w-4.5 h-4.5" />
                   <span>
-                    {loading
-                      ? "Processing..."
-                      : paymentMethod === "card"
+                    {paymentMethod === "card"
                       ? "Complete Card Payment"
-                      : paymentMethod === "card_emv"
-                      ? "Complete EMV Payment"
                       : "Complete Sale"}
                   </span>
                 </>

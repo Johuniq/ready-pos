@@ -80,19 +80,6 @@ const generateBarcodeSvg = (data) => {
   return svgHtml;
 };
 
-const getCashDrawerKickBytes = (brand) => {
-  switch (brand) {
-    case "epson":
-      return "\u001b\u0070\u0000\u0019\u00fa";
-    case "star":
-      return "\u001b\u0007";
-    case "generic":
-      return "\u0007";
-    default:
-      return "";
-  }
-};
-
 /**
  * Print a receipt based on WooCommerce order details.
  *
@@ -123,7 +110,7 @@ export const printReceipt = (order, settings = {}) => {
     order.cashier_name ||
     (typeof readypos_admin !== "undefined"
       ? readypos_admin.userInfo.username
-      : "Cashier");
+      : "Staff");
 
   const itemsHtml = order.items
     .map(
@@ -138,15 +125,10 @@ export const printReceipt = (order, settings = {}) => {
     .join("");
 
   const orderIdToEncode = order.order_number || order.id || `POS-${Date.now()}`;
-  const barcodeHtml =
-    settings.print_barcode !== "no"
-      ? `<div class="receipt-barcode">
+  const barcodeHtml = `<div class="receipt-barcode">
             ${generateBarcodeSvg(orderIdToEncode)}
             <div class="barcode-text">${orderIdToEncode}</div>
-           </div>`
-      : "";
-
-  const kickCommand = getCashDrawerKickBytes(settings.cash_drawer_pulse);
+           </div>`;
 
   const receiptHtml = `
         <!DOCTYPE html>
@@ -264,11 +246,6 @@ export const printReceipt = (order, settings = {}) => {
             </style>
         </head>
         <body>
-            ${
-              kickCommand
-                ? `<span style="display:none;">${kickCommand}</span>`
-                : ""
-            }
             ${logoHtml}
             ${headerHtml}
             
@@ -283,7 +260,7 @@ export const printReceipt = (order, settings = {}) => {
                         <td style="text-align: right;">#${orderIdToEncode}</td>
                     </tr>
                     <tr>
-                        <td><strong>Cashier:</strong></td>
+                        <td><strong>Staff:</strong></td>
                         <td style="text-align: right;">${cashierName}</td>
                     </tr>
                 </table>

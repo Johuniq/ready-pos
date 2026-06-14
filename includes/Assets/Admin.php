@@ -167,8 +167,6 @@ class Admin {
 			'userInfo'            => $this->get_user_data(),
 			'currency'            => $this->get_currency_data(),
 			'onboardingComplete'  => get_option( 'readypos_onboarding_complete', 'no' ) === 'yes',
-			'license'             => \Readypos\Core\License::frontend_data(),
-			'upgradeUrl'          => apply_filters( 'readypos_upgrade_url', 'https://johuniq.tech/products/readypos' ),
 			'pluginUrl'           => plugins_url( '', READYPOS_PLUGIN_FILE ),
 			'assetsUrl'           => plugins_url( 'assets', READYPOS_PLUGIN_FILE ),
 		);

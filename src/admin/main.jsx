@@ -4,8 +4,6 @@ import "./index.css";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./routes";
 import { ThemeProvider } from "@/components/theme-provider";
-import { LicenseProvider } from "@/admin/hooks/useLicense";
-import UpgradeModal from "@/admin/components/UpgradeModal";
 import { ErrorBoundary } from "@/components/error/ErrorBoundary";
 import { PageSkeleton } from "@/components/loading/PageSkeleton";
 import { AlertProvider } from "@/components/ui/alert-provider";
@@ -17,18 +15,15 @@ if (el) {
   ReactDOM.createRoot(el).render(
     <ErrorBoundary>
       <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
-        <LicenseProvider>
-          <AlertProvider>
-            <React.StrictMode>
-              <RouterProvider
-                router={router}
-                fallbackElement={<PageSkeleton />}
-              />
-            </React.StrictMode>
-            <UpgradeModal />
-            <Toaster position="top-right" richColors closeButton />
-          </AlertProvider>
-        </LicenseProvider>
+        <AlertProvider>
+          <React.StrictMode>
+            <RouterProvider
+              router={router}
+              fallbackElement={<PageSkeleton />}
+            />
+          </React.StrictMode>
+          <Toaster position="top-right" richColors closeButton />
+        </AlertProvider>
       </ThemeProvider>
     </ErrorBoundary>,
   );

@@ -31,6 +31,7 @@ class AuditLog {
 	const EVENT_FINANCIAL = 'financial';
 	const EVENT_SYSTEM = 'system';
 	const EVENT_CART = 'cart';
+	const EVENT_SHIFT = 'shift';
 
 	/**
 	 * Severity levels

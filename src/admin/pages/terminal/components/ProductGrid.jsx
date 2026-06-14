@@ -7,7 +7,6 @@ import {
   Layers,
   Layers3,
   Star,
-  Tag,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,16 +23,47 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { dbOperations } from "@/admin/lib/db";
-import { printBarcodeLabel } from "@/lib/barcode";
-import { useHardware } from "@/admin/hooks/useHardware";
 import { InlineError } from "@/components/error/ErrorState";
 import { ProductGridSkeleton } from "@/components/loading/PageSkeleton";
-import { handleError } from "@/lib/errorHandler";
+import { useAtom } from "jotai";
+import { sessionAtom } from "@/admin/stores/posStore";
 
 export default function ProductGrid() {
   const { addToCart } = useCart();
-  const hw = useHardware();
+  const [session] = useAtom(sessionAtom);
   const [products, setProducts] = useState([]);
+
+  const getOutletOverridePrice = (p) => {
+    const pricing = session?.session?.outlet?.pricing_config;
+    if (!pricing) return p.price;
+
+    // 1. Product-specific price override
+    if (pricing.products && pricing.products[p.id]) {
+      return pricing.products[p.id].price;
+    }
+
+    // 2. Category-based modifier
+    if (pricing.categories && p.categories) {
+      for (const cat of p.categories) {
+        if (pricing.categories[cat.id]) {
+          const modifier = pricing.categories[cat.id];
+          const basePrice = parseFloat(p.regular_price || p.price);
+          if (modifier.type === "percent") {
+            return basePrice * (1 + modifier.value / 100);
+          } else if (modifier.type === "fixed") {
+            return basePrice + modifier.value;
+          }
+        }
+      }
+    }
+
+    return p.price;
+  };
+
+  const displayProducts = products.map(p => ({
+    ...p,
+    price: getOutletOverridePrice(p)
+  }));
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [search, setSearch] = useState("");
@@ -63,9 +93,13 @@ export default function ProductGrid() {
     localStorage.setItem("ready_pos_favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // Fetch initial products and categories
+  // Fetch categories once on mount
   useEffect(() => {
     fetchCategories();
+  }, []);
+
+  // Fetch products when category changes
+  useEffect(() => {
     fetchProducts();
   }, [selectedCategory]);
 
@@ -112,16 +146,6 @@ export default function ProductGrid() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [barcodeBuffer]);
-
-  // Direct hardware scanner subscription (HID/Serial paired via Hardware page).
-  // Fires alongside the keyboard wedge, but works even when focus is in the search input.
-  useEffect(() => {
-    if (!hw.scannerConnected) return;
-    const unsubscribe = hw.onScan((code) => {
-      handleBarcodeScanned(code);
-    });
-    return unsubscribe;
-  }, [hw.scannerConnected, hw]);
 
   const fetchCategories = async () => {
     try {
@@ -272,13 +296,15 @@ export default function ProductGrid() {
       }
 
       if (product) {
-        if (product.variations && product.variations.length > 0) {
+        // Apply pricing override to barcode matched product
+        const pricingOverriddenProduct = { ...product, price: getOutletOverridePrice(product) };
+        if (pricingOverriddenProduct.variations && pricingOverriddenProduct.variations.length > 0) {
           // Variable product barcode matched parent, show selector
-          setSelectedProductForVariations(product);
+          setSelectedProductForVariations(pricingOverriddenProduct);
           setSelectedAttributes({});
         } else {
-          addToCart(product, 1);
-          toast.success(`Added ${product.name} to cart`);
+          addToCart(pricingOverriddenProduct, 1);
+          toast.success(`Added ${pricingOverriddenProduct.name} to cart`);
         }
       } else {
         toast.error("No product found matching this barcode");
@@ -330,7 +356,7 @@ export default function ProductGrid() {
         name: `${selectedProductForVariations.name} - ${Object.values(
           selectedAttributes,
         ).join(", ")}`,
-        price: matchingVariation.price,
+        price: getOutletOverridePrice(matchingVariation),
         regular_price: matchingVariation.regular_price,
         sku: matchingVariation.sku,
         image: matchingVariation.image || selectedProductForVariations.image,
@@ -437,7 +463,7 @@ export default function ProductGrid() {
           ) : (
             <ScrollArea className="flex-1 p-4">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5">
-                {products.map((product) => {
+                {displayProducts.map((product) => {
                   const outOfStock =
                     product.manage_stock && product.stock_quantity <= 0;
                   return (
@@ -483,26 +509,6 @@ export default function ProductGrid() {
                             }`}
                           />
                         </Button>
-
-                        {/* Print Barcode Label Button */}
-                        {(product.sku || product.barcode) && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const code = product.barcode || product.sku;
-                              printBarcodeLabel(code, {
-                                title: product.name,
-                                price: formatPrice(product.price),
-                                sku: product.sku,
-                              });
-                            }}
-                            className="absolute top-1.5 right-9 p-1.5 h-7 w-7 rounded-full bg-background/80 hover:bg-background text-foreground transition-all shadow-xs z-10"
-                            title="Print Barcode Label">
-                            <Tag className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
-                          </Button>
-                        )}
 
                         {product.sale_price > 0 && (
                           <span className="absolute top-1.5 left-1.5 bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-md shadow-xs">

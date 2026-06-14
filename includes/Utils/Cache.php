@@ -38,12 +38,9 @@ class Cache {
 		'outlets'        => 1800,   // 30 minutes - outlets rarely change
 		'settings'       => 1800,   // 30 minutes - settings rarely change
 		'customers'      => 600,    // 10 minutes - customer data moderate changes
-		'inventory'      => 300,    // 5 minutes - inventory changes frequently
-		'reports'        => 900,    // 15 minutes - reports can be cached longer
 		'sessions'       => 60,     // 1 minute - sessions change frequently
 		'orders'         => 180,    // 3 minutes - orders change frequently in POS
 		'returns'        => 180,    // 3 minutes - returns change frequently
-		'suppliers'      => 1800,   // 30 minutes - suppliers rarely change
 		'registers'      => 1800,   // 30 minutes - registers rarely change
 		'payment_methods' => 3600,  // 1 hour - payment methods very stable
 		'categories'     => 1800,   // 30 minutes - categories rarely change
@@ -120,7 +117,7 @@ class Cache {
 	public static function clear_group( $group ) {
 		global $wpdb;
 
-		$pattern = self::PREFIX . $group . '_%';
+		$pattern = self::PREFIX . $group . '_';
 		$deleted = $wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
@@ -147,7 +144,7 @@ class Cache {
 	public static function clear_all() {
 		global $wpdb;
 
-		$pattern = self::PREFIX . '%';
+		$pattern = self::PREFIX;
 		$deleted = $wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
@@ -221,16 +218,18 @@ class Cache {
 	public static function invalidate( $entity, $entity_id = null ) {
 		// Map entity types to cache groups
 		$entity_group_map = array(
-			'product'   => array( 'products', 'inventory', 'reports' ),
-			'order'     => array( 'orders', 'reports', 'sessions', 'returns' ),
-			'customer'  => array( 'customers', 'reports' ),
-			'outlet'    => array( 'outlets', 'inventory', 'reports', 'registers' ),
-			'supplier'  => array( 'suppliers' ),
+			'product'   => array( 'products' ),
+			// Orders also affect customer loyalty totals, so the customers
+			// list/detail cache must be cleared when an order is created or
+			// changed, otherwise the list can show stale 0 values for up to
+			// the full customers cache TTL (10 minutes).
+			'order'     => array( 'orders', 'sessions', 'returns', 'customers' ),
+			'customer'  => array( 'customers' ),
+			'outlet'    => array( 'outlets', 'registers' ),
 			'register'  => array( 'registers', 'outlets', 'sessions' ),
 			'setting'   => array( 'settings', 'payment_methods', 'taxes' ),
-			'inventory' => array( 'inventory', 'products', 'reports' ),
-			'session'   => array( 'sessions', 'reports' ),
-			'return'    => array( 'returns', 'orders', 'reports' ),
+			'session'   => array( 'sessions' ),
+			'return'    => array( 'returns', 'orders', 'customers' ),
 		);
 
 		if ( isset( $entity_group_map[ $entity ] ) ) {

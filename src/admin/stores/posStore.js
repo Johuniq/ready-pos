@@ -11,6 +11,13 @@ export const settingsAtom = atom({
   payment_cash: "yes",
   payment_card: "yes",
   keyboard_status: "yes",
+  customer_display_enabled: "yes",
+  customer_display_idle_timeout: 30,
+  customer_display_message: "Welcome to our store!",
+  customer_display_promo_1: "Special offers available - Ask our staff!",
+  customer_display_promo_2: "Join our loyalty program and save more",
+  customer_display_promo_3: "",
+  customer_display_promo_4: "",
 });
 
 // Selected customer for POS transaction
@@ -172,8 +179,18 @@ export const cartTaxAmountAtom = atom((get) => {
   const subtotal = get(cartSubtotalAtom);
   const discountAmount = get(cartDiscountAmountAtom);
   const settings = get(settingsAtom);
+  const sessionData = get(sessionAtom);
 
   const discountedTotal = Math.max(0, subtotal - discountAmount);
+
+  // Check if session has active outlet tax configuration
+  const outletTaxConfig = sessionData?.session?.outlet?.tax_config;
+  const outletRates = outletTaxConfig?.rates;
+
+  if (outletRates && outletRates.length > 0) {
+    const totalRate = outletRates.reduce((sum, r) => sum + r.rate, 0);
+    return (discountedTotal * totalRate) / 100;
+  }
 
   if (!settings.tax_rates || settings.tax_rates.length === 0) return 0;
 

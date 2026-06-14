@@ -9,7 +9,6 @@
 namespace Readypos\Controllers\Customers;
 
 use Readypos\Models\POSCustomer;
-use Readypos\Core\License;
 use Readypos\Traits\Cacheable;
 
 defined( 'ABSPATH' ) || exit;
@@ -193,14 +192,6 @@ class Actions {
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function create( \WP_REST_Request $request ) {
-		// Enforce customer quota for Free plan.
-		$user_count = count_users();
-		$current = isset( $user_count['avail_roles']['customer'] ) ? (int) $user_count['avail_roles']['customer'] : 0;
-		$quota_check = License::require_quota( 'customers', $current );
-		if ( $quota_check ) {
-			return $quota_check;
-		}
-
 		$first_name = sanitize_text_field( $request->get_param( 'firstName' ) );
 		$last_name  = sanitize_text_field( $request->get_param( 'lastName' ) );
 		$email      = sanitize_email( $request->get_param( 'email' ) );
@@ -385,8 +376,8 @@ class Actions {
 			return new \WP_Error( 'not_found', __( 'Customer not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
-		// Refuse to delete a user that holds privileged roles (admins, shop managers, cashiers).
-		$privileged_roles = array( 'administrator', 'shop_manager', 'pos_cashier', 'pos_manager' );
+		// Refuse to delete a user that holds privileged roles (admins, shop managers).
+		$privileged_roles = array( 'administrator', 'shop_manager' );
 		if ( array_intersect( $privileged_roles, (array) $user->roles ) ) {
 			return new \WP_Error(
 				'cannot_delete_staff',
@@ -428,11 +419,6 @@ class Actions {
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function purchase_history( \WP_REST_Request $request ) {
-		$gate = License::require_feature( 'purchase_history' );
-		if ( $gate ) {
-			return $gate;
-		}
-
 		$user_id = intval( $request->get_param( 'id' ) );
 		$page    = max( 1, intval( $request->get_param( 'page' ) ?: 1 ) );
 		$limit   = max( 1, min( 50, intval( $request->get_param( 'limit' ) ?: 10 ) ) );
@@ -503,11 +489,6 @@ class Actions {
 	 * @return \WP_REST_Response|\WP_Error
 	 */
 	public function redeem_points( \WP_REST_Request $request ) {
-		$gate = License::require_feature( 'loyalty_points' );
-		if ( $gate ) {
-			return $gate;
-		}
-
 		$user_id = intval( $request->get_param( 'id' ) );
 		$points  = intval( $request->get_param( 'points' ) );
 
@@ -516,8 +497,31 @@ class Actions {
 		}
 
 		$pos_customer = POSCustomer::where( 'wc_customer_id', $user_id )->first();
+
+		// If no POS loyalty row exists yet, lazy-create one seeded from the
+		// same live WooCommerce order stats the customer list uses. This
+		// keeps the redeem endpoint consistent with what the operator sees
+		// in the terminal (live points for users without a record).
 		if ( ! $pos_customer ) {
-			return new \WP_Error( 'not_found', __( 'Customer loyalty record not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
+			$user = get_userdata( $user_id );
+			if ( ! $user ) {
+				return new \WP_Error( 'not_found', __( 'Customer loyalty record not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
+			}
+
+			$stats = $this->compute_live_stats( $user_id );
+
+			$pos_customer = POSCustomer::create(
+				array(
+					'wc_customer_id' => $user_id,
+					'first_name'     => $user->first_name ?: $user->display_name,
+					'last_name'      => $user->last_name,
+					'email'          => $user->user_email,
+					'phone'          => get_user_meta( $user_id, 'billing_phone', true ),
+					'loyalty_points' => $stats['loyalty_points'],
+					'total_spent'    => $stats['total_spent'],
+					'visit_count'    => $stats['visit_count'],
+				)
+			);
 		}
 
 		if ( $pos_customer->loyalty_points < $points ) {
@@ -534,6 +538,9 @@ class Actions {
 
 		// Conversion: 100 points = $1.
 		$discount_amount = round( $points / 100, 2 );
+
+		// Bust customer caches so list/detail views reflect the new balance.
+		$this->invalidate_cache( 'customer', $user_id );
 
 		return new \WP_REST_Response(
 			array(
@@ -561,6 +568,21 @@ class Actions {
 			$pos_customer = POSCustomer::where( 'wc_customer_id', $user->ID )->first();
 		}
 
+		// If a POS customer record exists, trust its cached counters.
+		// Otherwise compute live stats from real WooCommerce orders so the
+		// customers page and detail modal show accurate numbers for users
+		// that have no readypos_customers row yet.
+		if ( $pos_customer ) {
+			$loyalty_points = intval( $pos_customer->loyalty_points );
+			$visit_count    = intval( $pos_customer->visit_count );
+			$total_spent    = floatval( $pos_customer->total_spent );
+		} else {
+			$stats                  = $this->compute_live_stats( $user->ID );
+			$loyalty_points         = $stats['loyalty_points'];
+			$visit_count            = $stats['visit_count'];
+			$total_spent            = $stats['total_spent'];
+		}
+
 		return array(
 			'id'             => $user->ID,
 			'username'       => $user->user_login,
@@ -569,10 +591,62 @@ class Actions {
 			'email'          => $user->user_email,
 			'phone'          => get_user_meta( $user->ID, 'billing_phone', true ) ?: ( $pos_customer ? $pos_customer->phone : '' ),
 			'notes'          => $pos_customer ? (string) $pos_customer->notes : '',
-			'loyalty_points' => $pos_customer ? intval( $pos_customer->loyalty_points ) : 0,
-			'visit_count'    => $pos_customer ? intval( $pos_customer->visit_count ) : 0,
-			'total_spent'    => $pos_customer ? floatval( $pos_customer->total_spent ) : 0,
+			'loyalty_points' => $loyalty_points,
+			'visit_count'    => $visit_count,
+			'total_spent'    => $total_spent,
 			'registered_at'  => $user->user_registered,
+		);
+	}
+
+	/**
+	 * Compute customer stats directly from WooCommerce orders.
+	 *
+	 * Used as a fallback when the customer has no readypos_customers record,
+	 * so the customers list and detail modal still surface real activity.
+	 *
+	 * @param int $user_id WordPress user ID.
+	 * @return array{visit_count:int,total_spent:float,loyalty_points:int}
+	 */
+	private function compute_live_stats( $user_id ) {
+		$user_id = intval( $user_id );
+		if ( ! $user_id || ! function_exists( 'wc_get_orders' ) ) {
+			return array(
+				'visit_count'    => 0,
+				'total_spent'    => 0.0,
+				'loyalty_points' => 0,
+			);
+		}
+
+		$orders = wc_get_orders(
+			array(
+				'customer_id' => $user_id,
+				// Refunded orders are excluded so the totals reflect money
+				// the customer has actually spent (matching the POS loyalty
+				// reward logic of 1 point per $1).
+				'status'      => array( 'completed', 'processing' ),
+				'limit'       => -1,
+				'return'      => 'objects',
+			)
+		);
+
+		if ( empty( $orders ) ) {
+			return array(
+				'visit_count'    => 0,
+				'total_spent'    => 0.0,
+				'loyalty_points' => 0,
+			);
+		}
+
+		$total_spent = 0.0;
+		foreach ( $orders as $order ) {
+			$total_spent += floatval( $order->get_total() );
+		}
+
+		return array(
+			'visit_count'    => count( $orders ),
+			'total_spent'    => $total_spent,
+			// 1 loyalty point per $1 spent (matches checkout loyalty rule).
+			'loyalty_points' => (int) floor( $total_spent ),
 		);
 	}
 }

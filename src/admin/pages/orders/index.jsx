@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/currency";
-import { printManager } from "@/lib/printing/PrintManager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,7 +33,6 @@ import {
   Filter,
   X,
   Printer,
-  PackageX,
 } from "lucide-react";
 import {
   Select,
@@ -57,7 +55,6 @@ import {
   PageToolbar,
   PaginationBar,
 } from "@/admin/components/PageLayout";
-import ReturnExchangeModal from "./components/ReturnExchangeModal";
 import { useTableExport } from "@/hooks/useTableExport";
 import { ExportButton } from "@/components/export/ExportButton";
 import { formatPriceForExport, formatDateForExport } from "@/lib/export";
@@ -87,10 +84,6 @@ export default function Orders() {
   const [refundReason, setRefundReason] = useState("");
   const [refunding, setRefunding] = useState(false);
 
-  // Return/Exchange modal state
-  const [showReturnModal, setShowReturnModal] = useState(false);
-  const [returnOrder, setReturnOrder] = useState(null);
-
   const fetchOrders = async (targetPage = 1) => {
     setLoading(true);
     setError(null);
@@ -118,7 +111,6 @@ export default function Orders() {
     getHeaders: () => [
       "Order ID",
       "Date",
-      "Cashier",
       "Payment Method",
       "Subtotal",
       "Discount",
@@ -130,7 +122,6 @@ export default function Orders() {
       filteredOrders.map((order) => [
         order.order_number || order.id,
         formatDateForExport(order.date),
-        order.cashier_name || "",
         order.payment_method || "",
         formatPriceForExport(order.subtotal || 0),
         formatPriceForExport(order.discount || 0),
@@ -150,10 +141,7 @@ export default function Orders() {
       const matchId = (order.order_number || String(order.id))
         .toLowerCase()
         .includes(term);
-      const matchCashier = (order.cashier_name || "")
-        .toLowerCase()
-        .includes(term);
-      if (!matchId && !matchCashier) return false;
+      if (!matchId) return false;
     }
     return true;
   });
@@ -226,11 +214,10 @@ export default function Orders() {
     }
 
     try {
-      await printManager.printReceipt(orderDetail, settings);
-      toast.success("Receipt sent to printer");
+      toast.success("Receipt opened for printing");
     } catch (err) {
       toast.error("Failed to print receipt");
-      
+
     }
   };
 
@@ -263,7 +250,7 @@ export default function Orders() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by order # or cashier..."
+            placeholder="Search by order #..."
             value={filterSearch}
             onChange={(e) => setFilterSearch(e.target.value)}
             className="pl-9 h-9 text-xs"
@@ -354,9 +341,6 @@ export default function Orders() {
                       Date
                     </TableHead>
                     <TableHead className="font-bold uppercase text-[10px] tracking-wider">
-                      Cashier
-                    </TableHead>
-                    <TableHead className="font-bold uppercase text-[10px] tracking-wider">
                       Method
                     </TableHead>
                     <TableHead className="font-bold uppercase text-[10px] tracking-wider text-right">
@@ -380,9 +364,6 @@ export default function Orders() {
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {new Date(order.date).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-xs font-semibold text-foreground">
-                        {order.cashier_name}
                       </TableCell>
                       <TableCell className="text-xs capitalize text-muted-foreground font-medium">
                         {order.payment_method}
@@ -642,18 +623,6 @@ export default function Orders() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                setReturnOrder(orderDetail);
-                setShowReturnModal(true);
-              }}
-              disabled={!orderDetail || loadingDetail}
-              className="font-semibold text-xs h-9 px-4 gap-1.5">
-              <PackageX className="w-3.5 h-3.5" />
-              Return / Exchange
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
               onClick={handlePrintReceipt}
               disabled={!orderDetail || loadingDetail}
               className="font-semibold text-xs h-9 px-4 gap-1.5">
@@ -671,16 +640,6 @@ export default function Orders() {
         </DialogContent>
       </Dialog>
 
-      {/* Return/Exchange Modal */}
-      <ReturnExchangeModal
-        open={showReturnModal}
-        onClose={() => setShowReturnModal(false)}
-        order={returnOrder}
-        onSuccess={() => {
-          fetchOrders(page);
-          setShowDetailModal(false);
-        }}
-      />
     </div>
   );
 }

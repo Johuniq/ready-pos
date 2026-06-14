@@ -22,16 +22,12 @@ import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/currency";
 import { handleError } from "@/lib/errorHandler";
 import {
-  AlertTriangle,
   ArrowDown,
   ArrowUp,
-  BarChart3,
-  Crown,
   DollarSign,
   LayoutDashboard,
   Receipt,
   RefreshCw,
-  ShieldCheck,
   ShoppingCart,
   Store,
   TerminalSquare,
@@ -48,8 +44,6 @@ import {
   YAxis,
 } from "recharts";
 import { toast } from "sonner";
-import { useLicense } from "@/admin/hooks/useLicense";
-import QuickRestockModal from "./components/QuickRestockModal";
 import { PageHeader } from "@/admin/components/PageLayout";
 
 // Utility Functions
@@ -68,8 +62,6 @@ const formatCompactDate = (value) => {
 };
 
 export default function DashboardPage() {
-  const license = useLicense();
-  const isPro = license.isPro;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [summary, setSummary] = useState(null);
@@ -78,13 +70,7 @@ export default function DashboardPage() {
   const [outlets, setOutlets] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
-  const [cashiers, setCashiers] = useState([]);
   const [payments, setPayments] = useState([]);
-
-  // Low stock states
-  const [lowStockList, setLowStockList] = useState([]);
-  const [selectedRestockProduct, setSelectedRestockProduct] = useState(null);
-  const [restockOpen, setRestockOpen] = useState(false);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -96,19 +82,12 @@ export default function DashboardPage() {
       { key: "outlets", url: "/settings/outlets", pro: false },
       { key: "sessions", url: "/sessions/history", pro: false },
       { key: "products", url: "/reports/dashboard-product-performance?days=30", pro: false },
-      { key: "cashiers", url: "/reports/dashboard-cashier-performance?days=30", pro: false },
       { key: "payments", url: "/reports/dashboard-payment-methods?days=30", pro: false },
-      { key: "lowStock", url: "/inventory/low-stock", pro: false },
     ];
 
     try {
       const results = await Promise.allSettled(
-        endpoints.map((e) => {
-          if (e.pro && !isPro) {
-            return Promise.reject(new Error("PRO_LOCKED"));
-          }
-          return api.get(e.url);
-        }),
+        endpoints.map((e) => api.get(e.url)),
       );
 
       const getValue = (index, fallback = null) =>
@@ -119,9 +98,7 @@ export default function DashboardPage() {
       const outletsData = getValue(2, []);
       const sessionsData = getValue(3, []);
       const productsData = getValue(4, []);
-      const cashiersData = getValue(5, []);
-      const paymentsData = getValue(6, []);
-      const lowStockData = getValue(7, []);
+      const paymentsData = getValue(5, []);
 
       setSummary({
         ...(salesData?.summary || {}),
@@ -133,14 +110,12 @@ export default function DashboardPage() {
       setOutlets(outletsData || []);
       setSessions(sessionsData || []);
       setTopProducts(productsData || []);
-      setCashiers(cashiersData || []);
       setPayments(paymentsData || []);
-      setLowStockList(lowStockData || []);
 
       // Report partial failures with endpoint names + reasons
       const failures = results
         .map((r, i) => ({ ...r, endpoint: endpoints[i] }))
-        .filter((r) => r.status === "rejected" && r.reason?.message !== "PRO_LOCKED");
+        .filter((r) => r.status === "rejected");
 
       if (failures.length > 0) {
         // Surface details to the console for debugging
@@ -168,15 +143,6 @@ export default function DashboardPage() {
       setError(appError.message || "Failed to load dashboard data");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchLowStock = async () => {
-    try {
-      const data = await api.get("/inventory/low-stock");
-      setLowStockList(data || []);
-    } catch (err) {
-      
     }
   };
 
@@ -259,11 +225,6 @@ export default function DashboardPage() {
   /**
    * @param {any} product
    */
-  const handleOpenRestock = (product) => {
-    setSelectedRestockProduct(product);
-    setRestockOpen(true);
-  };
-
   if (loading && !summary && !error) {
     return <DashboardSkeleton />;
   }
@@ -286,14 +247,6 @@ export default function DashboardPage() {
               className={`mr-1.5 h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
             />
             Refresh
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => (window.location.hash = "#/reports")}
-            className="h-9 font-semibold text-xs btn-premium">
-            <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
-            Reports
           </Button>
           <Button
             onClick={() => (window.location.hash = "#/terminal")}
@@ -519,7 +472,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Redesigned bottom grid to accommodate the Critical Low Stock alerts panel */}
+      {/* Bottom grid: recent transactions, top products, payment mix. */}
       <div className="grid gap-6 lg:grid-cols-3 mt-6">
         {/* Recent Orders table */}
         <Card className="shadow-sm border border-border/60 rounded-2xl">
@@ -551,7 +504,6 @@ export default function DashboardPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-24 pl-6">Order</TableHead>
-                      <TableHead>Cashier</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                       <TableHead className="text-center">Status</TableHead>
                     </TableRow>
@@ -561,9 +513,6 @@ export default function DashboardPage() {
                       <TableRow key={order.id} className="hover:bg-muted/10">
                         <TableCell className="font-semibold text-xs text-foreground pl-6">
                           #{order.order_number || order.id}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {order.cashier_name}
                         </TableCell>
                         <TableCell className="text-xs font-bold text-foreground text-right">
                           {formatPrice(order.total)}
@@ -600,7 +549,7 @@ export default function DashboardPage() {
                 Top Selling Products
               </CardTitle>
               <CardDescription className="text-xs">
-                Best performing inventory items in 30 days.
+                Best performing products in 30 days.
               </CardDescription>
             </div>
           </CardHeader>
@@ -651,91 +600,8 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Critical Low Stock Alerts Card (Premium Upgrade) */}
-        <Card className="shadow-sm border border-border/60 rounded-2xl">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div className="space-y-1">
-              <CardTitle className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 text-amber-500 animate-pulse" />
-                <span>Low Stock Warnings</span>
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Products falling under the set alert threshold.
-              </CardDescription>
-            </div>
-            {lowStockList.length > 0 && (
-              <Badge className="bg-amber-500 hover:bg-amber-600 text-[10px] font-bold">
-                {lowStockList.length} Alert{lowStockList.length > 1 ? "s" : ""}
-              </Badge>
-            )}
-          </CardHeader>
-          <CardContent className="p-0 max-h-[300px] overflow-y-auto">
-            {lowStockList.length === 0 ? (
-              <div className="h-[250px] flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
-                <ShieldCheck className="w-10 h-10 text-emerald-500 mb-2 opacity-85" />
-                <p className="text-xs font-bold text-foreground">
-                  All Stock Levels Healthy
-                </p>
-                <p className="text-[10px] opacity-75 mt-0.5">
-                  No products require immediate restocking intake.
-                </p>
-              </div>
-            ) : (
-              <div className="divide-y divide-border/60">
-                {lowStockList.map((/** @type {any} */ item) => (
-                  <div
-                    key={item.id}
-                    className="p-3.5 hover:bg-muted/10 flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      {item.image ? (
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-9 h-9 rounded-lg object-cover bg-card border border-border filter grayscale"
-                        />
-                      ) : (
-                        <div className="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-                          SKU
-                        </div>
-                      )}
-                      <div className="space-y-0.5 min-w-0">
-                        <p className="font-semibold text-foreground truncate">
-                          {item.name}
-                        </p>
-                        <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground font-bold">
-                          <span className="font-mono text-muted-foreground">
-                            SKU: {item.sku}
-                          </span>
-                          <span>•</span>
-                          <span className="text-rose-600 font-extrabold flex items-center gap-0.5">
-                            <span>Count: {item.stock_quantity}</span>
-                            <span className="opacity-75 font-normal">
-                              (Min: {item.low_stock_threshold})
-                            </span>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() => handleOpenRestock(item)}
-                      className="h-7 text-[10px] font-bold rounded-lg bg-amber-500 hover:bg-amber-600 text-white shrink-0 px-2.5 shadow-xs transition-all active:scale-95">
-                      Quick Restock
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* End of dashboard widgets. */}
       </div>
-
-      <QuickRestockModal
-        open={restockOpen}
-        onOpenChange={setRestockOpen}
-        product={selectedRestockProduct}
-        onRestockSuccess={fetchLowStock}
-      />
     </div>
   );
 }

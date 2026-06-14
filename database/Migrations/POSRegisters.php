@@ -43,6 +43,7 @@ class POSRegisters implements Migration {
 				$table->id();
 				$table->unsignedBigInteger( 'outlet_id' );
 				$table->string( 'name' );
+				$table->string( 'code', 32 )->nullable();
 				$table->string( 'status', 20 )->default( 'closed' );
 				$table->dateTime( 'created_at' )->nullable();
 				$table->dateTime( 'updated_at' )->nullable();

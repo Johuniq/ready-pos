@@ -2,8 +2,7 @@
  * Centralized API helper for Ready POS.
  * Connects React frontend to WordPress REST API using localized credentials.
  *
- * Custom error class so license-related rejections (HTTP 402) carry the
- * feature/resource metadata for upgrade-modal triggering.
+ * Custom error class for consistent error handling.
  */
 
 const getApiConfig = () => {
@@ -21,25 +20,12 @@ const getApiConfig = () => {
   };
 };
 
-/**
- * Subscribe to license errors (HTTP 402) globally so a centralized handler
- * (e.g. the LicenseProvider) can open the upgrade modal automatically.
- */
-const licenseErrorListeners = new Set();
-
-export function onLicenseError(callback) {
-  licenseErrorListeners.add(callback);
-  return () => licenseErrorListeners.delete(callback);
-}
-
 class ApiError extends Error {
-  constructor(message, status, data) {
+  constructor(message, status, data, code) {
     super(message);
     this.status = status;
     this.data = data || {};
-    this.feature = data?.feature || null;
-    this.resource = data?.resource || null;
-    this.limit = data?.limit ?? null;
+    this.code = code || "";
   }
 }
 
@@ -119,25 +105,9 @@ export const api = {
         const errorMessage =
           errorData.message || `Request failed with status ${response.status}`;
         const errorPayload = errorData.data || {};
+        const errorCode = errorData.code || "";
 
-        // 402 = Payment Required — license / quota error. Notify subscribers
-        // before throwing so they can open the upgrade modal.
-        if (response.status === 402 && !options.skipLicenseTrigger) {
-          for (const cb of licenseErrorListeners) {
-            try {
-              cb({
-                feature: errorPayload.feature || null,
-                resource: errorPayload.resource || null,
-                limit: errorPayload.limit ?? null,
-                message: errorMessage,
-              });
-            } catch {
-              // Swallow listener errors so they don't mask the API error.
-            }
-          }
-        }
-
-        throw new ApiError(errorMessage, response.status, errorPayload);
+        throw new ApiError(errorMessage, response.status, errorPayload, errorCode);
       }
 
       return response.json();

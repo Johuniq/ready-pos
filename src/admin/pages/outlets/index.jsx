@@ -29,14 +29,9 @@ import {
   Phone,
   Mail,
   MapPin,
-  RefreshCw,
-  Crown,
   Settings2,
 } from "lucide-react";
-import InventoryTakeModal from "./components/InventoryTakeModal";
 import { OutletConfigurationModal } from "./components/OutletConfigurationModal";
-import { useLicense } from "@/admin/hooks/useLicense";
-import { ProBadge } from "@/admin/components/ProGate";
 import { OutletsSkeleton } from "@/components/loading/PageSkeleton";
 import { EmptyState, ErrorState } from "@/components/error/ErrorState";
 import { handleError } from "@/lib/errorHandler";
@@ -49,12 +44,6 @@ export default function Outlets() {
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState("create"); // "create" or "edit"
-  const license = useLicense();
-
-  // Inventory take state
-  const [showInventoryModal, setShowInventoryModal] = useState(false);
-  const [selectedOutletForInventory, setSelectedOutletForInventory] =
-    useState(null);
 
   // Configuration modal state
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -100,8 +89,6 @@ export default function Outlets() {
   }, []);
 
   const handleOpenCreate = () => {
-    // Quota check before opening
-    if (!license.requireQuota("outlets")) return;
     setModalMode("create");
     setCurrentId(null);
     setName("");
@@ -139,8 +126,6 @@ export default function Outlets() {
           receipt_footer: receiptFooter,
         });
         toast.success("Outlet created successfully");
-        // Refresh license data to update usage count
-        await license.refresh();
       } else {
         await api.post("/settings/outlets/update", {
           id: currentId,
@@ -167,7 +152,6 @@ export default function Outlets() {
   }
 
   const handleOpenCreateReg = (outletId) => {
-    if (!license.requireQuota("registers")) return;
     setRegMode("create");
     setSelectedOutletId(outletId);
     setCurrentRegId(null);
@@ -196,7 +180,6 @@ export default function Outlets() {
           name: regName,
         });
         toast.success("Register created successfully");
-        await license.refresh();
       } else {
         await api.post("/settings/registers/update", {
           id: currentRegId,
@@ -223,16 +206,35 @@ export default function Outlets() {
     try {
       await api.post("/settings/registers/delete", { id: regId });
       toast.success("Register deleted successfully");
-      await license.refresh();
+
       fetchOutlets();
     } catch (err) {
       toast.error(err.message || "Failed to delete register");
     }
   };
 
-  function empty(val) {
-    return !val || val.toString().trim() === "";
-  }
+  const handleDeleteOutlet = async (outlet) => {
+    const confirmed = await showConfirm(
+      `Are you sure you want to delete "${outlet.name}"? This action cannot be undone and will fail if the outlet still has any registers.`,
+      "Delete Outlet"
+    );
+    if (!confirmed) return;
+
+    try {
+      await api.post("/settings/outlets/delete", { id: outlet.id });
+      toast.success("Outlet deleted successfully");
+      fetchOutlets();
+    } catch (err) {
+      const data = err?.data || err?.response?.data;
+      if (data?.register_count) {
+        toast.error(
+          `Cannot delete: ${data.register_count} register(s) are still linked to this outlet.`
+        );
+      } else {
+        toast.error(err.message || "Failed to delete outlet");
+      }
+    }
+  };
 
   return (
     <div className="page-container">
@@ -241,19 +243,11 @@ export default function Outlets() {
         description="Manage physical store outlets and configure cash registers."
         actions={
           <>
-          {!license.isPro && (
-            <span className="text-[11px] font-semibold text-muted-foreground bg-muted/40 px-2.5 py-1 rounded-md">
-              {license.usage?.outlets || 0} / {license.limits?.outlets || 1}
-            </span>
-          )}
           <Button
             onClick={handleOpenCreate}
             size="sm"
             className="font-bold flex items-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/95 btn-premium">
             <Plus className="w-4 h-4" /> Add Outlet
-            {!license.isPro && !license.canCreate("outlets") && (
-              <ProBadge className="ml-1" />
-            )}
           </Button>
           </>
         }
@@ -302,14 +296,24 @@ export default function Outlets() {
                       </Badge>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleOpenEdit(outlet)}
-                    className="h-8 w-8 rounded-full btn-premium"
-                    title="Edit Outlet">
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleOpenEdit(outlet)}
+                      className="h-8 w-8 rounded-full btn-premium"
+                      title="Edit Outlet">
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteOutlet(outlet)}
+                      className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/10"
+                      title="Delete Outlet">
+                      <Plus className="w-3.5 h-3.5 rotate-45" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="pt-4 space-y-4 flex-1">
@@ -349,9 +353,6 @@ export default function Outlets() {
                       onClick={() => handleOpenCreateReg(outlet.id)}
                       className="h-7 text-[10px] font-bold flex items-center gap-1 text-primary hover:bg-primary/10">
                       <Plus className="w-3 h-3" /> Add Register
-                      {!license.isPro && !license.canCreate("registers") && (
-                        <ProBadge className="scale-75" />
-                      )}
                     </Button>
                   </div>
                   <div className="space-y-1.5">
@@ -411,27 +412,11 @@ export default function Outlets() {
                   size="sm"
                   className="text-[10px] h-8 font-bold flex items-center gap-1.5 hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/30 transition-all duration-150"
                   onClick={() => {
-                    if (!license.isPro) {
-                      license.requireFeature("outlet_configuration");
-                      return;
-                    }
                     setSelectedOutletForConfig(outlet);
                     setShowConfigModal(true);
                   }}>
                   <Settings2 className="w-3.5 h-3.5" />
                   <span>Configure Outlet</span>
-                  {!license.isPro && <ProBadge className="ml-1 scale-75" />}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-[10px] h-8 font-bold flex items-center gap-1.5 hover:bg-primary/5 hover:text-primary transition-all duration-150"
-                  onClick={() => {
-                    setSelectedOutletForInventory(outlet);
-                    setShowInventoryModal(true);
-                  }}>
-                  <RefreshCw className="w-3.5 h-3.5 text-primary" />
-                  <span>Inventory Audit Take</span>
                 </Button>
               </CardFooter>
             </Card>
@@ -599,14 +584,6 @@ export default function Outlets() {
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* Inventory Take Dialog */}
-      <InventoryTakeModal
-        open={showInventoryModal}
-        onOpenChange={setShowInventoryModal}
-        outlet={selectedOutletForInventory}
-        onComplete={fetchOutlets}
-      />
 
       {/* Outlet Configuration Dialog */}
       <OutletConfigurationModal

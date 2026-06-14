@@ -163,6 +163,51 @@ export default function CustomerDisplay() {
     };
   }, [idleTimer]);
 
+  // Listen for settings updates from the Settings page (in any tab).
+  // Re-request state from the Terminal so the customer display picks up
+  // new message / promos / idle timeout without a manual refresh.
+  useEffect(() => {
+    let settingsChannel;
+    try {
+      settingsChannel = new BroadcastChannel("readypos_settings");
+      settingsChannel.onmessage = () => {
+        const ch = new BroadcastChannel("readypos_customer_display");
+        ch.postMessage({ type: "REQUEST_STATE" });
+        setTimeout(() => ch.close(), 100);
+      };
+    } catch (e) {
+      /* BroadcastChannel unsupported */
+    }
+
+    const onStorage = (ev) => {
+      if (ev.key === "readypos_settings_updated") {
+        const ch = new BroadcastChannel("readypos_customer_display");
+        ch.postMessage({ type: "REQUEST_STATE" });
+        setTimeout(() => ch.close(), 100);
+      }
+    };
+    const onFocus = () => {
+      const ch = new BroadcastChannel("readypos_customer_display");
+      ch.postMessage({ type: "REQUEST_STATE" });
+      setTimeout(() => ch.close(), 100);
+    };
+
+    window.addEventListener("storage", onStorage);
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      if (settingsChannel) {
+        try {
+          settingsChannel.close();
+        } catch (e) {
+          /* ignore */
+        }
+      }
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
+
   // Rotate promotional messages every 5 seconds when idle
   useEffect(() => {
     if (isIdle && promos.length > 1) {
@@ -179,6 +224,28 @@ export default function CustomerDisplay() {
     ? `${state.customer.first_name} ${state.customer.last_name}`.trim() ||
       state.customer.username
     : null;
+
+  // Respect the "Customer Display" toggle in POS settings. When the
+  // setting is "no" the display window should not render the cart/ads.
+  // Until the terminal sends its first SYNC_STATE the setting is undefined,
+  // so default to "enabled" to preserve current behaviour for fresh loads.
+  const isDisplayEnabled =
+    state.settings?.customer_display_enabled === undefined
+      ? true
+      : state.settings.customer_display_enabled !== "no";
+
+  if (!isDisplayEnabled) {
+    return (
+      <div className="w-screen h-screen flex flex-col items-center justify-center bg-background text-muted-foreground gap-2 p-8 text-center">
+        <ShoppingCart className="w-10 h-10 opacity-40" />
+        <p className="text-2xl font-semibold">Customer display is disabled</p>
+        <p className="text-sm">
+          Enable the Customer Display from POS Settings &rarr; Terminal to show
+          this screen again.
+        </p>
+      </div>
+    );
+  }
 
   // Idle/Welcome Screen
   if (isIdle || !hasCart) {

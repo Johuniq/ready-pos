@@ -87,7 +87,7 @@ add_action(
 	}
 );
 
-// Hook for plugin activation — install tables, schedule license cron, clear caches.
+// Hook for plugin activation â€” install tables, clear caches.
 register_activation_hook(
 	__FILE__,
 	function () {
@@ -99,13 +99,9 @@ register_activation_hook(
 		// Use fully qualified class names to avoid use statement issues
 		if ( class_exists( 'Readypos\Core\Install' ) ) {
 			\Readypos\Core\Install::get_instance()->init();
-		}
-		
-		if ( class_exists( 'Readypos\Core\License\Manager' ) ) {
-			\Readypos\Core\License\Manager::ensure_cron();
-		}
-		
-		// Force REST API routes registration before flushing
+                }
+
+                // Force REST API routes registration before flushing
 		if ( class_exists( 'Readypos\Core\Api' ) ) {
 			\Readypos\Core\Api::get_instance()->init();
 		}
@@ -133,15 +129,10 @@ register_activation_hook(
 	}
 );
 
-// Hook for plugin deactivation — clear license cron, clear caches.
+// Hook for plugin deactivation â€” clear caches.
 register_deactivation_hook(
 	__FILE__,
-	function () {
-		if ( class_exists( 'Readypos\Core\License\Manager' ) ) {
-			\Readypos\Core\License\Manager::clear_cron();
-		}
-		
-		// Clear all caches on deactivation
+	function () {		// Clear all caches on deactivation
 		if ( class_exists( 'Readypos\Core\Uninstall' ) ) {
 			\Readypos\Core\Uninstall::clear_caches();
 		}
@@ -153,3 +144,9 @@ register_deactivation_hook(
 		update_option( 'readypos_deactivated_at', time(), false );
 	}
 );
+
+
+
+
+
+

@@ -94,6 +94,19 @@ export default function RegisterSessionModal({
 
     setLoading(true);
     try {
+      // Check for an existing active session on this register first
+      const existingSession = await api.get("/sessions/current", {
+        register_id: parseInt(selectedRegisterId),
+      });
+
+      if (existingSession?.has_active) {
+        setSession(existingSession);
+        toast.success("Existing register session resumed.");
+        onOpenChange(false);
+        return;
+      }
+
+      // No active session found — open a new one
       const res = await api.post("/sessions/open", {
         outletId: parseInt(selectedOutletId),
         registerId: parseInt(selectedRegisterId),
@@ -103,7 +116,6 @@ export default function RegisterSessionModal({
 
       if (res.success) {
         toast.success("Register opened successfully!");
-        // Fetch the newly opened session details
         const currentSessionRes = await api.get("/sessions/current");
         setSession(currentSessionRes);
         onOpenChange(false);
