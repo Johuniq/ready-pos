@@ -81,7 +81,7 @@ export default function ReadyPOSLanding() {
               <Store className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-black tracking-tight">Ready POS</h1>
+              <h1 className="text-xl font-black tracking-tight">Ready POS Pro</h1>
               <p className="text-[10px] text-muted-foreground">
                 WooCommerce Point of Sale
               </p>
@@ -229,7 +229,7 @@ export default function ReadyPOSLanding() {
                   Built for Modern Retail
                 </h2>
                 <p className="text-muted-foreground text-lg">
-                  Ready POS combines the power of WooCommerce with professional
+                  Ready POS Pro combines the power of WooCommerce with professional
                   point-of-sale features, giving you complete control over your
                   retail operations.
                 </p>
@@ -306,7 +306,7 @@ export default function ReadyPOSLanding() {
                 Ready to Modernize Your Point of Sale?
               </h2>
               <p className="max-w-2xl text-lg text-primary-foreground/90">
-                Join hundreds of retailers who trust Ready POS for their daily
+                Join hundreds of retailers who trust Ready POS Pro for their daily
                 operations.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
@@ -338,7 +338,7 @@ export default function ReadyPOSLanding() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                   <Store className="h-5 w-5 text-primary-foreground" />
                 </div>
-                <span className="font-black text-lg">Ready POS</span>
+                <span className="font-black text-lg">Ready POS Pro</span>
               </div>
               <p className="text-sm text-muted-foreground">
                 Professional WooCommerce Point of Sale solution for modern
@@ -446,7 +446,7 @@ export default function ReadyPOSLanding() {
 
           <div className="mt-8 pt-8 border-t flex flex-col sm:flex-row justify-between items-center gap-4">
             <p className="text-xs text-muted-foreground">
-              © 2024 Ready POS by{" "}
+              © 2024 Ready POS Pro by{" "}
               <a
                 href="https://johuniq.tech"
                 target="_blank"

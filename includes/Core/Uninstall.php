@@ -48,7 +48,30 @@ class Uninstall {
 			return;
 		}
 
-		// Full cleanup only if user explicitly requested it
+		// Pro-build safety: never drop shared data that the wp.org Free
+		// build of the same plugin depends on. The two builds share the
+		// same option keys and database tables, so if a user installs
+		// Pro, uninstalls it, and falls back to the Free build they
+		// must not lose their data. The `readypos_pro_build` marker is
+		// the only option that is safe to drop unconditionally — it
+		// identifies the Pro install and is meaningless to Free.
+		$free_sibling_active = false;
+		if ( class_exists( '\Readypos\Core\License\DuplicateGuard' ) ) {
+			$sibling = \Readypos\Core\License\DuplicateGuard::detect_free_sibling();
+			$free_sibling_active = ( null !== $sibling );
+		}
+
+		if ( $free_sibling_active ) {
+			// A Free install is still in the picture — only clear our
+			// own Pro-only marker and caches, never drop shared data.
+			delete_option( 'readypos_pro_installed' );
+			delete_option( 'readypos_pro_build_version' );
+			self::clear_caches();
+			return;
+		}
+
+		// Full cleanup only if user explicitly requested it AND no
+		// Free sibling is sharing the same options/tables.
 		self::clear_caches();
 		self::clear_options();
 		self::clear_transients();

@@ -27,11 +27,13 @@ import {
   Tags,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useSetAtom } from "jotai";
 import { toast } from "sonner";
 import ReceiptBuilder from "./components/ReceiptBuilder";
 import { SettingsSidebar } from "@/components/settings/settings-sidebar";
 import { PageHeader } from "@/admin/components/PageLayout";
 import { HardwareTestPanel } from "@/admin/components/HardwareTestPanel";
+import { settingsAtom } from "@/admin/stores/posStore";
 
 const SETTINGS_SECTIONS = [
   {
@@ -178,6 +180,7 @@ export default function Settings() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [gateways, setGateways] = useState([]);
   const [activeSection, setActiveSection] = useState("identity");
+  const setGlobalSettings = useSetAtom(settingsAtom);
 
   /**
    * @param {any} patch
@@ -196,6 +199,7 @@ export default function Settings() {
         ]);
         const next = { ...DEFAULT_SETTINGS, ...(data || {}) };
         setSettings(next);
+        setGlobalSettings(next);
         setGateways(methods || []);
       } catch (err) {
         setError(handleError(err, { showToast: false }));
@@ -221,6 +225,19 @@ export default function Settings() {
 
     try {
       await api.post("/settings/update", settings);
+      // Push the saved snapshot to the global settingsAtom so any open
+      // Customer Display window picks up the new customer_display_* values
+      // on the next BroadcastChannel tick.
+      setGlobalSettings({ ...settings });
+      // Notify other tabs/windows (open Terminal, open Customer Display
+      // window) that settings changed, so they re-fetch /settings/get.
+      try {
+        const ch = new BroadcastChannel("readypos_settings");
+        ch.postMessage({ type: "SETTINGS_UPDATED" });
+        ch.close();
+      } catch {
+        // BroadcastChannel unsupported; falls back to next page load.
+      }
       toast.success("Settings updated");
     } catch (/** @type {any} */ err) {
       toast.error(err.message || "Failed to update settings");

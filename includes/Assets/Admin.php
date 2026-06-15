@@ -78,7 +78,7 @@ class Admin {
 			?>
 			<div class="notice notice-success is-dismissible">
 				<p>
-					<strong><?php esc_html_e( 'Ready POS:', 'ready-pos-for-woocommerce' ); ?></strong>
+					<strong><?php esc_html_e( 'Ready POS Pro:', 'ready-pos-for-woocommerce' ); ?></strong>
 					<?php esc_html_e( 'All caches have been cleared successfully. Please refresh your browser (Ctrl+Shift+R or Cmd+Shift+R) to see the latest changes.', 'ready-pos-for-woocommerce' ); ?>
 				</p>
 			</div>
@@ -209,7 +209,7 @@ class Admin {
 		if ( $screen && in_array( $screen->id, $this->allowed_screens, true ) ) {
 			return sprintf(
 				'<span id="footer-thankyou">%s <a href="https://johuniq.tech" target="_blank" rel="noopener">Johuniq</a></span>',
-				__( 'Ready POS — Professional WooCommerce Point of Sale. Built by', 'ready-pos-for-woocommerce' )
+				__( 'Ready POS Pro — Professional WooCommerce Point of Sale. Built by', 'ready-pos-for-woocommerce' )
 			);
 		}
 		return $text;
@@ -224,7 +224,7 @@ class Admin {
 	public function custom_footer_version( $text ) {
 		$screen = get_current_screen();
 		if ( $screen && in_array( $screen->id, $this->allowed_screens, true ) ) {
-			return 'Ready POS v' . READYPOS_VERSION;
+			return 'Ready POS Pro v' . READYPOS_VERSION;
 		}
 		return $text;
 	}

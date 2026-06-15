@@ -67,7 +67,13 @@ class Actions {
 					// Terminal Settings
 					'keyboard_status' => get_option( 'readypos_keyboard_status', 'yes' ),
 					'cash_drawer_pulse' => get_option( 'readypos_cash_drawer_pulse', 'none' ),
-					'customer_display_message' => get_option( 'readypos_customer_display_message', 'Welcome to our store!' ),
+				'customer_display_enabled'     => get_option( 'readypos_customer_display_enabled', 'yes' ),
+				'customer_display_message'     => get_option( 'readypos_customer_display_message', 'Welcome to our store!' ),
+				'customer_display_idle_timeout' => intval( get_option( 'readypos_customer_display_idle_timeout', 30 ) ),
+				'customer_display_promo_1'     => get_option( 'readypos_customer_display_promo_1', 'Special offers available - Ask our staff!' ),
+				'customer_display_promo_2'     => get_option( 'readypos_customer_display_promo_2', 'Join our loyalty program and save more' ),
+				'customer_display_promo_3'     => get_option( 'readypos_customer_display_promo_3', 'Now open every day until 9 PM' ),
+				'customer_display_promo_4'     => get_option( 'readypos_customer_display_promo_4', 'Shop online and pick up in store' ),
 					'max_discount_limit' => intval( get_option( 'readypos_max_discount_limit', '100' ) ),
 					'pos_order_prefix' => get_option( 'readypos_pos_order_prefix', '' ),
 					// Return/Exchange Settings
@@ -129,6 +135,14 @@ class Actions {
 		$keyboard_status = sanitize_text_field( $request->get_param( 'keyboard_status' ) );
 		$cash_drawer_pulse = sanitize_text_field( $request->get_param( 'cash_drawer_pulse' ) );
 		$customer_display_message = sanitize_text_field( $request->get_param( 'customer_display_message' ) );
+		$customer_display_enabled = in_array( $request->get_param( 'customer_display_enabled' ), array( 'yes', 'no' ), true )
+			? $request->get_param( 'customer_display_enabled' )
+			: 'yes';
+		$customer_display_idle_timeout = intval( $request->get_param( 'customer_display_idle_timeout' ) );
+		$customer_display_promo_1 = sanitize_textarea_field( $request->get_param( 'customer_display_promo_1' ) );
+		$customer_display_promo_2 = sanitize_textarea_field( $request->get_param( 'customer_display_promo_2' ) );
+		$customer_display_promo_3 = sanitize_textarea_field( $request->get_param( 'customer_display_promo_3' ) );
+		$customer_display_promo_4 = sanitize_textarea_field( $request->get_param( 'customer_display_promo_4' ) );
 		$max_discount_limit = intval( $request->get_param( 'max_discount_limit' ) );
 		$pos_order_prefix = sanitize_text_field( $request->get_param( 'pos_order_prefix' ) );
 
@@ -181,7 +195,13 @@ class Actions {
 		// Update Terminal Settings
 		update_option( 'readypos_keyboard_status', $keyboard_status );
 		update_option( 'readypos_cash_drawer_pulse', $cash_drawer_pulse );
+		update_option( 'readypos_customer_display_enabled', $customer_display_enabled );
 		update_option( 'readypos_customer_display_message', $customer_display_message ?: 'Welcome to our store!' );
+		update_option( 'readypos_customer_display_idle_timeout', $customer_display_idle_timeout >= 10 ? $customer_display_idle_timeout : 30 );
+		update_option( 'readypos_customer_display_promo_1', $customer_display_promo_1 );
+		update_option( 'readypos_customer_display_promo_2', $customer_display_promo_2 );
+		update_option( 'readypos_customer_display_promo_3', $customer_display_promo_3 );
+		update_option( 'readypos_customer_display_promo_4', $customer_display_promo_4 );
 		update_option( 'readypos_max_discount_limit', $max_discount_limit ?: 100 );
 		update_option( 'readypos_pos_order_prefix', $pos_order_prefix );
 

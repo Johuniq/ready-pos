@@ -206,6 +206,31 @@ export default function Terminal() {
     initializePOS();
   }, [setSession, setSettings, setHeldCount]);
 
+  // Listen for settings changes from other tabs/windows (e.g. the
+  // Settings page saving customer_display_enabled). Re-fetch and push
+  // to settingsAtom so the next broadcast to the Customer Display window
+  // carries the updated values.
+  useEffect(() => {
+    let cancelled = false;
+    const channel = new BroadcastChannel("readypos_settings");
+    const handler = (event) => {
+      if (event.data?.type === "SETTINGS_UPDATED") {
+        api
+          .get("/settings/get")
+          .then((data) => {
+            if (!cancelled && data) setSettings(data);
+          })
+          .catch(() => {});
+      }
+    };
+    channel.addEventListener("message", handler);
+    return () => {
+      cancelled = true;
+      channel.removeEventListener("message", handler);
+      channel.close();
+    };
+  }, [setSettings]);
+
   // Sequential lock: force register session open once cashier is clocked in
   useEffect(() => {
     if (!initializing && activeShift && (!session || !session.has_active)) {

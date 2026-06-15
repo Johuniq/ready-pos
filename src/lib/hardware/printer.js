@@ -249,7 +249,7 @@ class ThermalPrinter {
     await this.write(ESC_POS.ALIGN_CENTER);
     await this.write(ESC_POS.BOLD_ON);
     await this.write(ESC_POS.DOUBLE_BOTH);
-    await this.writeLine("READY POS");
+    await this.writeLine("READY POS PRO");
     await this.write(ESC_POS.SIZE_NORMAL);
     await this.write(ESC_POS.BOLD_OFF);
     await this.writeLine("Hardware test successful");

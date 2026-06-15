@@ -102,7 +102,7 @@ export function buildEscposReceipt(receipt = {}) {
 
 export function buildTestReceipt() {
   return buildEscposReceipt({
-    header: "READY POS\nTest Receipt",
+    header: "READY POS PRO\nTest Receipt",
     orderNumber: "TEST-001",
     date: new Date().toLocaleString(),
     cashier: "Hardware Test",

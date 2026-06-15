@@ -259,7 +259,7 @@ export default function CashierLoginPanel({ onLogin, onSkip, onLogout }) {
                   No cashiers have set a PIN yet
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Set PINs from Ready POS → Settings or user profiles.
+                  Set PINs from Ready POS Pro → Settings or user profiles.
                 </p>
               </div>
             )}
@@ -377,7 +377,7 @@ export default function CashierLoginPanel({ onLogin, onSkip, onLogout }) {
       {/* Footer branding */}
       <div className="absolute bottom-6 text-center">
         <p className="text-[10px] text-muted-foreground font-medium">
-          Ready POS · Secure Terminal
+          Ready POS Pro · Secure Terminal
         </p>
       </div>
     </div>

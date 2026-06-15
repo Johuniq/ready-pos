@@ -136,7 +136,16 @@ class PluginMeta {
 			),
 		);
 
-		if ( ! $is_pro ) {
+		if ( $is_pro ) {
+			$support_icon = $this->icon( 'support', '13', '#00a32a' );
+
+			$custom_links['support'] = sprintf(
+				'<a href="%s" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:#00a32a;">%s %s</a>',
+				esc_url( 'https://readypos.johuniq.tech/support' ),
+				$support_icon,
+				esc_html__( 'Priority Support', 'ready-pos-for-woocommerce' )
+			);
+		} else {
 			$bolt_icon = $this->icon( 'bolt', '13', '#d63638' );
 
 			$custom_links['upgrade'] = sprintf(
@@ -170,11 +179,17 @@ class PluginMeta {
 
 		if ( $is_pro ) {
 			$star_icon    = $this->icon( 'star', '13', '#00a32a' );
+			$crown_icon   = $this->icon( 'crown', '13', '#7c3aed' );
 			$custom_links = array(
 				sprintf(
-					'<span style="display:inline-flex;align-items:center;gap:4px;font-weight:700;color:#00a32a;">%s %s</span>',
+					'<span style="display:inline-flex;align-items:center;gap:4px;background:#00a32a;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.04em;">%s %s</span>',
 					$star_icon,
 					esc_html__( 'Pro Active', 'ready-pos-for-woocommerce' )
+				),
+				sprintf(
+					'<span style="display:inline-flex;align-items:center;gap:4px;font-weight:600;color:#7c3aed;">%s %s</span>',
+					$crown_icon,
+					esc_html__( 'Lifetime Updates', 'ready-pos-for-woocommerce' )
 				),
 			);
 		} else {
@@ -212,11 +227,11 @@ class PluginMeta {
 		$is_pro = License::get_instance()->is_pro();
 
 		$plugin_info                = new \stdClass();
-		$plugin_info->name          = 'Ready POS';
+		$plugin_info->name          = $is_pro ? 'Ready POS Pro' : 'Ready POS';
 		$plugin_info->slug          = 'ready-pos';
 		$plugin_info->version       = READYPOS_VERSION;
 		$plugin_info->author        = '<a href="https://johuniq.tech" target="_blank" rel="noopener noreferrer">Johuniq</a>';
-		$plugin_info->homepage      = 'https://readypos.io';
+		$plugin_info->homepage      = 'https://readypos.johuniq.tech';
 		$plugin_info->requires      = '5.8';
 		$plugin_info->tested        = '6.7';
 		$plugin_info->requires_php  = '7.4';
@@ -229,7 +244,9 @@ class PluginMeta {
 			'changelog'   => $this->get_changelog_section(),
 		);
 
-		if ( ! $is_pro ) {
+		if ( $is_pro ) {
+			$plugin_info->sections['pro_support'] = $this->get_pro_support_section();
+		} else {
 			$plugin_info->sections['pro_upgrade'] = $this->get_pro_upgrade_section();
 		}
 
@@ -254,18 +271,20 @@ class PluginMeta {
 	private function get_description_section( bool $is_pro ): string {
 		if ( $is_pro ) {
 			$badge = sprintf(
-				'<span style="display:inline-flex;align-items:center;gap:5px;background:#00a32a;color:#fff;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.04em;vertical-align:middle;margin-left:8px;">%s PRO ACTIVE</span>',
+				'<span style="display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#4f46e5 0%,#06b6d4 100%);color:#fff;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.04em;vertical-align:middle;margin-left:8px;">%s PRO ACTIVE</span>',
 				$this->icon( 'star', '11', '#fff' )
 			);
+			$tagline = __( 'Ready POS Pro is the complete, production-ready Point of Sale suite built natively on WooCommerce — every outlet, register, and feature unlocked, with lifetime updates and priority support.', 'ready-pos-for-woocommerce' );
 		} else {
-			$badge = '<span style="display:inline-flex;align-items:center;gap:5px;background:#d63638;color:#fff;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.04em;vertical-align:middle;margin-left:8px;">FREE VERSION</span>';
+			$badge = '<span style="display:inline-flex;align-items:center;gap:5px;background:#d63638;color:#fff;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:700;letter-spacing:.04em;vertical-align:middle;margin-left:8px;">FREE EDITION</span>';
+			$tagline = __( 'Transform your WooCommerce store into a powerful, integrated Point of Sale system — and upgrade to Pro anytime to unlock unlimited outlets, hardware, and analytics.', 'ready-pos-for-woocommerce' );
 		}
 
 		$check = $this->icon( 'check', '14', '#2271b1' );
 
 		return sprintf(
-			'<h3 style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">Ready POS — Modern Point of Sale for WooCommerce %s</h3>
-			<p><strong>Transform your WooCommerce store into a powerful, integrated Point of Sale system.</strong></p>
+			'<h3 style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">Ready POS%s — Modern Point of Sale for WooCommerce %s</h3>
+			<p><strong>%s</strong></p>
 			<p>Ready POS is a complete, production-ready POS solution built natively on WooCommerce. Designed for retail stores, restaurants, cafes, and any business that demands fast, reliable, and scalable in-person sales.</p>
 			<ul style="list-style:none;margin:16px 0;padding:0;">
 				<li style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;">%s <span><strong>Lightning-fast checkout</strong> — Process sales in seconds with a streamlined, touch-friendly interface.</span></li>
@@ -275,7 +294,9 @@ class PluginMeta {
 				<li style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;">%s <span><strong>Session tracking</strong> — Monitor cash drawer activity, open/close shifts, and daily summaries.</span></li>
 				<li style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;">%s <span><strong>Customer management</strong> — Build customer profiles and track full purchase history.</span></li>
 			</ul>',
+			$is_pro ? ' Pro' : '',
 			$badge,
+			$tagline,
 			$check, $check, $check, $check, $check, $check
 		);
 	}
@@ -287,30 +308,51 @@ class PluginMeta {
 	 * @return string HTML content.
 	 */
 	private function get_features_section( bool $is_pro ): string {
-		$check_free = $this->icon( 'check', '14', '#50575e' );
 		$check_pro  = $this->icon( 'check', '14', '#2271b1' );
+		$check_free = $this->icon( 'check', '14', '#50575e' );
+
+		$core_features = array(
+			array( 'store',   '<strong>Unlimited outlets &amp; registers</strong> — Operate every location, every register, with no caps.' ),
+			array( 'bolt',    '<strong>Unlimited cashiers &amp; customers</strong> — Onboard your whole team and customer base.' ),
+			array( 'bolt',    '<strong>Split payments</strong> — Accept multiple payment methods in a single order.' ),
+			array( 'gift',    '<strong>Gift cards &amp; store credit</strong> — Issue, track, and redeem balances at the till.' ),
+			array( 'star',    '<strong>Loyalty points</strong> — Reward repeat customers and redeem points at checkout.' ),
+			array( 'chart',   '<strong>Advanced analytics</strong> — Sales, profit, tax, and inventory dashboards.' ),
+			array( 'chart',   '<strong>Cashier performance</strong> — Track and compare individual staff metrics.' ),
+			array( 'printer', '<strong>Hardware integration</strong> — Thermal printers, cash drawers, barcode scanners &amp; scales.' ),
+			array( 'bolt',    '<strong>EMV card reader</strong> — Integrated chip-card payment terminal support.' ),
+			array( 'support', '<strong>Priority support</strong> — Direct access to the Ready POS engineering team.' ),
+		);
+
+		$core_list = '<ul style="list-style:none;margin:0;padding:0;">';
+		foreach ( $core_features as $feature ) {
+			$core_list .= sprintf(
+				'<li style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid #f0f0f1;font-size:13px;">%s <span>%s</span></li>',
+				$check_pro,
+				$feature[1]
+			);
+		}
+		$core_list .= '</ul>';
+
+		if ( $is_pro ) {
+			return sprintf(
+				'<div style="background:#f0f6fc;border:1px solid #c3d4e4;border-radius:8px;padding:18px 24px;margin-bottom:20px;">
+					<h3 style="margin:0;color:#1d2327;">Everything in Ready POS Pro</h3>
+					<p style="margin:6px 0 0;color:#50575e;font-size:13px;">You already have access to every feature below. No add-ons, no upsells.</p>
+				</div>
+				%s',
+				$core_list
+			);
+		}
 
 		$free_features = array(
-			'1 outlet & 1 register',
+			'1 outlet &amp; 1 register',
 			'Up to 2 cashier accounts',
 			'Up to 50 customers',
 			'Unlimited products',
 			'Cash &amp; manual card payments',
 			'Basic sales reporting',
 			'Session open &amp; close management',
-		);
-
-		$pro_features = array(
-			array( 'store',   '<strong>Unlimited outlets &amp; registers</strong> — Scale without restriction.' ),
-			array( 'bolt',    '<strong>Unlimited cashiers &amp; customers</strong> — No seat limits.' ),
-			array( 'bolt',    '<strong>Split payment</strong> — Accept multiple payment methods per order.' ),
-			array( 'gift',    '<strong>Gift cards &amp; store credit</strong> — Issue, track, and redeem balances at checkout.' ),
-			array( 'star',    '<strong>Loyalty points</strong> — Reward customers and allow point redemption at POS.' ),
-			array( 'chart',   '<strong>Advanced analytics</strong> — Sales, profit, tax, and inventory reporting dashboards.' ),
-			array( 'chart',   '<strong>Cashier performance</strong> — Track and compare individual staff metrics.' ),
-			array( 'printer', '<strong>Hardware integration</strong> — Thermal printers, cash drawers, weight scales &amp; barcode scanners.' ),
-			array( 'bolt',    '<strong>EMV card reader</strong> — Integrated chip-card payment terminal support.' ),
-			array( 'support', '<strong>Priority support</strong> — Direct access to the Ready POS team.' ),
 		);
 
 		$free_list = '<ul style="list-style:none;margin:0;padding:0;">';
@@ -323,28 +365,15 @@ class PluginMeta {
 		}
 		$free_list .= '</ul>';
 
-		$pro_list = '<ul style="list-style:none;margin:0;padding:0;">';
-		foreach ( $pro_features as $feature ) {
-			$pro_list .= sprintf(
-				'<li style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid #f0f0f1;font-size:13px;">%s <span>%s</span></li>',
-				$check_pro,
-				$feature[1]
-			);
-		}
-		$pro_list .= '</ul>';
-
-		$upgrade_cta = '';
-		if ( ! $is_pro ) {
-			$upgrade_cta = sprintf(
-				'<div style="margin-top:24px;background:#f0f6fc;border:1px solid #c3d4e4;border-radius:8px;padding:20px 24px;text-align:center;">
-					<p style="margin:0 0 14px;font-size:15px;font-weight:600;color:#1d2327;">Ready to grow beyond the free tier?</p>
-					<p style="margin:0 0 16px;color:#50575e;font-size:13px;">Upgrade to Pro and unlock every feature Ready POS has to offer — no hidden fees, cancel anytime.</p>
-					<a href="%s" style="display:inline-flex;align-items:center;gap:8px;background:#2271b1;color:#fff;padding:10px 22px;border-radius:6px;font-weight:700;text-decoration:none;font-size:13px;">%s View Pro Plans</a>
-				</div>',
-				esc_url( admin_url( 'admin.php?page=ready-pos#/license' ) ),
-				$this->icon( 'bolt', '14', '#fff' )
-			);
-		}
+		$upgrade_cta = sprintf(
+			'<div style="margin-top:24px;background:#f0f6fc;border:1px solid #c3d4e4;border-radius:8px;padding:20px 24px;text-align:center;">
+				<p style="margin:0 0 14px;font-size:15px;font-weight:600;color:#1d2327;">Ready to unlock the full Pro suite?</p>
+				<p style="margin:0 0 16px;color:#50575e;font-size:13px;">Upgrade to Ready POS Pro and unlock every feature on this page — no hidden fees, lifetime updates.</p>
+				<a href="%s" style="display:inline-flex;align-items:center;gap:8px;background:#2271b1;color:#fff;padding:10px 22px;border-radius:6px;font-weight:700;text-decoration:none;font-size:13px;">%s View Pro Plans</a>
+			</div>',
+			esc_url( admin_url( 'admin.php?page=ready-pos#/license' ) ),
+			$this->icon( 'bolt', '14', '#fff' )
+		);
 
 		return sprintf(
 			'<div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;">
@@ -359,8 +388,56 @@ class PluginMeta {
 			</div>
 			%s',
 			$free_list,
-			$pro_list,
+			$core_list,
 			$upgrade_cta
+		);
+	}
+
+	/**
+	 * Get the Pro support / what's-included section HTML.
+	 *
+	 * @return string HTML content.
+	 */
+	private function get_pro_support_section(): string {
+		$items = array(
+			array( 'support', __( 'Direct priority support', 'ready-pos-for-woocommerce' ), __( 'Reach the Ready POS engineering team — real humans, fast responses.', 'ready-pos-for-woocommerce' ) ),
+			array( 'bolt',    __( 'Lifetime updates', 'ready-pos-for-woocommerce' ),       __( 'Every new feature, integration, and security patch at no extra cost.', 'ready-pos-for-woocommerce' ) ),
+			array( 'chart',   __( 'Roadmap influence', 'ready-pos-for-woocommerce' ),      __( 'Pro merchants help shape the upcoming releases.', 'ready-pos-for-woocommerce' ) ),
+			array( 'star',    __( 'Premium onboarding', 'ready-pos-for-woocommerce' ),     __( 'Optional setup assistance and migration guidance on request.', 'ready-pos-for-woocommerce' ) ),
+		);
+
+		$items_html = '';
+		foreach ( $items as $item ) {
+			$items_html .= sprintf(
+				'<div style="display:flex;gap:12px;margin-bottom:14px;">
+					<div style="flex-shrink:0;width:36px;height:36px;background:#f0f6fc;border-radius:8px;display:flex;align-items:center;justify-content:center;">%s</div>
+					<div>
+						<p style="margin:0 0 2px;font-weight:600;font-size:13px;color:#1d2327;">%s</p>
+						<p style="margin:0;font-size:12px;color:#50575e;line-height:1.5;">%s</p>
+					</div>
+				</div>',
+				$this->icon( $item[0], '18', '#2271b1' ),
+				esc_html( $item[1] ),
+				esc_html( $item[2] )
+			);
+		}
+
+		return sprintf(
+			'<div style="border:1px solid #c3d4e4;border-radius:8px;overflow:hidden;">
+				<div style="background:linear-gradient(135deg,#4f46e5 0%,#06b6d4 100%);padding:18px 24px;">
+					<h3 style="margin:0;color:#fff;font-size:16px;">Your Pro benefits</h3>
+					<p style="margin:4px 0 0;color:rgba(255,255,255,0.85);font-size:13px;">Everything that ships with your Ready POS Pro licence.</p>
+				</div>
+				<div style="padding:24px;">
+					%s
+					<p style="margin-top:20px;margin-bottom:0;">
+						<a href="%s" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:8px;background:#2271b1;color:#fff;padding:10px 22px;border-radius:6px;font-weight:700;text-decoration:none;font-size:13px;">%s Open Priority Support</a>
+					</p>
+				</div>
+			</div>',
+			$items_html,
+			esc_url( 'https://readypos.johuniq.tech/support' ),
+			$this->icon( 'external', '14', '#fff' )
 		);
 	}
 
@@ -420,12 +497,14 @@ class PluginMeta {
 	 * @return string HTML content.
 	 */
 	private function get_changelog_section(): string {
-		return '<h4>Version 1.0.0</h4>
+		return '<h4>Ready POS Pro 1.0.0</h4>
 		<ul style="list-style:disc;margin-left:20px;font-size:13px;line-height:1.8;">
-			<li>Initial public release.</li>
+			<li>Pro release — every feature unlocked out of the box.</li>
+			<li>Unlimited outlets, registers, cashiers, and customers.</li>
 			<li>Full POS terminal with optimised, touch-friendly checkout flow.</li>
-			<li>Multi-outlet and multi-register management.</li>
-			<li>Cashier account creation with role-based permission controls.</li>
+			<li>Split payments, gift cards, store credit, and loyalty points.</li>
+			<li>Hardware integration: thermal printers, cash drawers, barcode scanners &amp; scales.</li>
+			<li>EMV card reader support and advanced cashier performance reporting.</li>
 			<li>Session open / close tracking and daily summary reports.</li>
 			<li>Customer profile management with purchase history.</li>
 			<li>Real-time inventory synchronisation with WooCommerce stock.</li>
@@ -586,7 +665,7 @@ class PluginMeta {
 						<div style="flex: 1;">
 							<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap;">
 								<h4 style="margin: 0; font-size: 16px; font-weight: 700; color: #ffffff; letter-spacing: -0.01em;">
-									<?php esc_html_e( 'Unlock Professional Store Features', 'ready-pos-for-woocommerce' ); ?>
+									<?php esc_html_e( 'Activate your Ready POS Pro licence', 'ready-pos-for-woocommerce' ); ?>
 								</h4>
 								<span style="
 									display: inline-flex; align-items: center; gap: 4px;
@@ -607,7 +686,7 @@ class PluginMeta {
 								<?php
 								printf(
 									/* translators: %s: free plan emphasis label */
-									esc_html__( 'Expand your %s with multi-outlet operations, split cash/card payments, gift cards, advanced cashier shifts, customizable thermal receipts, and barcode scales.', 'ready-pos-for-woocommerce' ),
+									esc_html__( 'You\'re running the Ready POS Pro build on the %s. Enter your licence key to unlock multi-outlet operations, split payments, gift cards, thermal receipts, and priority support.', 'ready-pos-for-woocommerce' ),
 									'<span style="color: #cbd5e1; font-weight: 600;">' . esc_html__( 'Free Plan', 'ready-pos-for-woocommerce' ) . '</span>'
 								);
 								?>
@@ -658,7 +737,7 @@ class PluginMeta {
 								cursor: pointer;
 						   ">
 							<?php echo $this->icon( 'bolt', '14', '#ffffff' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-							<?php esc_html_e( 'Upgrade to Pro', 'ready-pos-for-woocommerce' ); ?>
+							<?php esc_html_e( 'Activate Pro Licence', 'ready-pos-for-woocommerce' ); ?>
 						</a>
 					</div>
 

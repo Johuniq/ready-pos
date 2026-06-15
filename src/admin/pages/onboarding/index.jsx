@@ -372,7 +372,7 @@ export default function Onboarding() {
                   <Rocket className="w-8 h-8 text-primary" />
                 </div>
                 <h1 className="text-2xl font-bold text-foreground">
-                  Welcome to Ready POS
+                  Welcome to Ready POS Pro
                 </h1>
                 <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
                   Let's configure your point of sale system in a few minutes.
@@ -1112,7 +1112,7 @@ export default function Onboarding() {
                     Product Sync
                   </p>
                   <p className="text-[11px]">
-                    Ready POS automatically syncs with WooCommerce. Any products
+                    Ready POS Pro automatically syncs with WooCommerce. Any products
                     added or modified in WooCommerce will appear in your POS.
                   </p>
                 </div>

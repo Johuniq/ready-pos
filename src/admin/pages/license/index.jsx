@@ -147,7 +147,7 @@ export default function LicensePage() {
     <div className="page-container">
       <PageHeader
         title="License Management"
-        description="Manage your Ready POS license, view feature access, and monitor usage."
+        description="Manage your Ready POS Pro license, view feature access, and monitor usage."
         actions={
           <>
             {isPro && (
@@ -191,7 +191,7 @@ export default function LicensePage() {
             <div className="space-y-2">
               <div className="flex items-center gap-3 flex-wrap">
                 <CardTitle className="text-lg font-bold">
-                  {isPro ? "Ready POS Pro" : "Ready POS Free"}
+                  {isPro ? "Ready POS Pro" : "Ready POS (Free)"}
                 </CardTitle>
                 <StatusBadge status={lic.status} />
               </div>
@@ -292,7 +292,7 @@ export default function LicensePage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary font-semibold hover:underline">
-                    Purchase Ready POS Pro
+                    Activate Ready POS Pro
                   </a>
                 </p>
               </div>

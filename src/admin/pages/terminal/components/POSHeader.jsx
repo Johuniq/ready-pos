@@ -140,10 +140,10 @@ export default function POSHeader({
           className="flex items-center gap-2 font-bold text-base text-primary shrink-0">
           <img 
             src={typeof readypos_admin !== 'undefined' ? `${readypos_admin.pluginUrl}/assets/images/pos.png` : '/wp-content/plugins/ready-pos/assets/images/pos.png'}
-            alt="Ready POS"
+            alt="Ready POS Pro"
             className="w-7 h-7 object-contain"
           />
-          <span className="hidden sm:inline">Ready POS</span>
+          <span className="hidden sm:inline">Ready POS Pro</span>
         </a>
 
         <span className="h-6 w-px bg-border shrink-0" />

@@ -362,7 +362,7 @@ export class BrowserPrinter {
     };
 
     return await this.print(testOrder, {
-      receipt_header: "READY POS\nTest Receipt",
+      receipt_header: "READY POS PRO\nTest Receipt",
       receipt_footer: "Thank you for testing!",
       print_barcode: "yes",
     });

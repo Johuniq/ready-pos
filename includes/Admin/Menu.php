@@ -44,8 +44,8 @@ class Menu {
 	 */
 	public function menu() {
 		add_menu_page(
-			__( 'Ready POS', 'ready-pos-for-woocommerce' ),
-			__( 'Ready POS', 'ready-pos-for-woocommerce' ),
+			__( 'Ready POS Pro', 'ready-pos-for-woocommerce' ),
+			__( 'Ready POS Pro', 'ready-pos-for-woocommerce' ),
 			'use_pos',
 			$this->parent_slug,
 			array( $this, 'admin_page' ),

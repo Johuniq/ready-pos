@@ -242,6 +242,26 @@ class Manager {
 			return new \WP_Error( 'empty_key', __( 'License key is required.', 'ready-pos-for-woocommerce' ) );
 		}
 
+		// Refuse to activate if a Free sibling plugin is active on the
+		// same site — they share the same option keys, so storing the
+		// Pro license here would corrupt the Free install's state the
+		// moment the user reverts. DuplicateGuard does the deactivation
+		// of the sibling via a one-click action; the user must complete
+		// that flow before Pro activation can continue.
+		if ( class_exists( '\Readypos\Core\License\DuplicateGuard' ) ) {
+			$sibling = \Readypos\Core\License\DuplicateGuard::detect_free_sibling();
+			if ( null !== $sibling ) {
+				return new \WP_Error(
+					'free_sibling_active',
+					sprintf(
+						/* translators: %s: conflicting plugin folder/file name */
+						__( 'A free "Ready POS" installation (%s) is currently active. Please deactivate it from the Plugins page before activating your Pro license.', 'ready-pos-for-woocommerce' ),
+						basename( dirname( $sibling['file'] ) )
+					)
+				);
+			}
+		}
+
 		// Prefix Validation: ReadyPOS license keys must begin with RP.
 		if ( strpos( $key, 'RP' ) !== 0 ) {
 			return new \WP_Error( 'invalid_prefix', __( 'Invalid license key format. Key must start with RP.', 'ready-pos-for-woocommerce' ) );

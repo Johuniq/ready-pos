@@ -340,7 +340,7 @@ export default function StockTransfers() {
                     Possible solutions:
                   </p>
                   <ul className="text-xs text-amber-800 dark:text-amber-200 space-y-1 list-disc list-inside">
-                    <li>Try deactivating and reactivating the Ready POS plugin</li>
+                    <li>Try deactivating and reactivating the Ready POS Pro plugin</li>
                     <li>Check if you have the required permissions (manage_pos capability)</li>
                     <li>Contact support if the issue persists</li>
                   </ul>

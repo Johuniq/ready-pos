@@ -1,5 +1,5 @@
 /**
- * Ready POS Service Worker - Advanced Offline Support
+ * Ready POS Pro Service Worker - Advanced Offline Support
  *
  * Provides comprehensive offline caching for the POS terminal:
  * - Cache-first strategy for static assets (instant load)

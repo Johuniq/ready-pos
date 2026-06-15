@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatPrice } from "@/lib/currency";
+import { api } from "@/lib/api";
 import { ShoppingCart, Package, Tag, Clock, User, Gift } from "lucide-react";
 
 /**
@@ -78,7 +79,7 @@ export default function CustomerDisplay() {
   
   useEffect(() => {
     // Set page title for customer display window
-    document.title = "Customer Display - Ready POS";
+    document.title = "Customer Display - Ready POS Pro";
   }, []);
   const [state, setState] = useState({
     cart: [],
@@ -90,9 +91,15 @@ export default function CustomerDisplay() {
     coupons: [],
     settings: {
       currency_symbol: "$",
-      site_name: "Ready POS",
+      site_name: "Ready POS Pro",
       site_logo: "",
+      customer_display_enabled: "yes",
       customer_display_message: "Welcome to our store!",
+      customer_display_idle_timeout: 30,
+      customer_display_promo_1: "",
+      customer_display_promo_2: "",
+      customer_display_promo_3: "",
+      customer_display_promo_4: "",
     },
   });
 
@@ -128,6 +135,40 @@ export default function CustomerDisplay() {
     },
   ].filter(promo => promo.message.trim() !== "");
 
+  // Fetch settings directly from the server so we always reflect the
+  // latest saved values, even if the user updates them from a different
+  // tab (the settings page) or after the terminal first opened.
+  // Also re-fetch when the settings page broadcasts a SETTINGS_UPDATED
+  // event on the shared "readypos_settings" channel.
+  useEffect(() => {
+    let cancelled = false;
+    const fetchSettings = async () => {
+      try {
+        const data = await api.get("/settings/get");
+        if (cancelled || !data) return;
+        setState((prev) => ({
+          ...prev,
+          settings: { ...prev.settings, ...data },
+        }));
+      } catch {
+        // Non-fatal: defaults already in state.
+      }
+    };
+    fetchSettings();
+
+    const settingsChannel = new BroadcastChannel("readypos_settings");
+    const handleSettings = (event) => {
+      if (event.data?.type === "SETTINGS_UPDATED") fetchSettings();
+    };
+    settingsChannel.addEventListener("message", handleSettings);
+
+    return () => {
+      cancelled = true;
+      settingsChannel.removeEventListener("message", handleSettings);
+      settingsChannel.close();
+    };
+  }, []);
+
   useEffect(() => {
     const channel = new BroadcastChannel("readypos_customer_display");
 
@@ -137,7 +178,17 @@ export default function CustomerDisplay() {
     // Listen for state updates
     const handleMessage = (event) => {
       if (event.data?.type === "SYNC_STATE") {
-        setState(event.data.data);
+        // Merge incoming settings with our defaults so any missing
+        // keys (e.g. customer_display_enabled from a cached /settings/get
+        // response) don't blank out values on the display.
+        setState((prev) => ({
+          ...prev,
+          ...event.data.data,
+          settings: {
+            ...prev.settings,
+            ...(event.data.data.settings || {}),
+          },
+        }));
 
         // Reset idle state if cart has items
         if (event.data.data.cart.length > 0) {
@@ -180,6 +231,19 @@ export default function CustomerDisplay() {
       state.customer.username
     : null;
 
+  // Display disabled - show placeholder
+  if (state.settings.customer_display_enabled === "no") {
+    return (
+      <div className="w-screen h-screen flex flex-col items-center justify-center bg-muted/40 text-muted-foreground gap-3">
+        <ShoppingCart className="w-16 h-16 opacity-30" />
+        <p className="text-3xl font-semibold">Customer display disabled</p>
+        <p className="text-base opacity-70">
+          Enable it in Settings → Customer Display
+        </p>
+      </div>
+    );
+  }
+
   // Idle/Welcome Screen
   if (isIdle || !hasCart) {
     const currentPromoData = promos[currentPromo];
@@ -210,7 +274,7 @@ export default function CustomerDisplay() {
               </div>
             )}
             <h1 className="text-6xl font-bold text-foreground tracking-tight">
-              {state.settings.site_name || "Ready POS"}
+              {state.settings.site_name || "Ready POS Pro"}
             </h1>
           </div>
 
@@ -283,7 +347,7 @@ export default function CustomerDisplay() {
             )}
             <div>
               <h1 className="text-2xl font-bold text-foreground">
-                {state.settings.site_name || "Ready POS"}
+                {state.settings.site_name || "Ready POS Pro"}
               </h1>
               <p className="text-sm text-muted-foreground">
                 Thank you for shopping with us

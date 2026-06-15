@@ -101,7 +101,7 @@ export class EpsonPrinter {
 
   async printTest() {
     await this.printReceipt({
-      header: "READY POS\nEpson ePOS Test",
+      header: "READY POS PRO\nEpson ePOS Test",
       orderNumber: "TEST-001",
       date: new Date().toLocaleString(),
       items: [{ name: "Connection test", qty: 1, total: 0 }],

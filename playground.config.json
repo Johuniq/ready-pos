@@ -1,0 +1,12 @@
+{
+  "$schema": "https://playground.wordpress.net/schema.json",
+  "landingPage": "/wp-admin/plugins.php",
+  "php": "8.3",
+  "wp": "latest",
+  "mounts": [
+    {
+      "hostPath": "./",
+      "vfsPath": "/wordpress/wp-content/plugins/ready-pos"
+    }
+  ]
+}

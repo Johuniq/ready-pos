@@ -151,7 +151,7 @@ export default function LayoutOne() {
         !location.pathname.includes("/onboarding") && (
           <footer className="border-t px-6 py-3 flex items-center justify-between text-[11px] text-muted-foreground bg-background mt-auto">
             <span>
-              Ready POS v
+              Ready POS Pro v
               {typeof readypos_admin !== "undefined" && readypos_admin.version
                 ? readypos_admin.version
                 : "1.0.0"}{" "}

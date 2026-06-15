@@ -1,5 +1,5 @@
 {
-  "name": "Ready POS",
+  "name": "Ready POS Pro",
   "short_name": "ReadyPOS",
   "description": "Professional WooCommerce Point of Sale Terminal",
   "start_url": "/wp-admin/admin.php?page=ready-pos#/terminal",
