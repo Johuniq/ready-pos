@@ -431,7 +431,7 @@ export default function ReadyPOSLanding() {
 
           <div className="mt-8 pt-8 border-t flex flex-col sm:flex-row justify-between items-center gap-4">
             <p className="text-xs text-muted-foreground">
-              © 2024 Ready POS. Released under the{" "}
+              © 2026 Ready POS. Released under the{" "}
               <a
                 href="https://wordpress.org/plugins/ready-pos/"
                 target="_blank"
