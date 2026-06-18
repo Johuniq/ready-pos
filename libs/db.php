@@ -2,7 +2,7 @@
 /**
  * Database configuration using Eloquent ORM.
  *
- * @package WordPress_Plugin_Boilerplate
+ * @package Readypos
  * @subpackage Database
  * @since 1.0.0
  */

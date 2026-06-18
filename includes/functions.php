@@ -4,7 +4,7 @@
  *
  * @since 1.0.0
  *
- * @package WordPress Plugin Boilerplate
+ * @package Readypos
  */
 
 defined( 'ABSPATH' ) || exit;

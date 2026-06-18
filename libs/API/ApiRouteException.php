@@ -2,7 +2,7 @@
 /**
  * API route exception.
  *
- * @package WordpressPluginBoilerplate
+ * @package Readypos\API
  * @since 1.0.0
  */
 

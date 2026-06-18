@@ -2,7 +2,7 @@
 /**
  * API Route
  *
- * @package WordPressPluginBoilerplate\API
+ * @package Readypos\API
  * @since 1.0.0
  */
 

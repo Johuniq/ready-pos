@@ -10,7 +10,6 @@ const distFiles = [
   // INCLUDES - Specify exactly what to include
   // ============================================================
   "assets/**",
-  "config/**",
   "database/**",
   "includes/**",
   "languages/**",
@@ -373,15 +372,6 @@ grunt.initConfig({
       options: {
         mode: "zip",
         archive: `./release/ready-pos-${pkg.version}.zip`,
-      },
-      expand: true,
-      src: distFiles,
-      dest: "/ready-pos",
-    },
-    todocs: {
-      options: {
-        mode: "zip",
-        archive: `./documentation/public/plugin/ready-pos.zip`,
       },
       expand: true,
       src: distFiles,
