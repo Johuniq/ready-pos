@@ -91,12 +91,16 @@ export const printReceipt = (order, settings = {}) => {
     ? `<div class="logo"><img src="${settings.receipt_logo}" alt="Store Logo" /></div>`
     : "";
 
-  const headerHtml = settings.receipt_header
-    ? `<div class="header-text">${settings.receipt_header.replace(
-        /\n/g,
-        "<br/>",
-      )}</div>`
-    : "<h3>Store Receipt</h3>";
+  const storeName = settings.site_name || settings.receipt_header || "Store";
+  const storeAddress = settings.site_address || "";
+  const storePhone = settings.site_phone || "";
+  const storeEmail = settings.site_email || "";
+
+  const headerHtml = `<div class="header-text">${storeName}</div>`;
+  const storeInfoHtml = [storeAddress, storePhone, storeEmail]
+    .filter(Boolean)
+    .map((line) => `<div class="store-info-line">${line}</div>`)
+    .join("");
 
   const footerHtml = settings.receipt_footer
     ? `<div class="footer-text">${settings.receipt_footer.replace(
@@ -159,6 +163,12 @@ export const printReceipt = (order, settings = {}) => {
                     text-align: center;
                     margin: 5px 0;
                     font-weight: bold;
+                }
+                .store-info-line {
+                    text-align: center;
+                    font-size: 11px;
+                    margin: 1px 0;
+                    color: #333;
                 }
                 .meta-info {
                     border-bottom: 1px dashed #000;
@@ -248,6 +258,7 @@ export const printReceipt = (order, settings = {}) => {
         <body>
             ${logoHtml}
             ${headerHtml}
+            ${storeInfoHtml}
             
             <div class="meta-info">
                 <table>

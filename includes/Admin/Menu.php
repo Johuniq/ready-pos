@@ -135,7 +135,7 @@ class Menu {
 		$css = '#adminmenu a[href*="readypos.johuniq.tech"]{background:#d63638!important;color:#fff!important;font-weight:600;}';
 		$css .= '#adminmenu a[href*="readypos.johuniq.tech"]:hover{background:#b32d2e!important;color:#fff!important;}';
 		$css .= '#adminmenu a[href*="readypos.johuniq.tech"] .wp-menu-image::before{color:#fff!important;}';
-		wp_add_inline_style( 'admin-menu', $css );
+		wp_add_inline_style( 'colors', $css );
 	}
 
 	/**

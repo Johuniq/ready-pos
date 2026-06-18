@@ -97,7 +97,7 @@ class Actions {
 					'site_phone'      => get_option( 'readypos_site_phone', '' ),
 					'site_email'      => get_option( 'readypos_site_email', get_option( 'admin_email' ) ),
 					// Currency
-					'currency_symbol' => class_exists( 'WooCommerce' ) ? get_woocommerce_currency_symbol() : '$',
+					'currency_symbol' => class_exists( 'WooCommerce' ) ? html_entity_decode( get_woocommerce_currency_symbol(), ENT_QUOTES, 'UTF-8' ) : '$',
 					'currency_code'   => class_exists( 'WooCommerce' ) ? get_woocommerce_currency() : 'USD',
 					'tax_rates'       => $this->get_wc_tax_rates(),
 					// Receipt Settings

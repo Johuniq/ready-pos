@@ -209,7 +209,7 @@ export default function CashAdjustModal({ open, onOpenChange }) {
                   Adjustment Cash Amount
                 </label>
                 <div className="relative mt-1">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-extrabold text-muted-foreground pointer-events-none z-10">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-extrabold text-muted-foreground pointer-events-none z-10">
                     {getCurrencySymbol()}
                   </span>
                   <Input
@@ -230,7 +230,7 @@ export default function CashAdjustModal({ open, onOpenChange }) {
                           : cleaned;
                       setAmount(safe);
                     }}
-                    className="pl-10 h-11 text-sm font-bold rounded-xl"
+                    className="pl-12 h-11 text-sm font-bold rounded-xl"
                     required
                   />
                 </div>
