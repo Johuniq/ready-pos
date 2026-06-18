@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/tooltip";
 import { api } from "@/lib/api";
 import { getCurrencySymbol } from "@/lib/currency";
-import { resetOfflineStorage } from "@/admin/lib/db";
+import { resetLocalCache } from "@/admin/lib/db";
 import {
   isPaymentMethodEnabled,
   normalizeYesNo,
@@ -127,7 +127,7 @@ export default function Onboarding() {
   React.useEffect(() => {
     const resetCachedData = async () => {
       try {
-        await resetOfflineStorage();
+        await resetLocalCache();
 
         // Check if there's existing data before doing a full reset
         // This prevents data loss during reinstall scenarios
@@ -175,7 +175,7 @@ export default function Onboarding() {
 
         // Only do full reset if there's no existing data
         if (!hasExistingData) {
-          await resetOfflineStorage();
+          await resetLocalCache();
         } else {
           // Just clear the onboarding flag if data exists
           await api.post("/settings/update", { onboarding_complete: "no" });
@@ -302,7 +302,7 @@ export default function Onboarding() {
       }
 
       // 2. Create the register (or update if exists) and immediately open
-      //    a session + clock in a shift so the POS terminal doesn't force the
+      //    a session so the POS terminal doesn't force the
       //    user to re-enter outlet, register, and opening balance again.
       let registerId = null;
       try {
@@ -320,7 +320,7 @@ export default function Onboarding() {
       }
 
       // 2a. If we don't know the register id, fetch the first register for
-      //     this outlet so the session/shift calls below still work.
+      //     this outlet so the session calls below still work.
       if (!registerId && outletId) {
         try {
           const regsResp = await api.get(
@@ -354,16 +354,6 @@ export default function Onboarding() {
           sessionId = sessionData?.id ?? null;
         } catch (sessionError) {
           // Non-fatal: terminal will prompt to open session
-        }
-
-        // 2c. Clock the cashier into a shift attached to the new session.
-        try {
-          await api.post("/shifts/clock-in", {
-            session_id: sessionId || undefined,
-            notes: "Clocked in during onboarding",
-          });
-        } catch (shiftError) {
-          // Non-fatal: terminal will prompt to clock in
         }
       }
 
@@ -656,17 +646,22 @@ export default function Onboarding() {
                         {getCurrencySymbol()}
                       </span>
                       <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="0.00"
                         value={register.openingCash}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          // Strip non-numeric chars (keep digits + single dot) so
+                          // we keep a decimal-numeric UX without the browser
+                          // drawing its own currency sign over the input.
+                          const cleaned = e.target.value
+                            .replace(/[^0-9.]/g, "")
+                            .replace(/(\..*)\./g, "$1");
                           setRegister((prev) => ({
                             ...prev,
-                            openingCash: e.target.value,
-                          }))
-                        }
+                            openingCash: cleaned,
+                          }));
+                        }}
                         className="h-11 text-sm font-semibold pl-12"
                       />
                     </div>
@@ -681,7 +676,7 @@ export default function Onboarding() {
                       Register Quick Tips
                     </p>
                     <ul className="list-disc list-inside space-y-0.5 text-[11px] ml-5">
-                      <li>Each register can open its own shift session</li>
+                      <li>Each register can open its own session</li>
                       <li>Opening cash helps track starting balance</li>
                       <li>
                         Multiple registers can operate simultaneously at one
@@ -759,8 +754,7 @@ export default function Onboarding() {
                     Receipt layout
                   </h2>
                   <p className="text-xs text-muted-foreground">
-                    Customize what appears on printed receipts. Fine-tune later
-                    in the Receipt Designer.
+                    Customize what appears on printed receipts.
                   </p>
                 </div>
 

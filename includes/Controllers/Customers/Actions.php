@@ -50,7 +50,7 @@ class Actions {
 				return $this->list_customers_internal( $search, $page, $limit );
 			},
 			'customers',
-			600 // 10 minutes
+			0 // use Cache::CACHE_GROUPS['customers'] default (10s)
 		);
 	}
 
@@ -428,6 +428,18 @@ class Actions {
 			return new \WP_Error( 'not_found', __( 'Customer not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
+		// Get all order IDs for this customer to count total
+		$all_orders = wc_get_orders(
+			array(
+				'customer_id' => $user_id,
+				'limit'       => -1,
+				'return'      => 'objects',
+			)
+		);
+
+		$total = is_array( $all_orders ) ? count( $all_orders ) : 0;
+
+		// Get paginated orders
 		$orders = wc_get_orders(
 			array(
 				'customer_id' => $user_id,
@@ -438,19 +450,6 @@ class Actions {
 				'return'      => 'objects',
 			)
 		);
-
-		$total = (int) wc_get_orders(
-			array(
-				'customer_id' => $user_id,
-				'return'      => 'ids',
-				'limit'       => -1,
-			)
-		);
-
-		// Use count() on the returned array since 'return' => 'ids' gives an array.
-		if ( is_array( $total ) ) {
-			$total = count( $total );
-		}
 
 		$history = array();
 		foreach ( $orders as $order ) {

@@ -32,7 +32,6 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import ReceiptBuilder from "./components/ReceiptBuilder";
 import { SettingsSidebar } from "@/components/settings/settings-sidebar";
 import { PageHeader } from "@/admin/components/PageLayout";
 import { useSetAtom } from "jotai";
@@ -50,12 +49,6 @@ const SETTINGS_SECTIONS = [
     label: "Terminal",
     icon: Keyboard,
     description: "Checkout behavior and terminal features",
-  },
-  {
-    id: "customer-display",
-    label: "Customer Display",
-    icon: Monitor,
-    description: "Second screen display and promotional messages",
   },
   {
     id: "payments",
@@ -91,16 +84,8 @@ const DEFAULT_SETTINGS = {
   pos_cash_gateway: "cod",
   pos_card_gateway: "stripe",
   keyboard_status: "yes",
-  customer_display_enabled: "yes",
-  customer_display_message: "Welcome to our store!",
-  customer_display_idle_timeout: 30,
-  customer_display_promo_1: "Special offers available - Ask our staff!",
-  customer_display_promo_2: "Join our loyalty program and save more",
-  customer_display_promo_3: "Now open every day until 9 PM",
-  customer_display_promo_4: "Shop online and pick up in store",
   max_discount_limit: 100,
   pos_order_prefix: "",
-  receipt_blocks: [],
 };
 
 /**
@@ -205,7 +190,7 @@ export default function Settings() {
 
     try {
       await api.post("/settings/update", settings);
-      // Update the global settings atom so any open Terminal/CustomerDisplay
+      // Update the global settings atom so any open Terminal
       // reflects the new values without a manual reload.
       setGlobalSettings((prev) => ({ ...(prev || {}), ...settings }));
       // Re-fetch from the server so the UI is guaranteed to mirror the
@@ -222,7 +207,7 @@ export default function Settings() {
         // Non-fatal: the optimistic update above already keeps the
         // UI in sync; a refetch failure should not roll it back.
       }
-      // Broadcast to other tabs (Terminal, CustomerDisplay) so they can
+      // Broadcast to other tabs (Terminal) so they can
       // re-fetch from the API and update themselves.
       try {
         const channel = new BroadcastChannel("readypos_settings");
@@ -337,7 +322,7 @@ export default function Settings() {
                   </Field>
                   <Field
                     label="Logo URL"
-                    hint="Used by receipt blocks and plugin surfaces.">
+                    hint="Used on receipts and plugin surfaces.">
                     <Input
                       className="h-9 text-xs md:col-span-2"
                       value={settings.site_logo}
@@ -453,16 +438,7 @@ export default function Settings() {
                       placeholder="RP"
                     />
                   </Field>
-                  <Field label="Customer Display Message" hint="">
-                    <Input
-                      className="h-9 text-xs md:col-span-2"
-                      value={settings.customer_display_message}
-                      onChange={(/** @type {any} */ e) =>
-                        update({ customer_display_message: e.target.value })
-                      }
-                      placeholder="Welcome to our store!"
-                    />
-                  </Field>
+
                 </div>
               </CompactCard>
 
@@ -481,123 +457,6 @@ export default function Settings() {
             </div>
           </div>
           )}
-
-          {/* Customer Display Section */}
-          {activeSection === "customer-display" && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                    <span>Settings</span>
-                    <ChevronRight className="h-3 w-3" />
-                    <span className="text-foreground font-medium">Customer Display</span>
-                  </div>
-                  <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-                    <Monitor className="h-5 w-5 text-primary" />
-                    Customer Display Settings
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    Configure the second screen display for customers
-                  </p>
-                </div>
-                <div className="grid gap-4 xl:grid-cols-2">
-              <CompactCard icon={Monitor} title="Display Configuration">
-                <div className="space-y-3">
-                  <ToggleRow
-                    title="Enable Customer Display"
-                    description="Show real-time cart updates on a second screen."
-                    checked={settings.customer_display_enabled === "yes"}
-                    onChange={(/** @type {boolean} */ checked) =>
-                      update({ customer_display_enabled: checked ? "yes" : "no" })
-                    }
-                  />
-                  <Field 
-                    label="Welcome Message" 
-                    hint="Displayed when the screen is idle or no cart is active.">
-                    <Input
-                      className="h-9 text-xs"
-                      value={settings.customer_display_message}
-                      onChange={(/** @type {any} */ e) =>
-                        update({ customer_display_message: e.target.value })
-                      }
-                      placeholder="Welcome to our store!"
-                    />
-                  </Field>
-                  <Field 
-                    label="Idle Timeout (seconds)" 
-                    hint="How long to wait before showing promotional messages.">
-                    <Input
-                      type="number"
-                      min="10"
-                      max="120"
-                      className="h-9 text-xs"
-                      value={settings.customer_display_idle_timeout}
-                      onChange={(/** @type {any} */ e) =>
-                        update({
-                          customer_display_idle_timeout: Math.min(
-                            120,
-                            Math.max(10, parseInt(e.target.value) || 30)
-                          ),
-                        })
-                      }
-                    />
-                  </Field>
-                </div>
-              </CompactCard>
-
-              <CompactCard icon={Tags} title="Promotional Messages">
-                <div className="space-y-3">
-                  <Field label="Promotion 1" hint="Rotates when display is idle.">
-                    <Textarea
-                      className="min-h-16 resize-none text-xs"
-                      value={settings.customer_display_promo_1}
-                      onChange={(/** @type {any} */ e) =>
-                        update({ customer_display_promo_1: e.target.value })
-                      }
-                      placeholder="Special offers available!"
-                    />
-                  </Field>
-                  <Field label="Promotion 2" hint="">
-                    <Textarea
-                      className="min-h-16 resize-none text-xs"
-                      value={settings.customer_display_promo_2}
-                      onChange={(/** @type {any} */ e) =>
-                        update({ customer_display_promo_2: e.target.value })
-                      }
-                      placeholder="Join our loyalty program"
-                    />
-                  </Field>
-                </div>
-              </CompactCard>
-
-              <div className="xl:col-span-2">
-                <CompactCard icon={Tags} title="Additional Promotions">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <Field label="Promotion 3" hint="">
-                      <Textarea
-                        className="min-h-16 resize-none text-xs"
-                        value={settings.customer_display_promo_3}
-                        onChange={(/** @type {any} */ e) =>
-                          update({ customer_display_promo_3: e.target.value })
-                        }
-                        placeholder="Extended store hours"
-                      />
-                    </Field>
-                    <Field label="Promotion 4" hint="">
-                      <Textarea
-                        className="min-h-16 resize-none text-xs"
-                        value={settings.customer_display_promo_4}
-                        onChange={(/** @type {any} */ e) =>
-                          update({ customer_display_promo_4: e.target.value })
-                        }
-                        placeholder="Shop online, pick up in store"
-                      />
-                    </Field>
-                  </div>
-                </CompactCard>
-              </div>
-            </div>
-            </div>
-            )}
 
           {/* Payments Section */}
           {activeSection === "payments" && (
@@ -730,9 +589,8 @@ export default function Settings() {
                   </p>
                 </div>
 
-{/* Paper Width */}
-                <div className="grid gap-4 xl:grid-cols-3">
-                  <CompactCard icon={Printer} title="Paper Width">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <CompactCard icon={Printer} title="Paper & Branding">
                     <div className="space-y-3">
                       <Field label="Paper Width" hint="Standard thermal printer paper sizes.">
                         <Select
@@ -744,86 +602,70 @@ export default function Settings() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="80mm">80mm (3.15 inch) - Standard</SelectItem>
-                            <SelectItem value="58mm">58mm (2.28 inch) - Compact</SelectItem>
+                            <SelectItem value="80mm">80mm (3.15 inch) — Standard</SelectItem>
+                            <SelectItem value="58mm">58mm (2.28 inch) — Compact</SelectItem>
                           </SelectContent>
                         </Select>
+                      </Field>
+                      <Field label="Receipt Logo URL" hint="Appears at the top of receipts.">
+                        <Input
+                          className="h-9 text-xs"
+                          value={settings.receipt_logo}
+                          onChange={(/** @type {any} */ e) =>
+                            update({ receipt_logo: e.target.value })
+                          }
+                          placeholder={
+                            settings.site_logo || "https://example.com/logo.png"
+                          }
+                        />
+                      </Field>
+                      <ToggleRow
+                        title="Show Logo"
+                        description="Print store logo at top."
+                        checked={settings.receipt_show_logo === "yes"}
+                        onChange={(/** @type {boolean} */ checked) =>
+                          update({ receipt_show_logo: checked ? "yes" : "no" })
+                        }
+                      />
+                      <ToggleRow
+                        title="Order Barcode"
+                        description="Print scannable barcode for easy order lookup."
+                        checked={settings.receipt_show_barcode === "yes"}
+                        onChange={(/** @type {boolean} */ checked) =>
+                          update({ receipt_show_barcode: checked ? "yes" : "no" })
+                        }
+                      />
+                    </div>
+                  </CompactCard>
+
+                  <CompactCard icon={Printer} title="Receipt Text">
+                    <div className="space-y-3">
+                      <Field label="Header" hint="Displayed at the top of every receipt.">
+                        <Textarea
+                          className="min-h-20 resize-none text-xs"
+                          value={settings.receipt_header}
+                          onChange={(/** @type {any} */ e) =>
+                            update({ receipt_header: e.target.value })
+                          }
+                          placeholder={settings.site_name || "Ready POS Store"}
+                        />
+                      </Field>
+                      <Field label="Footer" hint="Printed at the bottom of every receipt.">
+                        <Textarea
+                          className="min-h-20 resize-none text-xs"
+                          value={settings.receipt_footer}
+                          onChange={(/** @type {any} */ e) =>
+                            update({ receipt_footer: e.target.value })
+                          }
+                          placeholder="Thank you for shopping with us!"
+                        />
                       </Field>
                     </div>
                   </CompactCard>
                 </div>
-
-                {/* Receipt Content Configuration */}
-                <div className="grid gap-4 xl:grid-cols-3">
-              <CompactCard icon={Printer} title="Receipt Content">
-                <div className="space-y-3">
-                  <Field label="Receipt Logo URL" hint="Appears at the top of receipts.">
-                    <Input
-                      className="h-9 text-xs"
-                      value={settings.receipt_logo}
-                      onChange={(/** @type {any} */ e) =>
-                        update({ receipt_logo: e.target.value })
-                      }
-                      placeholder={
-                        settings.site_logo || "https://example.com/logo.png"
-                      }
-                    />
-                  </Field>
-                  <ToggleRow
-                    title="Show Logo"
-                    description="Print store logo at top."
-                    checked={settings.receipt_show_logo === "yes"}
-                    onChange={(/** @type {boolean} */ checked) =>
-                      update({ receipt_show_logo: checked ? "yes" : "no" })
-                    }
-                  />
-                  <ToggleRow
-                    title="Order Barcode"
-                    description="Print scannable barcode for easy order lookup."
-                    checked={settings.receipt_show_barcode === "yes"}
-                    onChange={(/** @type {boolean} */ checked) =>
-                      update({ receipt_show_barcode: checked ? "yes" : "no" })
-                    }
-                  />
-                </div>
-              </CompactCard>
-
-              <CompactCard icon={Printer} title="Receipt Text">
-                <div className="space-y-3">
-                  <Field label="Header" hint="">
-                    <Textarea
-                      className="min-h-20 resize-none text-xs"
-                      value={settings.receipt_header}
-                      onChange={(/** @type {any} */ e) =>
-                        update({ receipt_header: e.target.value })
-                      }
-                      placeholder={settings.site_name || "Ready POS Store"}
-                    />
-                  </Field>
-                  <Field label="Footer" hint="">
-                    <Textarea
-                      className="min-h-20 resize-none text-xs"
-                      value={settings.receipt_footer}
-                      onChange={(/** @type {any} */ e) =>
-                        update({ receipt_footer: e.target.value })
-                      }
-                    />
-                  </Field>
-                </div>
-              </CompactCard>
-
-              <div className="xl:col-span-3">
-                <ReceiptBuilder
-                  blocks={settings.receipt_blocks || []}
-                  onChange={(/** @type {any} */ blocks) =>
-                    update({ receipt_blocks: blocks })
-                  }
-                  paperWidth={settings.receipt_paper_width || "80mm"}
-                />
               </div>
-            </div>
-          </div>
-          )}
+            )}
+
         </div>
       </form>
     </div>

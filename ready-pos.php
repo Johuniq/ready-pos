@@ -25,7 +25,7 @@ defined( 'ABSPATH' ) || exit;
 
 // Define constants FIRST, before any autoloading
 if ( ! defined( 'READYPOS_VERSION' ) ) {
-	define( 'READYPOS_VERSION', '1.0.1' );
+	define( 'READYPOS_VERSION', '1.0.0' );
 }
 if ( ! defined( 'READYPOS_PLUGIN_FILE' ) ) {
 	define( 'READYPOS_PLUGIN_FILE', __FILE__ );

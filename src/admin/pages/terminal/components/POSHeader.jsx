@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   LogOut,
   Clock,
-  Layers,
   Moon,
   Sun,
   Wallet,
@@ -16,63 +15,15 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { formatPrice } from "@/lib/currency";
 import CashAdjustModal from "./CashAdjustModal";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
-
-import { useOfflineSync } from "@/admin/hooks/useOfflineSync";
-import { useAlert } from "@/components/ui/alert-provider";
-import {
-  Wifi,
-  WifiOff,
-  AlertTriangle,
-  RefreshCw,
-  Trash2,
-  Crown,
-  Monitor,
-} from "lucide-react";
-import { CustomerDisplayGuide, useCustomerDisplayGuide } from "./CustomerDisplayGuide";
 
 export default function POSHeader({
   onOpenCloseSession,
-  onOpenHeldCarts,
-  onOpenShiftTracker,
-  activeShift,
 }) {
-  const { showConfirm } = useAlert();
   const [session, setSession] = useAtom(sessionAtom);
   const [settings] = useAtom(settingsAtom);
   const { theme, setTheme } = useTheme();
   const [time, setTime] = useState(new Date());
-  const {
-    isOnline,
-    pendingCount,
-    failedCount,
-    syncOfflineOrders,
-    getFailedOrders,
-    retryFailedOrder,
-    discardFailedOrder,
-  } = useOfflineSync();
   const [cashAdjustOpen, setCashAdjustOpen] = useState(false);
-  const [failedOrdersOpen, setFailedOrdersOpen] = useState(false);
-  const [failedOrders, setFailedOrders] = useState([]);
-  const { showGuide, setShowGuide, checkAndShowGuide } = useCustomerDisplayGuide();
-
-  const handleOpenFailedOrders = async () => {
-    const orders = await getFailedOrders();
-    setFailedOrders(orders);
-    setFailedOrdersOpen(true);
-  };
-
-  const refreshFailedList = async () => {
-    const orders = await getFailedOrders();
-    setFailedOrders(orders);
-  };
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -92,48 +43,6 @@ export default function POSHeader({
     typeof readypos_admin !== "undefined"
       ? readypos_admin.userInfo.roles.join(", ")
       : "Staff";
-
-  const customerDisplayEnabled =
-    settings?.customer_display_enabled === undefined
-      ? true
-      : settings.customer_display_enabled !== "no";
-
-  const handleOpenCustomerDisplay = () => {
-    if (!customerDisplayEnabled) {
-      toast.error(
-        "Customer display is disabled. Enable it in POS Settings → Terminal."
-      );
-      return;
-    }
-
-    // Check if user needs to see the guide first
-    const needsGuide = checkAndShowGuide();
-    if (needsGuide) {
-      return; // Guide modal will show, user clicks "Got It" to proceed
-    }
-
-    // Open customer display in a new window (for second monitor)
-    openCustomerDisplayWindow();
-  };
-
-  const openCustomerDisplayWindow = () => {
-    const width = 1920;
-    const height = 1080;
-    const left = window.screen.width - width;
-    const top = 0;
-    
-    const customerDisplayWindow = window.open(
-      `#/customer-display`,
-      "CustomerDisplay",
-      `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no`
-    );
-
-    if (customerDisplayWindow) {
-      customerDisplayWindow.focus();
-    } else {
-      toast.error("Please allow pop-ups to open customer display");
-    }
-  };
 
   return (
     <header className="h-16 border-b bg-card text-card-foreground flex items-center justify-between gap-4 px-4 lg:px-6 shadow-sm select-none">
@@ -185,43 +94,6 @@ export default function POSHeader({
                  RIGHT — System status, Quick actions, User
                  ================================================== */}
       <div className="flex items-center gap-2">
-        {/* === Status indicator group (icon-only pills) === */}
-        <div className="flex items-center gap-1">
-          {/* Connection */}
-          {isOnline ? (
-            <div
-              title="Online"
-              className="flex items-center justify-center w-8 h-8 bg-emerald-500/10 text-emerald-500 rounded-full">
-              <Wifi className="w-3.5 h-3.5" />
-            </div>
-          ) : (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={syncOfflineOrders}
-              title="Offline — click to sync manually"
-              className="flex items-center justify-center gap-1 min-w-8 h-8 px-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 rounded-full animate-pulse transition-all">
-              <WifiOff className="w-3.5 h-3.5" />
-              {pendingCount > 0 && (
-                <span className="text-[10px] font-bold">{pendingCount}</span>
-              )}
-            </Button>
-          )}
-
-          {/* Failed orders */}
-          {failedCount > 0 && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleOpenFailedOrders}
-              title="Review failed offline orders"
-              className="flex items-center justify-center gap-1 min-w-8 h-8 px-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-full animate-pulse transition-all">
-              <AlertTriangle className="w-3.5 h-3.5" />
-              <span className="text-[10px] font-bold">{failedCount}</span>
-            </Button>
-          )}
-        </div>
-
         {/* === Drawer info (only when register is open) === */}
         {session.has_active && (
           <>
@@ -242,55 +114,6 @@ export default function POSHeader({
             </Button>
           </>
         )}
-
-        {/* === Quick action group (segmented buttons) === */}
-        <span className="h-6 w-px bg-border" />
-        <div className="flex items-center bg-muted/40 rounded-lg p-0.5 gap-0.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleOpenCustomerDisplay}
-            disabled={!customerDisplayEnabled}
-            className="h-8 gap-1.5 text-xs font-semibold hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed"
-            title={
-              customerDisplayEnabled
-                ? "Open Customer Display (Second Screen)"
-                : "Customer display is disabled in POS Settings → Terminal"
-            }>
-            <Monitor className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">Display</span>
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onOpenHeldCarts}
-            className="h-8 gap-1.5 text-xs font-semibold hover:bg-background">
-            <Layers className="w-3.5 h-3.5" />
-            <span className="hidden xl:inline">Held</span>
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onOpenShiftTracker}
-            className="h-8 gap-1.5 text-xs font-semibold hover:bg-background"
-            title={
-              activeShift ? "View Shift Tracker / Clock Out" : "Clock In Shift"
-            }>
-            <Clock
-              className={`w-3.5 h-3.5 ${
-                activeShift ? "text-amber-500" : "text-muted-foreground"
-              }`}
-            />
-            <span className="hidden xl:inline">
-              {activeShift ? "Shift" : "Off"}
-            </span>
-            {activeShift && (
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-            )}
-          </Button>
-        </div>
 
         {/* === Theme + User + Register controls === */}
         <span className="h-6 w-px bg-border" />
@@ -349,108 +172,6 @@ export default function POSHeader({
       </div>
 
       <CashAdjustModal open={cashAdjustOpen} onOpenChange={setCashAdjustOpen} />
-
-      {/* Customer Display Setup Guide */}
-      <CustomerDisplayGuide 
-        open={showGuide} 
-        onOpenChange={(open) => {
-          setShowGuide(open);
-          // If guide is being closed and user clicked "Got It", open the display
-          if (!open && !localStorage.getItem("readypos_cfd_guide_seen")) {
-            // User cancelled, don't open
-          } else if (!open && localStorage.getItem("readypos_cfd_guide_seen")) {
-            // User clicked "Got It", open display
-            setTimeout(openCustomerDisplayWindow, 100);
-          }
-        }} 
-      />
-
-      {/* Failed Offline Orders Modal */}
-      <Dialog open={failedOrdersOpen} onOpenChange={setFailedOrdersOpen}>
-        <DialogContent className="max-w-2xl rounded-xl select-none max-h-[85vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold flex items-center gap-2 text-rose-600">
-              <AlertTriangle className="w-5 h-5" />
-              <span>Failed Offline Orders ({failedOrders.length})</span>
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              These orders couldn't be synced to the server after multiple
-              attempts. Review the error, retry manually, or discard.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex-1 overflow-y-auto space-y-2 py-2">
-            {failedOrders.length === 0 ? (
-              <div className="h-32 flex flex-col items-center justify-center text-muted-foreground gap-2">
-                <span className="text-xs font-semibold">No failed orders</span>
-              </div>
-            ) : (
-              failedOrders.map((order) => (
-                <div
-                  key={order.localId}
-                  className="border border-rose-500/20 bg-rose-500/5 rounded-lg p-3 space-y-2">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-0.5 flex-1 min-w-0">
-                      <div className="text-xs font-bold text-foreground">
-                        Order {order.localId.replace(/^pos_/, "")}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground">
-                        {new Date(order._createdAt).toLocaleString()} ·{" "}
-                        {order.items?.length || 0} items · Tries:{" "}
-                        {order._retryCount}
-                      </div>
-                      {order._lastError && (
-                        <div className="text-[10px] text-rose-600 font-mono bg-rose-500/10 rounded px-2 py-1 mt-1 break-words">
-                          {order._lastError}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          await retryFailedOrder(order.localId);
-                          refreshFailedList();
-                        }}
-                        className="h-7 text-[10px] font-bold gap-1">
-                        <RefreshCw className="w-3 h-3" />
-                        Retry
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          const confirmed = await showConfirm(
-                            "Discard this order? This cannot be undone.",
-                            "Discard Order"
-                          );
-                          if (confirmed) {
-                            await discardFailedOrder(order.localId);
-                            refreshFailedList();
-                          }
-                        }}
-                        className="h-7 text-[10px] font-bold gap-1 text-rose-500 hover:bg-rose-500/10">
-                        <Trash2 className="w-3 h-3" />
-                        Discard
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          <DialogFooter className="border-t pt-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setFailedOrdersOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </header>
   );
 }

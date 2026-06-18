@@ -347,53 +347,6 @@ export function CustomersSkeleton() {
 }
 
 /**
- * Outlets page skeleton
- */
-export function OutletsSkeleton() {
-  return (
-    <div className="page-container bg-muted/20 p-6 space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border/40 pb-4 mb-4">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-6 w-6 rounded-md" />
-            <Skeleton className="h-7 w-48" />
-          </div>
-          <Skeleton className="h-4 w-80 max-w-full" />
-        </div>
-        <Skeleton className="h-9 w-32 rounded-lg" />
-      </div>
-      <div className="grid gap-6 md:grid-cols-2">
-        {[...Array(2)].map((_, i) => (
-          <Card key={i}>
-            <CardHeader className="space-y-2 pb-3">
-              <div className="flex justify-between items-start">
-                <Skeleton className="h-6 w-40" />
-                <div className="flex gap-1.5">
-                  <Skeleton className="h-5 w-16 rounded" />
-                  <Skeleton className="h-5 w-14 rounded" />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 pb-4">
-              {[...Array(3)].map((_, j) => (
-                <div key={j} className="flex gap-2 items-center">
-                  <Skeleton className="h-4 w-4 rounded-full" />
-                  <Skeleton className="h-4 w-48" />
-                </div>
-              ))}
-            </CardContent>
-            <div className="border-t p-3 flex justify-end gap-2 bg-muted/10">
-              <Skeleton className="h-8 w-24 rounded-md" />
-              <Skeleton className="h-8 w-20 rounded-md" />
-            </div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/**
  * Settings page skeleton
  */
 export function SettingsSkeleton() {

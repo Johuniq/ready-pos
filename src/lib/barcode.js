@@ -1,8 +1,8 @@
 /**
  * Barcode generation utility for Ready POS.
  *
- * Generates Code 128 barcodes as SVG strings for printing on receipts,
- * product labels, and gift cards. Uses a pure-JS implementation with no
+ * Generates Code 128 barcodes as SVG strings for printing on receipts
+ * and product labels. Uses a pure-JS implementation with no
  * external dependencies.
  */
 

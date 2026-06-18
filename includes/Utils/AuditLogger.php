@@ -34,7 +34,7 @@ class AuditLogger {
 		$table_name = $wpdb->prefix . 'readypos_audit_logs';
 
 		// Create table if not exists during logging fallback
-		if ( $wpdb->get_var( "SHOW TABLES LIKE '{$table_name}'" ) !== $table_name ) {
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name ) ) !== $table_name ) {
 			$charset_collate = $wpdb->get_charset_collate();
 			$sql = "CREATE TABLE `{$table_name}` (
 				`id` bigint(20) NOT NULL AUTO_INCREMENT,

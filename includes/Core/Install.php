@@ -17,9 +17,6 @@ use Readypos\Database\Migrations\POSSessions;
 use Readypos\Database\Migrations\POSOrderMeta;
 use Readypos\Database\Migrations\POSCustomers;
 use Readypos\Database\Migrations\POSOutletStock;
-use Readypos\Database\Migrations\POSEmployeeShifts;
-use Readypos\Database\Migrations\POSGiftCards;
-use Readypos\Database\Migrations\POSReturns;
 use Readypos\Database\Migrations\POSSuppliers;
 use Readypos\Database\Migrations\POSPurchaseOrders;
 use Readypos\Database\Migrations\POSStockTransfers;
@@ -77,9 +74,7 @@ class Install {
 		POSOrderMeta::up();
 		POSCustomers::up();
 		POSOutletStock::up();
-		POSEmployeeShifts::up();
-		POSGiftCards::up();
-		POSReturns::up();
+
 		POSSuppliers::up();
 		POSPurchaseOrders::up();
 		POSStockTransfers::up();
@@ -91,11 +86,6 @@ class Install {
 
 		// SECURITY FIX #17: Install audit log table
 		\Readypos\Database\Migrations\AuditLog::up();
-		
-		// OFFLINE MODE: Install idempotency table for sync
-		if ( class_exists( '\Readypos\Controllers\Orders\OfflineSync' ) ) {
-			\Readypos\Controllers\Orders\OfflineSync::create_idempotency_table();
-		}
 	}
 
 	/**

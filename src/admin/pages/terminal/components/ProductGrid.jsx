@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/currency";
+import { handleError } from "@/lib/errorHandler";
 import { useCart } from "@/admin/hooks/useCart";
 import {
   Dialog,
@@ -338,12 +339,17 @@ export default function ProductGrid() {
       (v) => {
         return Object.entries(selectedAttributes).every(
           ([attrName, attrValue]) => {
-            // WooCommerce returns attribute keys with 'attribute_' prefix or lowercase key names.
-            // We normalize attributes check.
-            const cleanKey = attrName.replace("pa_", "").toLowerCase();
+            // Match against the raw key (already normalized by the
+            // backend, but the legacy cache path may still return the
+            // `attribute_pa_` form), and a decoded/lowercase fallback
+            // so the matcher works regardless of which form the
+            // server hands back.
+            const stripped = decodeAttributeKey(attrName);
+            const lower = stripped.toLowerCase();
             return (
               v.attributes[attrName] === attrValue ||
-              v.attributes[cleanKey] === attrValue
+              v.attributes[stripped] === attrValue ||
+              v.attributes[lower] === attrValue
             );
           },
         );
@@ -388,9 +394,43 @@ export default function ProductGrid() {
 
     const formatted = {};
     Object.entries(map).forEach(([name, set]) => {
-      formatted[name] = Array.from(set);
+      // Defense-in-depth: older cached responses (or a backend that
+      // didn't run the new normalizer) may still surface WooCommerce's
+      // raw `attribute_pa_` prefix and percent-encoded slugs
+      // (e.g. `attribute_pa_%e0%a6%93%e0%a6%9c%e0%a6%a8` for a Bengali
+      // attribute name). Strip + decode here so the label is always
+      // human-readable, regardless of which server response the cache
+      // hands back.
+      const displayName = decodeAttributeKey(name);
+      formatted[displayName] = Array.from(set);
     });
     return formatted;
+  };
+
+  // Normalize a single WooCommerce variation attribute key for display.
+  // Strips `attribute_pa_` / `attribute_` prefix and percent-decodes
+  // non-ASCII slugs (Bengali, Arabic, etc.) so the variation modal
+  // shows "অজন" instead of "ATTRIBUTE %E0%A6%93%E0%A6%9C%E0%A6%A8".
+  const decodeAttributeKey = (key) => {
+    if (typeof key !== "string") return key;
+    let clean = key;
+    if (clean.startsWith("attribute_pa_")) {
+      clean = clean.slice("attribute_pa_".length);
+    } else if (clean.startsWith("attribute_")) {
+      clean = clean.slice("attribute_".length);
+    }
+    try {
+      // Only decode when the string actually contains percent escapes;
+      // `decodeURIComponent` throws on malformed input, in which case
+      // we fall back to the raw (still-prefix-stripped) key.
+      if (clean.includes("%")) {
+        const decoded = decodeURIComponent(clean);
+        if (decoded) clean = decoded;
+      }
+    } catch (e) {
+      // Malformed percent escape — keep the raw key.
+    }
+    return clean;
   };
 
   return (
@@ -589,10 +629,11 @@ export default function ProductGrid() {
             <div className="py-4 space-y-4">
               {Object.entries(getProductAttributesMap()).map(
                 ([name, values]) => {
-                  // Normalize attribute key name for user display (capitalize)
+                  // `name` is already normalized server-side; the
+                  // frontend normalizer is a no-op in the happy path
+                  // but covers any legacy / cached raw keys.
                   const displayName = name
-                    .replace("pa_", "")
-                    .replace("_", " ")
+                    .replace(/_/g, " ")
                     .toUpperCase();
                   return (
                     <div key={name} className="space-y-1.5">

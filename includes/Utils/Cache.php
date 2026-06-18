@@ -34,17 +34,24 @@ class Cache {
 	 * @var array
 	 */
 	const CACHE_GROUPS = array(
-		'products'       => 300,    // 5 minutes - products change frequently
-		'outlets'        => 1800,   // 30 minutes - outlets rarely change
-		'settings'       => 1800,   // 30 minutes - settings rarely change
-		'customers'      => 600,    // 10 minutes - customer data moderate changes
-		'sessions'       => 60,     // 1 minute - sessions change frequently
-		'orders'         => 180,    // 3 minutes - orders change frequently in POS
-		'returns'        => 180,    // 3 minutes - returns change frequently
-		'registers'      => 1800,   // 30 minutes - registers rarely change
-		'payment_methods' => 3600,  // 1 hour - payment methods very stable
-		'categories'     => 1800,   // 30 minutes - categories rarely change
-		'taxes'          => 3600,   // 1 hour - tax rates very stable
+		// POS-critical groups: very short TTLs so the terminal always reflects
+		// the latest state (cash totals, open orders, drawer balance, etc.)
+		// without waiting for a full minute. These groups are invalidated
+		// aggressively on every write, so the short TTL is mostly a
+		// defense-in-depth safety net against missed cache busts.
+		'sessions'        => 5,      // 5s  - open session, cash drawer, current user
+		'orders'          => 5,      // 5s  - order list, today sales, report aggregations
+		'customers'       => 10,     // 10s - customer list, search, loyalty totals
+		'products'        => 30,     // 30s - product grid (heaviest endpoint)
+		'payment_methods' => 60,     // 60s - payment methods used in checkout
+		// Slower-changing groups: short enough to feel "instant" if a write
+		// is missed, but long enough to avoid hammering the DB on data that
+		// is essentially static at the terminal.
+		'categories'      => 60,     // 60s - product categories
+		'settings'        => 60,     // 60s - POS settings, display prefs
+		'taxes'           => 60,     // 60s - tax rate lookups
+		'outlets'         => 60,     // 60s - outlet metadata
+		'registers'       => 60,     // 60s - register list, current register
 	);
 
 	/**
@@ -81,8 +88,12 @@ class Cache {
 	public static function set( $key, $data, $group = 'default', $expiration = null ) {
 		$cache_key = self::generate_key( $key, $group );
 
-		// Use group-specific expiration or provided expiration or default
-		if ( null === $expiration ) {
+		// Use group-specific expiration or provided expiration or default.
+		// `0` and `null` are both treated as "use the group default" so that
+		// controllers can opt into the central CACHE_GROUPS TTL by passing
+		// either value. (Previously only `null` worked; the previous
+		// behavior made the new shorter TTLs unreachable.)
+		if ( null === $expiration || 0 === $expiration ) {
 			$expiration = self::get_group_expiration( $group );
 		}
 
@@ -216,20 +227,33 @@ class Cache {
 	 * @return void
 	 */
 	public static function invalidate( $entity, $entity_id = null ) {
-		// Map entity types to cache groups
-		$entity_group_map = array(
-			'product'   => array( 'products' ),
-			// Orders also affect customer loyalty totals, so the customers
-			// list/detail cache must be cleared when an order is created or
-			// changed, otherwise the list can show stale 0 values for up to
-			// the full customers cache TTL (10 minutes).
-			'order'     => array( 'orders', 'sessions', 'returns', 'customers' ),
-			'customer'  => array( 'customers' ),
-			'outlet'    => array( 'outlets', 'registers' ),
-			'register'  => array( 'registers', 'outlets', 'sessions' ),
-			'setting'   => array( 'settings', 'payment_methods', 'taxes' ),
-			'session'   => array( 'sessions' ),
-			'return'    => array( 'returns', 'orders', 'customers' ),
+// Map entity types to cache groups. Each entry lists every group
+			// whose cached entries could be affected by a write to that
+			// entity. The rule of thumb for a POS: when in doubt, invalidate
+			// the whole group, because stale data is more costly than a few
+			// extra DB reads.
+			$entity_group_map = array(
+				'product'         => array( 'products', 'categories' ),
+				'product_stock'   => array( 'products', 'orders' ),
+				'category'        => array( 'categories', 'products' ),
+				// Orders also affect customer loyalty totals and the open
+				// session's sale count / cash totals, so the customers +
+				// sessions + orders groups must be cleared when an order is
+				// created, refunded, or updated.
+				'order'           => array( 'orders', 'sessions', 'customers', 'payment_methods' ),
+				'refund'          => array( 'orders', 'sessions', 'customers' ),
+				'customer'        => array( 'customers', 'orders' ),
+				'outlet'          => array( 'outlets', 'registers' ),
+				'register'        => array( 'registers', 'outlets', 'sessions' ),
+				'register_session' => array( 'registers', 'sessions' ),
+				// Pay In / Pay Out / cash adjustments update session cash_total
+				// and are reflected in today's report aggregations, so we
+				// must cascade to both groups.
+				'cash_adjustment' => array( 'sessions', 'orders' ),
+				'session'         => array( 'sessions' ),
+				'setting'         => array( 'settings', 'payment_methods', 'taxes' ),
+				'payment_method'  => array( 'payment_methods', 'settings' ),
+				'tax'             => array( 'taxes', 'settings' ),
 		);
 
 		if ( isset( $entity_group_map[ $entity ] ) ) {

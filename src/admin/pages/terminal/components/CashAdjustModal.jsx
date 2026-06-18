@@ -22,7 +22,10 @@ import {
   DollarSign,
   Wallet,
   FileText,
+  Plus,
 } from "lucide-react";
+
+const QUICK_AMOUNTS = [5, 10, 20, 50, 100, 200];
 
 export default function CashAdjustModal({ open, onOpenChange }) {
   const [session, setSession] = useAtom(sessionAtom);
@@ -68,6 +71,14 @@ export default function CashAdjustModal({ open, onOpenChange }) {
 
   const ledgerList = parseAdjustments(activeSession.notes);
 
+  // Add a preset amount to the current input (replaces, doesn't stack, to
+  // avoid accidental double-tap summing like 10 + 10 = 20 on quick taps).
+  const handleQuickAmount = (preset) => {
+    const current = parseFloat(amount);
+    const next = isNaN(current) || current === 0 ? preset : current + preset;
+    setAmount(next.toFixed(2));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const parsedAmount = parseFloat(amount);
@@ -101,8 +112,14 @@ export default function CashAdjustModal({ open, onOpenChange }) {
           } of ${formatPrice(parsedAmount)}`,
         );
 
-        // Fetch the updated active session
-        const updatedSessionRes = await api.get("/sessions/current");
+        // Fetch the updated active session. Append a cache-busting `_t`
+        // query so we never read a stale 60s `pos_sessions` entry that
+        // was written before this Pay In / Pay Out was applied to
+        // `cash_total`. The parameter is ignored server-side but
+        // forces `cache_response()` to compute a different md5 key.
+        const updatedSessionRes = await api.get(
+          `/sessions/current?_t=${Date.now()}`,
+        );
         setSession(updatedSessionRes);
 
         // Reset form fields
@@ -192,19 +209,56 @@ export default function CashAdjustModal({ open, onOpenChange }) {
                   Adjustment Cash Amount
                 </label>
                 <div className="relative mt-1">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-extrabold text-muted-foreground pointer-events-none">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-extrabold text-muted-foreground pointer-events-none z-10">
                     {getCurrencySymbol()}
                   </span>
                   <Input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    spellCheck="false"
                     placeholder="0.00"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    onChange={(e) => {
+                      // Allow only digits and a single decimal point
+                      const raw = e.target.value;
+                      const cleaned = raw.replace(/[^0-9.]/g, "");
+                      const parts = cleaned.split(".");
+                      const safe =
+                        parts.length > 2
+                          ? parts[0] + "." + parts.slice(1).join("")
+                          : cleaned;
+                      setAmount(safe);
+                    }}
                     className="pl-10 h-11 text-sm font-bold rounded-xl"
                     required
                   />
+                </div>
+
+                {/* Quick preset chips — one tap adds to the amount */}
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {QUICK_AMOUNTS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleQuickAmount(preset)}
+                      className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-border/70 bg-background hover:bg-primary/5 hover:border-primary/40 text-xs font-bold text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      aria-label={`Add ${formatPrice(preset)} to amount`}>
+                      <Plus className="w-3 h-3 text-primary" />
+                      <span>
+                        {getCurrencySymbol()}
+                        {preset}
+                      </span>
+                    </button>
+                  ))}
+                  {parseFloat(amount) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setAmount("")}
+                      className="inline-flex items-center gap-1 h-8 px-3 rounded-lg border border-destructive/30 bg-destructive/5 hover:bg-destructive/10 text-xs font-bold text-destructive transition-colors focus:outline-none focus:ring-2 focus:ring-destructive/30">
+                      Clear
+                    </button>
+                  )}
                 </div>
               </div>
 

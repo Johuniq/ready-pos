@@ -1,6 +1,5 @@
 import { useCart } from "@/admin/hooks/useCart";
 import { useMultiCart } from "@/admin/hooks/useMultiCart";
-import { useOfflineSync } from "@/admin/hooks/useOfflineSync";
 import { useRealtime } from "@/admin/hooks/useRealtime";
 import {
     cartTotalAtom,
@@ -23,7 +22,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
-import { formatPrice } from "@/lib/currency";
+import { formatPrice, getCurrencySymbol } from "@/lib/currency";
 import { isPaymentMethodEnabled } from "@/lib/paymentMethods";
 import { useAtom } from "jotai";
 import {
@@ -40,12 +39,17 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+// Quick add chips — tap to add to current cash tendered amount
+const QUICK_AMOUNTS = [5, 10, 20, 50, 100, 200];
+
 export default function PaymentModal({ open, onOpenChange }) {
+
   const [session] = useAtom(sessionAtom);
   const [settings] = useAtom(settingsAtom);
   const [total] = useAtom(cartTotalAtom);
   const { cart, customer, discount, notes, shipping, clearCart } = useCart();
   const { broadcastOrderCreated, broadcastStockChanged } = useRealtime();
+  const [, setSession] = useAtom(sessionAtom);
 
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [cashReceived, setCashReceived] = useState("");
@@ -55,24 +59,15 @@ export default function PaymentModal({ open, onOpenChange }) {
   // Reset fields when modal opens
   useEffect(() => {
     if (open) {
-      // Combine global POS Settings toggles with the outlet's configured
-      // payment methods. A method is only available if BOTH are enabled —
-      // Settings → Payments is the master switch, the outlet is the
-      // per-location allow-list. Fall back to "enabled" when the global
-      // setting is undefined so first-load behavior matches the server
-      // default of "yes".
-      const outletEnabled = session?.session?.outlet?.payment_methods || [
-        "cash",
-        "card",
-      ];
+      // Single source of truth: payment methods are owned by global
+      // Settings → Payments, and the server mirrors the same set onto the
+      // outlet config so there is no per-outlet allow-list to consult. Use
+      // the shared helper to read it the same way the cart and settings
+      // pages do.
       const cashOk = isPaymentMethodEnabled(settings?.payment_cash);
       const cardOk = isPaymentMethodEnabled(settings?.payment_card);
 
-      if (cashOk && outletEnabled.includes("cash")) {
-        setPaymentMethod("cash");
-      } else if (cardOk && outletEnabled.includes("card")) {
-        setPaymentMethod("card");
-      } else if (cashOk) {
+      if (cashOk) {
         setPaymentMethod("cash");
       } else if (cardOk) {
         setPaymentMethod("card");
@@ -136,7 +131,13 @@ export default function PaymentModal({ open, onOpenChange }) {
     setCashReceived((prev) => prev.slice(0, -1));
   };
 
-  const { saveOfflineOrder } = useOfflineSync();
+  // Quick add: tap to add preset to current cash tendered (or set if empty)
+  const handleQuickAmount = (preset) => {
+    const current = parseFloat(cashReceived) || 0;
+    const next = current + preset;
+    setCashReceived(next.toFixed(2));
+  };
+
   const { clearActiveAfterCheckout } = useMultiCart();
 
   /**
@@ -149,17 +150,11 @@ export default function PaymentModal({ open, onOpenChange }) {
 
   const handleCheckout = async (forcedCardRef = "") => {
     // Defense-in-depth: refuse to submit a method that the operator just
-    // disabled in POS Settings while the modal was open.
-    const outletEnabled = session?.session?.outlet?.payment_methods || [
-      "cash",
-      "card",
-    ];
-    const cashOk =
-      isPaymentMethodEnabled(settings?.payment_cash) &&
-      outletEnabled.includes("cash");
-    const cardOk =
-      isPaymentMethodEnabled(settings?.payment_card) &&
-      outletEnabled.includes("card");
+    // disabled in POS Settings while the modal was open. Payment methods
+    // are owned by global settings (single source of truth — see
+    // src/lib/paymentMethods.js).
+    const cashOk = isPaymentMethodEnabled(settings?.payment_cash);
+    const cardOk = isPaymentMethodEnabled(settings?.payment_card);
     if (paymentMethod === "cash" && !cashOk) {
       toast.error(
         "Cash payment is disabled in POS Settings → Payments. Enable it or switch to Card."
@@ -221,7 +216,6 @@ export default function PaymentModal({ open, onOpenChange }) {
         sessionId: session.session?.id || null,
         notes: notes || "",
         cardRef: activeCardRef,
-        splitPayments: splitBreakdown,
         shipping: shipping.method
           ? {
               method_id: shipping.method.method_id || shipping.method.id,
@@ -232,85 +226,82 @@ export default function PaymentModal({ open, onOpenChange }) {
           : null,
       };
 
-      if (navigator.onLine) {
-        // Online checkout
-        const response = await api.post("/orders/create", payload);
+      // Online checkout
+      const response = await api.post("/orders/create", payload);
 
-        if (response.success) {
-          toast.success("Transaction completed successfully!");
+      if (response.success) {
+        toast.success("Transaction completed successfully!");
 
-          // Broadcast to other terminals
-          broadcastOrderCreated({
-            id: response.order_id,
-            order_number: response.order_number,
-            total: formatPrice(numTotal),
-            items: apiItems,
-          });
-
-          // Broadcast stock changes for each item
-          apiItems.forEach((item) => {
-            const cartItem = cart.find((c) => c.id === item.id);
-            if (cartItem) {
-              broadcastStockChanged(
-                item.id,
-                cartItem.name,
-                null, // We don't have old stock here
-                null, // Server will calculate
-              );
-            }
-          });
-
-          // Fetch full order details to print receipt properly
-          try {
-            const orderDetail = await api.get(
-              `/orders/get/${response.order_id}`,
-            );
-            await handlePrintReceipt(orderDetail);
-          } catch (receiptErr) {
-            
-            // Backup print structure
-            await handlePrintReceipt({
-              id: response.order_id,
-              items: cart,
-              subtotal: numTotal + (discount.value || 0),
-              total: numTotal,
-              discount: discount.value || 0,
-              tax: 0,
-              payment_method: paymentMethod,
-              cash_received: payload.cashReceived,
-              change_given: payload.changeGiven,
-              notes: notes,
-            });
-          }
-
-          clearCart();
-          clearActiveAfterCheckout();
-          onOpenChange(false);
-        } else {
-          toast.error("Checkout failed");
-        }
-      } else {
-        // Offline checkout
-        const offlineOrder = await saveOfflineOrder(payload);
-
-        // Print receipt immediately from local state
-        await handlePrintReceipt({
-          id: offlineOrder.localId,
-          items: cart,
-          subtotal: numTotal + (discount.value || 0),
-          total: numTotal,
-          discount: discount.value || 0,
-          tax: 0,
-          payment_method: paymentMethod,
-          cash_received: payload.cashReceived,
-          change_given: payload.changeGiven,
-          notes: notes,
-          is_offline: true,
+        // Broadcast to other terminals
+        broadcastOrderCreated({
+          id: response.order_id,
+          order_number: response.order_number,
+          total: formatPrice(numTotal),
+          items: apiItems,
         });
+
+        // Broadcast stock changes for each item
+        apiItems.forEach((item) => {
+          const cartItem = cart.find((c) => c.id === item.id);
+          if (cartItem) {
+            broadcastStockChanged(
+              item.id,
+              cartItem.name,
+              null, // We don't have old stock here
+              null, // Server will calculate
+            );
+          }
+        });
+
+        // Fetch full order details to print receipt properly
+        try {
+          const orderDetail = await api.get(
+            `/orders/get/${response.order_id}`,
+          );
+          await handlePrintReceipt(orderDetail);
+        } catch (receiptErr) {
+
+          // Backup print structure
+          await handlePrintReceipt({
+            id: response.order_id,
+            items: cart,
+            subtotal: numTotal + (discount.value || 0),
+            total: numTotal,
+            discount: discount.value || 0,
+            tax: 0,
+            payment_method: paymentMethod,
+            cash_received: payload.cashReceived,
+            change_given: payload.changeGiven,
+            notes: notes,
+          });
+        }
 
         clearCart();
         clearActiveAfterCheckout();
         onOpenChange(false);
+
+        // Refetch the active session so the header badge
+        // (opening_cash + cash_total) reflects the sale immediately.
+        // The server's `Cache::invalidate('order', $id)` already
+        // cascades to the 'sessions' group, so the next read returns
+        // fresh data; we still append `_t` as defense-in-depth so the
+        // md5 cache key always differs from the pre-sale read.
+        try {
+          const refreshedSession = await api.get(
+            `/sessions/current?_t=${Date.now()}`,
+          );
+          if (refreshedSession) setSession(refreshedSession);
+        } catch (refreshErr) {
+          // Non-fatal: the header will self-heal within the 5s
+          // group TTL or on the next focus event.
+          // eslint-disable-next-line no-console
+          console.warn(
+            "[PaymentModal] Failed to refresh session after sale:",
+            refreshErr,
+          );
+        }
+      } else {
+        toast.error("Checkout failed");
       }
     } catch (err) {
       toast.error(err.message || "Failed to process payment");
@@ -381,18 +372,12 @@ export default function PaymentModal({ open, onOpenChange }) {
           <div className="space-y-4">
             {/* Selector Tabs — segmented control style */}
             {(() => {
-              const outletEnabled = session?.session?.outlet?.payment_methods || [
-                "cash",
-                "card",
-              ];
-              // Honor the global POS Settings toggles as the master switch;
-              // the outlet config is the per-location allow-list.
-              const isCashEnabled =
-                isPaymentMethodEnabled(settings?.payment_cash) &&
-                outletEnabled.includes("cash");
-              const isCardEnabled =
-                isPaymentMethodEnabled(settings?.payment_card) &&
-                outletEnabled.includes("card");
+              // Payment methods are owned by global settings — single
+              // source of truth (src/lib/paymentMethods.js). The server
+              // mirrors that list onto the outlet config, so we don't
+              // need a second per-outlet allow-list check here.
+              const isCashEnabled = isPaymentMethodEnabled(settings?.payment_cash);
+              const isCardEnabled = isPaymentMethodEnabled(settings?.payment_card);
               const columnsClass = isCashEnabled && isCardEnabled ? "grid-cols-2" : "grid-cols-1";
               const noMethodsEnabled = !isCashEnabled && !isCardEnabled;
               
@@ -429,16 +414,9 @@ export default function PaymentModal({ open, onOpenChange }) {
             })()}
 
             {(() => {
-              const outletEnabled = session?.session?.outlet?.payment_methods || [
-                "cash",
-                "card",
-              ];
-              const cashOk =
-                isPaymentMethodEnabled(settings?.payment_cash) &&
-                outletEnabled.includes("cash");
-              const cardOk =
-                isPaymentMethodEnabled(settings?.payment_card) &&
-                outletEnabled.includes("card");
+              // Single source of truth: global settings (Settings → Payments).
+              const cashOk = isPaymentMethodEnabled(settings?.payment_cash);
+              const cardOk = isPaymentMethodEnabled(settings?.payment_card);
               if (cashOk || cardOk) return null;
               return (
                 <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 p-3 text-xs font-medium leading-relaxed">
@@ -480,6 +458,36 @@ export default function PaymentModal({ open, onOpenChange }) {
                       {formatPrice(changeGiven)}
                     </div>
                   </div>
+                </div>
+
+                {/* Quick add chips — tap to add (5/10/20/50/100/200) */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mr-1">
+                    Quick Add
+                  </span>
+                  {QUICK_AMOUNTS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleQuickAmount(preset)}
+                      className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-border/70 bg-background hover:bg-primary/5 hover:border-primary/40 text-xs font-bold text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      aria-label={`Add ${formatPrice(preset)} to cash tendered`}>
+                      <Plus className="w-3 h-3 text-primary" />
+                      <span>
+                        {getCurrencySymbol()}
+                        {preset}
+                      </span>
+                    </button>
+                  ))}
+                  {numCashReceived > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setCashReceived("")}
+                      className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg border border-border/70 bg-background hover:bg-destructive/5 hover:border-destructive/40 text-xs font-bold text-muted-foreground hover:text-destructive transition-colors focus:outline-none focus:ring-2 focus:ring-destructive/30">
+                      <Delete className="w-3 h-3" />
+                      <span>Clear</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Presets & Touch Numpad */}
@@ -598,16 +606,9 @@ export default function PaymentModal({ open, onOpenChange }) {
                 loading ||
                 (paymentMethod === "cash" && !isAmountSufficient) ||
                 (() => {
-                  const outletEnabled =
-                    session?.session?.outlet?.payment_methods || ["cash", "card"];
-                  const cashOk =
-                    isPaymentMethodEnabled(settings?.payment_cash) &&
-                    outletEnabled.includes("cash");
-                  const cardOk =
-                    isPaymentMethodEnabled(settings?.payment_card) &&
-                    outletEnabled.includes("card");
-                  if (paymentMethod === "cash") return !cashOk;
-                  if (paymentMethod === "card") return !cardOk;
+                  // Single source of truth: global settings (Settings → Payments).
+                  if (paymentMethod === "cash") return !isPaymentMethodEnabled(settings?.payment_cash);
+                  if (paymentMethod === "card") return !isPaymentMethodEnabled(settings?.payment_card);
                   return true;
                 })()
               }

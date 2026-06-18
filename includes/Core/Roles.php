@@ -13,11 +13,10 @@ use Readypos\Traits\Base;
 /**
  * Class Roles
  *
- * Grants the `use_pos` / `manage_pos` capabilities to the built-in
+ * Grants the `readypos_use_pos` / `readypos_manage_pos` capabilities to the built-in
  * WordPress roles that are allowed to operate the POS (Administrator
- * and Shop Manager). The GPL build does not create any custom roles —
- * POS access is governed entirely by these capabilities on the default
- * WP roles.
+ * and Shop Manager). POS access is governed entirely by these
+ * capabilities on the default WP roles.
  *
  * @package Readypos\Core
  */
@@ -30,14 +29,14 @@ class Roles {
 	 *
 	 * @var string
 	 */
-	const CAP_USE_POS = 'use_pos';
+	const CAP_USE_POS = 'readypos_use_pos';
 
 	/**
 	 * Capability granted to roles that can manage POS configuration.
 	 *
 	 * @var string
 	 */
-	const CAP_MANAGE_POS = 'manage_pos';
+	const CAP_MANAGE_POS = 'readypos_manage_pos';
 
 	/**
 	 * Initialize role-related hooks.
@@ -51,7 +50,7 @@ class Roles {
 	}
 
 	/**
-	 * Grant the `use_pos` and `manage_pos` capabilities to the default
+	 * Grant the `readypos_use_pos` and `readypos_manage_pos` capabilities to the default
 	 * WordPress roles that are allowed to operate the POS.
 	 *
 	 * @return void
@@ -73,7 +72,7 @@ class Roles {
 	}
 
 	/**
-	 * Remove the `use_pos` and `manage_pos` capabilities from the
+	 * Remove the `readypos_use_pos` and `readypos_manage_pos` capabilities from the
 	 * default WordPress roles. Called on plugin uninstall.
 	 *
 	 * @return void

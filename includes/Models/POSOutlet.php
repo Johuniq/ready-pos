@@ -147,10 +147,10 @@ class POSOutlet extends Model {
 	public function get_payment_methods() {
 		if ( empty( $this->payment_methods ) ) {
 			// Return default payment methods if not configured
-			return array( 'cash', 'card', 'gift_card' );
+			return array( 'cash', 'card' );
 		}
 		$methods = json_decode( $this->payment_methods, true );
-		return is_array( $methods ) ? $methods : array( 'cash', 'card', 'gift_card' );
+		return is_array( $methods ) ? $methods : array( 'cash', 'card' );
 	}
 
 	/**

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/currency";
+import { printReceipt } from "@/lib/receipt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -33,6 +34,9 @@ import {
   Filter,
   X,
   Printer,
+  User,
+  Mail,
+  Phone,
 } from "lucide-react";
 import {
   Select,
@@ -55,9 +59,6 @@ import {
   PageToolbar,
   PaginationBar,
 } from "@/admin/components/PageLayout";
-import { useTableExport } from "@/hooks/useTableExport";
-import { ExportButton } from "@/components/export/ExportButton";
-import { formatPriceForExport, formatDateForExport } from "@/lib/export";
 
 export default function Orders() {
   const { showConfirm } = useAlert();
@@ -105,33 +106,6 @@ export default function Orders() {
   useEffect(() => {
     fetchOrders(1);
   }, []);
-
-  // Export functionality
-  const { handleExportCSV, handleExportExcel, handleExportPDF } = useTableExport({
-    getHeaders: () => [
-      "Order ID",
-      "Date",
-      "Payment Method",
-      "Subtotal",
-      "Discount",
-      "Tax",
-      "Total",
-      "Status",
-    ],
-    getRows: () =>
-      filteredOrders.map((order) => [
-        order.order_number || order.id,
-        formatDateForExport(order.date),
-        order.payment_method || "",
-        formatPriceForExport(order.subtotal || 0),
-        formatPriceForExport(order.discount || 0),
-        formatPriceForExport(order.tax || 0),
-        formatPriceForExport(order.total || 0),
-        order.status || "",
-      ]),
-    filename: "ready_pos_orders",
-    title: "Order History",
-  });
 
   // Client-side filtering (orders are already fetched)
   const filteredOrders = orders.filter((order) => {
@@ -214,10 +188,9 @@ export default function Orders() {
     }
 
     try {
-      toast.success("Receipt opened for printing");
+      printReceipt(orderDetail, settings);
     } catch (err) {
       toast.error("Failed to print receipt");
-
     }
   };
 
@@ -287,12 +260,6 @@ export default function Orders() {
               </SelectItem>
             </SelectContent>
           </Select>
-          <ExportButton
-            onExportCSV={handleExportCSV}
-            onExportExcel={handleExportExcel}
-            onExportPDF={handleExportPDF}
-            disabled={loading || filteredOrders.length === 0}
-          />
         </div>
       </PageToolbar>
 
@@ -477,6 +444,36 @@ export default function Orders() {
                   </Badge>
                 </div>
               </div>
+
+              {/* Customer Info */}
+              {orderDetail.customer_name && orderDetail.customer_name !== "POS Guest" && (
+                <div className="flex items-center gap-4 bg-muted/20 p-3 rounded-lg border text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <User className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-foreground truncate">
+                        {orderDetail.customer_name}
+                      </p>
+                      <div className="flex items-center gap-3 text-muted-foreground">
+                        {orderDetail.customer_email && (
+                          <span className="flex items-center gap-1 truncate">
+                            <Mail className="w-3 h-3" />
+                            {orderDetail.customer_email}
+                          </span>
+                        )}
+                        {orderDetail.customer_phone && (
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            {orderDetail.customer_phone}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Cart Items */}
               <div className="space-y-2">

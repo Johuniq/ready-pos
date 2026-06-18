@@ -15,8 +15,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class Actions
  *
- * Handles the free dashboard analytics endpoints for the POS admin dashboard.
- * The advanced Pro-only Reports page has been removed in the GPL release.
+ * Handles the dashboard analytics endpoints for the POS admin dashboard.
  *
  * @package Readypos\Controllers\Reports
  */
@@ -25,8 +24,15 @@ class Actions {
 	/**
 	 * Fetch all POS-flagged WooCommerce orders within a date range.
 	 *
-	 * Uses the `_readypos_is_pos_order` order meta marker so it works even
-	 * when the custom POSOrderMeta table is empty / out of sync.
+	 * Strategy:
+	 *  1. Primary: query WC orders by the `_readypos_is_pos_order` meta marker.
+	 *     This is the most reliable path on fresh installs.
+	 *  2. Fallback: if that returns nothing, build the same set from the
+	 *     custom `readypos_order_meta` table (which is also written on every
+	 *     terminal order). This rescues installations where the WC meta
+	 *     marker was not persisted (e.g. older plugins, partial migrations,
+	 *     or HPOS stores where the legacy `_readypos_is_pos_order` row never
+	 *     made it into the wc_orders_meta table).
 	 *
 	 * @param string $start ISO datetime (Y-m-d H:i:s).
 	 * @param string $end   ISO datetime (Y-m-d H:i:s).
@@ -37,9 +43,13 @@ class Actions {
 			return array();
 		}
 
+		// Accept both internal ("wc-completed") and slug ("completed") statuses
+		// so reports work regardless of HPOS vs legacy storage.
+		$statuses = array( 'completed', 'processing', 'on-hold', 'refunded', 'wc-completed', 'wc-processing', 'wc-on-hold', 'wc-refunded' );
+
 		$args = array(
 			'limit'        => -1,
-			'status'       => array( 'completed', 'processing', 'on-hold', 'refunded' ),
+			'status'       => $statuses,
 			'date_created' => $start . '...' . $end,
 			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Required to filter POS orders, indexed by WooCommerce HPOS
 			'meta_query'   => array(
@@ -52,7 +62,98 @@ class Actions {
 		);
 
 		$orders = wc_get_orders( $args );
-		return is_array( $orders ) ? $orders : array();
+
+		if ( is_array( $orders ) && ! empty( $orders ) ) {
+			return $orders;
+		}
+
+		// Fallback: derive order IDs from the custom POS meta table.
+		$fallback_ids = $this->fetch_pos_order_ids_from_meta_table( $start, $end );
+		if ( empty( $fallback_ids ) ) {
+			return is_array( $orders ) ? $orders : array();
+		}
+
+		$loaded = array();
+		foreach ( $fallback_ids as $order_id ) {
+			$order = wc_get_order( intval( $order_id ) );
+			if ( $order ) {
+				$loaded[] = $order;
+			}
+		}
+
+		// Preserve newest-first ordering for the daily chart loop.
+		usort(
+			$loaded,
+			function ( $a, $b ) {
+				$ad = $a->get_date_created();
+				$bd = $b->get_date_created();
+				$at = $ad ? $ad->getTimestamp() : 0;
+				$bt = $bd ? $bd->getTimestamp() : 0;
+				return $bt <=> $at;
+			}
+		);
+
+		return $loaded;
+	}
+
+	/**
+	 * Resolve POS order IDs from the custom `readypos_order_meta` table.
+	 *
+	 * Joins the custom table against WC's orders storage (HPOS `wc_orders`
+	 * when present, otherwise `wp_posts`) and filters by the same date window
+	 * the primary query uses, so the result set is interchangeable.
+	 *
+	 * @param string $start ISO datetime (Y-m-d H:i:s).
+	 * @param string $end   ISO datetime (Y-m-d H:i:s).
+	 * @return int[]
+	 */
+	private function fetch_pos_order_ids_from_meta_table( $start, $end ) {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'readypos_order_meta';
+		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
+		if ( $exists !== $table ) {
+			return array();
+		}
+
+		// Build a date range in UTC. WC's HPOS column `date_created_gmt` is
+		// stored in GMT, and the legacy post_date_gmt is also GMT, so we
+		// convert the (site-local) incoming $start/$end to GMT for the join.
+		$start_gmt = get_gmt_from_date( $start, 'Y-m-d H:i:s' );
+		$end_gmt   = get_gmt_from_date( $end, 'Y-m-d H:i:s' );
+
+		$hpos_orders = $wpdb->prefix . 'wc_orders';
+		$has_hpos    = ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $hpos_orders ) ) === $hpos_orders );
+
+		if ( $has_hpos ) {
+			$sql = $wpdb->prepare(
+				"SELECT m.wc_order_id
+				FROM `{$table}` m
+				INNER JOIN `{$hpos_orders}` o ON o.id = m.wc_order_id
+				WHERE o.date_created_gmt >= %s
+				  AND o.date_created_gmt <= %s
+				  AND o.status IN ('wc-completed','wc-processing','wc-on-hold','wc-refunded','wc-pending','wc-cancelled','wc-failed')",
+				$start_gmt,
+				$end_gmt
+			);
+		} else {
+			$posts = $wpdb->posts;
+			$sql   = $wpdb->prepare(
+				"SELECT m.wc_order_id
+				FROM `{$table}` m
+				INNER JOIN `{$posts}` p ON p.ID = m.wc_order_id
+				WHERE p.post_date_gmt >= %s
+				  AND p.post_date_gmt <= %s
+				  AND p.post_type = 'shop_order'
+				  AND p.post_status IN ('wc-completed','wc-processing','wc-on-hold','wc-refunded','wc-pending','wc-cancelled','wc-failed')",
+				$start_gmt,
+				$end_gmt
+			);
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.PreparedSQL.NotPrepared -- Query is built from validated table names and prepared values.
+		$ids = $wpdb->get_col( $sql );
+		return is_array( $ids ) ? array_map( 'intval', $ids ) : array();
 	}
 
 	/**
@@ -105,47 +206,103 @@ class Actions {
 
 	/**
 	 * ============================================================================
-	 * DASHBOARD-ONLY FREE ENDPOINTS (No Pro License Required)
+	 * DASHBOARD ENDPOINTS
 	 * ============================================================================
-	 * These endpoints provide basic metrics for the dashboard overview page.
-	 * The advanced Pro-only Reports page has been removed in the GPL release.
+	 * These endpoints provide metrics for the dashboard overview page.
 	 */
 
 	/**
-	 * Dashboard sales summary - FREE for all users.
+	 * Dashboard sales summary.
 	 *
 	 * @param \WP_REST_Request $request REST request.
 	 * @return \WP_REST_Response
 	 */
 	public function dashboard_sales_summary( \WP_REST_Request $request ) {
-		// No license gate - dashboard overview is free
 		return $this->sales_summary_internal( $request );
 	}
 
 	/**
-	 * Dashboard product performance - FREE for all users.
+	 * Dashboard product performance.
 	 *
 	 * @param \WP_REST_Request $request REST request.
 	 * @return \WP_REST_Response
 	 */
 	public function dashboard_product_performance( \WP_REST_Request $request ) {
-		// No license gate - dashboard overview is free
 		return $this->product_performance_internal( $request );
 	}
 
 	/**
-	 * Dashboard payment methods - FREE for all users.
+	 * Dashboard payment methods.
 	 *
 	 * @param \WP_REST_Request $request REST request.
 	 * @return \WP_REST_Response
 	 */
 	public function dashboard_payment_methods( \WP_REST_Request $request ) {
-		// No license gate - dashboard overview is free
 		return $this->payment_methods_internal( $request );
 	}
 
 	/**
-	 * Internal sales summary logic (shared by both Pro and Dashboard endpoints).
+	 * Dashboard low stock products.
+	 *
+	 * Returns products where stock quantity is at or below the low stock threshold.
+	 *
+	 * @param \WP_REST_Request $request REST request.
+	 * @return \WP_REST_Response
+	 */
+	public function dashboard_low_stock( \WP_REST_Request $request ) {
+		global $wpdb;
+
+		$limit = $request->get_param( 'limit' ) ? intval( $request->get_param( 'limit' ) ) : 10;
+		$limit = max( 1, min( $limit, 50 ) );
+
+		$cache_key = 'readypos_report_low_stock_' . $limit;
+		$cached    = get_transient( $cache_key );
+		if ( false !== $cached ) {
+			return new \WP_REST_Response( $cached, 200 );
+		}
+
+		$stock_table  = $wpdb->prefix . 'readypos_outlet_stock';
+		$stock_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $stock_table ) );
+
+		$low_stock_items = array();
+
+		if ( $stock_exists === $stock_table ) {
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT os.product_id, os.quantity, os.low_stock_threshold,
+					        pm.post_title AS product_name
+					FROM {$stock_table} os
+					LEFT JOIN {$wpdb->posts} pm ON pm.ID = os.product_id
+					WHERE os.quantity <= os.low_stock_threshold
+					  AND os.quantity >= 0
+					  AND pm.post_status = 'publish'
+					ORDER BY (os.quantity - os.low_stock_threshold) ASC
+					LIMIT %d",
+					$limit
+				),
+				ARRAY_A
+			);
+
+			if ( $rows ) {
+				foreach ( $rows as $row ) {
+					$low_stock_items[] = array(
+						'product_id'  => intval( $row['product_id'] ),
+						'name'        => $row['product_name'] ?: __( 'Unknown Product', 'ready-pos-for-woocommerce' ),
+						'stock'       => intval( $row['quantity'] ),
+						'threshold'   => intval( $row['low_stock_threshold'] ),
+						'deficit'     => max( 0, intval( $row['low_stock_threshold'] ) - intval( $row['quantity'] ) ),
+					);
+				}
+			}
+		}
+
+		set_transient( $cache_key, $low_stock_items, 2 * MINUTE_IN_SECONDS );
+
+		return new \WP_REST_Response( $low_stock_items, 200 );
+	}
+
+	/**
+	 * Internal sales summary logic.
 	 *
 	 * @param \WP_REST_Request $request REST request.
 	 * @return \WP_REST_Response
@@ -154,7 +311,7 @@ class Actions {
 		$days = $request->get_param( 'days' ) ? intval( $request->get_param( 'days' ) ) : 30;
 		$days = max( 1, $days );
 
-		$cache_key = 'readypos_report_sales_summary_free_' . $days;
+		$cache_key = 'readypos_report_sales_summary_' . $days;
 		$cached = get_transient( $cache_key );
 		if ( false !== $cached ) {
 			return new \WP_REST_Response( $cached, 200 );
@@ -222,7 +379,7 @@ class Actions {
 			'chart'    => $chart_data,
 		);
 
-		set_transient( $cache_key, $response_data, HOUR_IN_SECONDS );
+		set_transient( $cache_key, $response_data, 2 * MINUTE_IN_SECONDS );
 
 		return new \WP_REST_Response( $response_data, 200 );
 	}
@@ -237,7 +394,7 @@ class Actions {
 		$days = $request->get_param( 'days' ) ? intval( $request->get_param( 'days' ) ) : 30;
 		$days = max( 1, $days );
 
-		$cache_key = 'readypos_report_product_perf_free_' . $days;
+		$cache_key = 'readypos_report_product_perf_' . $days;
 		$cached = get_transient( $cache_key );
 		if ( false !== $cached ) {
 			return new \WP_REST_Response( $cached, 200 );
@@ -284,7 +441,7 @@ class Actions {
 			$p['total'] = round( $p['total'], 2 );
 		}
 
-		set_transient( $cache_key, $products, HOUR_IN_SECONDS );
+		set_transient( $cache_key, $products, 2 * MINUTE_IN_SECONDS );
 
 		return new \WP_REST_Response( $products, 200 );
 	}
@@ -299,7 +456,7 @@ class Actions {
 		$days = $request->get_param( 'days' ) ? intval( $request->get_param( 'days' ) ) : 30;
 		$days = max( 1, $days );
 
-		$cache_key = 'readypos_report_payment_methods_free_' . $days;
+		$cache_key = 'readypos_report_payment_methods_' . $days;
 		$cached = get_transient( $cache_key );
 		if ( false !== $cached ) {
 			return new \WP_REST_Response( $cached, 200 );
@@ -354,7 +511,7 @@ class Actions {
 			$m['sales'] = round( $m['sales'], 2 );
 		}
 
-		set_transient( $cache_key, $methods, HOUR_IN_SECONDS );
+		set_transient( $cache_key, $methods, 2 * MINUTE_IN_SECONDS );
 
 		return new \WP_REST_Response( $methods, 200 );
 	}

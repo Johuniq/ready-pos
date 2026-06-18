@@ -15,74 +15,32 @@ Transform your WooCommerce store into a professional Point of Sale system. Fast 
 
 **Ready POS** transforms your WooCommerce store into a professional Point of Sale system designed for physical retail locations. Built with modern web technologies, it provides a fast, intuitive checkout experience that syncs seamlessly with your online store.
 
-= Free Version Features =
+= Source Code =
 
-Ready POS Free includes everything you need to start selling in-store:
+The source code for all compiled JavaScript and CSS assets is publicly available on GitHub:
+
+**https://github.com/Johuniq/ready-pos**
+
+The unminified source files are located in the `src/` directory of the repository.
+
+= Features =
+
+Ready POS includes everything you need to run in-store sales:
 
 * **Fast Checkout Terminal** - Distraction-free fullscreen POS interface optimized for speed
 * **Real-time Inventory Sync** - All sales update WooCommerce inventory instantly
-* **Single Outlet & Register** - Perfect for small stores and pop-up shops
-* **Basic Customer Management** - Handle guest checkouts and quick customer selection
+* **Outlet & Register Management** - Create outlets and registers for each of your locations
+* **Customer Management** - Handle guest checkouts and quick customer selection
 * **Cash & Card Payments** - Accept multiple payment methods
 * **Receipt Printing** - Generate and print professional receipts
 * **Barcode Scanner Support** - Quickly add products by scanning barcodes
-* **Basic Sales Reports** - Track daily sales and transaction history
-* **Cashier Accounts** - Support for up to 2 cashier users with role-based permissions
 * **Register Sessions** - Track opening/closing cash drawer balances
 * **Product Search & Filters** - Find products quickly with real-time search
 * **Cart Management** - Hold/park orders to serve multiple customers
 * **Order History** - View and manage all POS transactions
-
-= Pro Version Features =
-
-Upgrade to Ready POS Pro for advanced retail management:
-
-**Multi-Location Management**
-* Unlimited outlets and registers
-* Location-based inventory tracking
-* Inter-outlet stock transfers
-* Outlet-specific pricing and tax settings
-
-**Advanced Payments**
-* Split payments (cash + card)
-* Gift card support
-* Store credit and layaway
-* EMV card reader integration
-
-**Customer Experience**
-* Customer-facing display for second screen
-* Loyalty points and rewards program
-* Purchase history tracking
-* Customer-specific pricing
-
-**Hardware Integration**
-* Thermal receipt printer support (ESC/POS)
-* Cash drawer control (pulse commands)
-* Weight scale integration
-* USB barcode scanner optimization
-
-**Inventory Management**
-* Low stock alerts and notifications
-* Barcode label printing
-* Physical inventory counting
-* Automated reorder suggestions
-
-**Advanced Reporting**
-* Cashier performance reports
-* Product sales analytics
-* Payment method breakdown
-* Custom date range reports
-* Export to CSV/PDF
-
-**Operations**
-* Employee shift tracking
-* Custom receipt layouts
-* Offline mode with sync
-* Multi-currency support
-* Custom tax classes
-* POS-specific order prefixes
-
-[Upgrade to Pro](https://readypos.johuniq.tech/) | [View Pro Demo](https://readypos.johuniq.tech/)
+* **Refund Processing** - Issue full or partial refunds directly from the POS
+* **Variable Product Support** - Interactive modal for selecting product variations
+* **Audit Logging** - Track who did what and when for accountability
 
 = Perfect for =
 
@@ -112,7 +70,6 @@ Upgrade to Ready POS Pro for advanced retail management:
 
 = Support & Documentation =
 
-* [Visit Website](https://readypos.johuniq.tech/)
 * [Support Forum](https://wordpress.org/support/plugin/ready-pos/)
 
 = Privacy & Data =
@@ -120,7 +77,7 @@ Upgrade to Ready POS Pro for advanced retail management:
 Ready POS stores all customer and transaction data locally in your WordPress database. No data is sent to external servers except:
 * When using WooCommerce payment gateways (follows WooCommerce privacy policy)
 * When checking for plugin updates (follows WordPress.org privacy policy)
-* When activating a Pro license (license key validation only)
+
 
 The plugin does NOT:
 * Track users across sites
@@ -197,32 +154,26 @@ Yes! Ready POS is fully responsive and optimized for tablets and touchscreen dev
 
 = How many users can access the POS? =
 
-The free version supports up to 2 cashier users. Upgrade to Pro for unlimited cashiers and advanced user management features.
+Ready POS supports role-based access for cashiers and managers. Add as many user accounts as you need through the standard WordPress user system and assign them the POS Cashier or POS Manager role.
 
 = Can I use multiple registers? =
 
-The free version includes 1 outlet with 1 register, perfect for small shops. Pro version supports unlimited outlets and registers for multi-location businesses.
+Yes. Create as many outlets and registers as your business needs. Each register tracks its own cash drawer, sessions, and sales.
 
 = What hardware is supported? =
 
-**Free Version:**
 * USB and Bluetooth barcode scanners (keyboard emulation mode)
 * Standard printers (using browser print)
-
-**Pro Version:**
 * ESC/POS thermal receipt printers (USB/Ethernet/Bluetooth)
 * Cash drawers with RJ11 or USB connection
-* Customer-facing displays (pole displays)
-* Electronic scales with USB/serial connection
-* Advanced barcode scanner features
 
 = Does it work offline? =
 
-Basic functionality works offline in both versions. The Pro version includes advanced offline mode with automatic sync and conflict resolution when the connection is restored.
+Ready POS requires an active connection to your WordPress + WooCommerce site to load products, process orders, and sync inventory. An internet connection is required during checkout. Local caching speeds up product and inventory loading when the connection is slow, but the plugin does not queue orders for later sync.
 
 = How do I print receipts? =
 
-Free version supports browser-based printing to any printer. Pro version adds thermal printer support with custom ESC/POS templates for faster, more professional receipts.
+Ready POS supports browser-based printing to any standard printer, plus ESC/POS thermal receipt printers for faster, more professional receipts.
 
 = Can I process refunds? =
 
@@ -243,13 +194,13 @@ Yes. Ready POS follows WordPress and WooCommerce security best practices:
 Yes! You can customize:
 * Receipt header and footer text
 * Store logo
-* Paper width settings (thermal printers in Pro)
+* Paper width settings
 * Contact information
 * Custom messages and promotions
 
 = Does it support multiple currencies? =
 
-Ready POS uses your WooCommerce currency settings. Multi-currency support (for border stores or tourist locations) is available in the Pro version.
+Ready POS uses your WooCommerce currency settings. For multi-currency setups, configure multiple currencies in WooCommerce and Ready POS will follow.
 
 = Can I import my existing customers? =
 
@@ -257,26 +208,13 @@ Yes! Ready POS automatically uses your existing WooCommerce customers. No import
 
 = What payment methods are supported? =
 
-**Free Version:**
 * Cash
 * Card (manual entry)
-
-**Pro Version:**
-* Split payments (cash + card combination)
-* Gift cards
-* Store credit
-* Layaway/deposits
-* EMV card reader integration
-* Custom payment types
 
 = How do I handle inventory? =
 
 Ready POS syncs with WooCommerce inventory:
 * Stock decreases automatically on POS sales
-* Low stock warnings (Pro)
-* Inter-outlet transfers (Pro)
-* Physical inventory counting (Pro)
-* Barcode label printing (Pro)
 
 = Can I sell variable products? =
 
@@ -291,54 +229,9 @@ Yes! Register session management includes:
 * Cash vs. expected reports
 * Cashier accountability
 
-= Can I get sales reports? =
-
-**Free Version:**
-* Daily sales summary
-* Transaction history
-* Basic order details
-
-**Pro Version:**
-* Cashier performance analytics
-* Product sales breakdown
-* Payment method reports
-* Custom date range reports
-* Multi-outlet comparisons
-* Export to CSV/PDF
-
-= Is there a demo? =
-
-Yes! Visit [our website](https://readypos.johuniq.tech/) to try Ready POS Pro with full features. Contact us for a personalized demo of your specific use case.
-
-= How do I upgrade to Pro? =
-
-1. Visit [our website](https://readypos.johuniq.tech/) to purchase a license
-2. You'll receive a license key via email
-3. In your WordPress dashboard, go to **WooCommerce > POS > Settings > License**
-4. Enter your license key and click **Activate**
-5. Pro features unlock immediately!
-
-= Do I need to reinstall for Pro? =
-
-No! Simply enter your Pro license key in the settings. All your data, settings, and configurations remain intact.
-
-= What support is provided? =
-
-**Free Version:**
-* Community support via WordPress.org forums
-* Documentation and guides
-* GitHub issue tracking
-
-**Pro Version:**
-* Priority email support
-* Live chat support
-* Phone support for annual plans
-* Custom implementation assistance
-* Dedicated account manager for enterprise
-
 = Can I use this in multiple locations? =
 
-The free version is limited to 1 outlet. Pro version supports unlimited locations with separate inventory, registers, and staff for each outlet.
+Yes. Create as many outlets as you need, each with its own inventory, registers, and staff.
 
 = Is it translation-ready? =
 
@@ -373,23 +266,19 @@ Before deleting the plugin, go to **WooCommerce > POS > Settings > Advanced** an
 
 = Where can I get help? =
 
-* **Website:** [readypos.johuniq.tech](https://readypos.johuniq.tech/)
 * **Support Forum:** [WordPress.org Support](https://wordpress.org/support/plugin/ready-pos/)
-* **Pro Support:** [support.johuniq.tech](https://support.johuniq.tech)
-* **GitHub Issues:** [github.com/johuniq/ready-pos](https://github.com/johuniq/ready-pos)
 
 == Screenshots ==
 
 1. **POS Terminal Interface** - Fast, distraction-free checkout screen with product grid, cart, and payment options
 2. **Product Selection** - Search, filter by category, and quick-add products to cart with barcode scanner support
-3. **Payment Processing** - Split tender, cash calculator, and change due display
+3. **Payment Processing** - Cash calculator and change due display
 4. **Register Session Management** - Track opening float, sales, and closing reconciliation
-5. **Dashboard Analytics** - Sales overview, top products, and performance metrics
-6. **Customer Management** - Quick customer search, add new customers, and view purchase history
-7. **Settings Panel** - Customize receipts, payment options, hardware, and POS preferences
-8. **Order History** - View all transactions with filters, search, and export options
-9. **Variable Product Selection** - Interactive modal for product variations with stock indicators
-10. **Customer-Facing Display** - Second screen showing cart items and totals for customers
+5. **Customer Management** - Quick customer search, add new customers, and view purchase history
+6. **Settings Panel** - Customize receipts, payment options, hardware, and POS preferences
+7. **Order History** - View all transactions with filters and search
+8. **Variable Product Selection** - Interactive modal for product variations with stock indicators
+9. **Customer-Facing Display** - Second screen showing cart items and totals for customers
 
 == Changelog ==
 
@@ -398,15 +287,14 @@ Before deleting the plugin, go to **WooCommerce > POS > Settings > Advanced** an
 
 * Fast fullscreen POS terminal interface
 * WooCommerce inventory synchronization
-* Single outlet & register support
-* Customer management (up to 50 customers in free version)
+* Multi-outlet and multi-register support
+* Customer management
 * Register session management with cash tracking
 * Cash and card payment support
 * Receipt generation and printing
 * Barcode scanner support (keyboard emulation)
 * Variable product support with attribute selection
 * Cart hold/park functionality
-* Basic sales dashboard
 * Order history and management
 * Full or partial refund processing
 * Role-based user access (POS Cashier, POS Manager)
@@ -427,27 +315,6 @@ Before deleting the plugin, go to **WooCommerce > POS > Settings > Advanced** an
 * REST API endpoints for extensibility
 * GPLv2 licensed - open source
 
-**Pro Features Available:**
-* Unlimited outlets and registers
-* Unlimited cashiers
-* Multi-location inventory
-* Split payments
-* Gift cards and store credit
-* Thermal receipt printer support
-* Cash drawer control
-* Weight scale integration
-* Customer-facing display
-* Loyalty points program
-* Advanced reporting and analytics
-* Offline mode with sync
-* Barcode label printing
-* Low stock alerts
-* Employee shift tracking
-* Custom receipt templates
-* And much more!
-
-[View Pro Features](https://readypos.johuniq.tech/)
-
 = Future Roadmap =
 
 * Kitchen Display System (KDS)
@@ -458,8 +325,6 @@ Before deleting the plugin, go to **WooCommerce > POS > Settings > Advanced** an
 * Advanced inventory forecasting
 * Multi-warehouse support
 * Integration with popular accounting software
-
-== Upgrade Notice ==
 
 = 1.0.0 =
 Initial release of Ready POS for WooCommerce. Transform your store into a professional point of sale system!
@@ -490,12 +355,6 @@ Ready POS does **NOT** send data to external servers except in these specific ca
 * When processing card payments through WooCommerce gateways
 * Follows the privacy policy of each configured payment gateway
 * Only payment data is transmitted - no additional POS data
-
-**License Validation (Pro version only)**
-* License key validation when activating Pro features
-* Only sends: license key, site URL, and WordPress version
-* No customer data, transaction data, or personal information is transmitted
-* Managed through Polar.sh with secure, encrypted connections
 
 = Third-Party Services =
 
@@ -549,12 +408,7 @@ Ready POS does not knowingly collect information from children under 13. The plu
 = Contact =
 
 For privacy concerns or data deletion requests:
-* Email: privacy@johuniq.tech
 * Support: https://wordpress.org/support/plugin/ready-pos/
-
-For Pro license and validation privacy:
-* Powered by Polar.sh
-* Privacy policy: https://polar.sh/legal/privacy
 
 = Changes to Privacy Policy =
 
@@ -564,21 +418,9 @@ Last updated: June 2, 2024
 
 == Support ==
 
-= Free Support =
+= Getting Support =
 
-* **Website:** [readypos.johuniq.tech](https://readypos.johuniq.tech/)
 * **WordPress.org Forums:** Community support at [wordpress.org/support/plugin/ready-pos](https://wordpress.org/support/plugin/ready-pos/)
-* **GitHub Issues:** Report bugs and request features at [github.com/johuniq/ready-pos](https://github.com/johuniq/ready-pos)
-* **Video Tutorials:** Step-by-step guides on our YouTube channel
-
-= Pro Support (License Holders) =
-
-* **Priority Email Support:** Response within 24 hours (business days)
-* **Live Chat Support:** Real-time assistance during business hours
-* **Phone Support:** Available for annual license holders
-* **Implementation Assistance:** Help with setup and configuration
-* **Custom Development:** Paid services for specific requirements
-* **Dedicated Account Manager:** For enterprise licenses
 
 = Before Requesting Support =
 
@@ -592,19 +434,13 @@ Last updated: June 2, 2024
 
 * WordPress version
 * WooCommerce version
-* Ready POS version (Free or Pro)
+* Ready POS version
 * PHP version
 * Description of the issue
 * Steps to reproduce
 * Screenshots or screen recordings (if applicable)
 * Browser console errors (if applicable)
 * Any error messages from debug.log
-
-= Response Times =
-
-* **Free Support:** 2-5 business days (community-based)
-* **Pro Support:** 24 hours (priority queue)
-* **Enterprise Support:** 4 hours (dedicated team)
 
 == Credits ==
 
@@ -648,9 +484,6 @@ Ready POS is built with modern web technologies and open-source libraries:
 * **WebUSB API** - Direct hardware communication
 * **Web Serial API** - Serial device communication
 
-= License Management =
-* **Polar.sh** - Modern software licensing platform
-
 = Special Thanks =
 
 * WordPress and WooCommerce communities
@@ -659,16 +492,35 @@ Ready POS is built with modern web technologies and open-source libraries:
 * Translation contributors
 * Everyone who provided feedback
 
+= Source Code =
+
+The source code for all compiled JavaScript and CSS assets is publicly available on GitHub:
+
+**https://github.com/Johuniq/ready-pos**
+
+This repository contains the unminified, human-readable source files used to generate the production bundles included in this plugin. The source code is located in the `src/` directory.
+
+= Building from Source =
+
+To build the plugin assets from source:
+
+1. Clone the repository: `git clone https://github.com/Johuniq/ready-pos.git`
+2. Install dependencies: `npm install`
+3. Install PHP dependencies: `composer install`
+4. Build for production: `npm run build`
+
+The build process uses Vite for the admin and frontend React applications, and @wordpress/scripts for Gutenberg blocks. Development mode is available via `npm run dev`.
+
 = Contributing =
 
 Ready POS is open source (GPLv2)! Contributions are welcome:
-* **Code:** Submit pull requests on GitHub
+* **Code:** Submit pull requests on [GitHub](https://github.com/Johuniq/ready-pos)
 * **Translations:** Help translate on WordPress.org
 * **Documentation:** Improve guides and tutorials
-* **Bug Reports:** Report issues on GitHub
-* **Feature Requests:** Suggest improvements
+* **Bug Reports:** Report issues on [GitHub](https://github.com/Johuniq/ready-pos/issues)
+* **Feature Requests:** Suggest improvements on [GitHub](https://github.com/Johuniq/ready-pos/issues)
 
-Visit [github.com/johuniq/ready-pos](https://github.com/johuniq/ready-pos) to get started!
+Visit [wordpress.org/plugins/ready-pos](https://wordpress.org/plugins/ready-pos/) to get started!
 
 == License ==
 

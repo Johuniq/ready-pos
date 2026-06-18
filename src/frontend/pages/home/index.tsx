@@ -9,7 +9,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import {
   Store,
-  BarChart3,
   ShoppingCart,
   Users,
   CreditCard,
@@ -31,16 +30,10 @@ export default function ReadyPOSLanding() {
         "Manage multiple store locations, registers, and staff from a unified dashboard.",
     },
     {
-      icon: BarChart3,
-      title: "Real-Time Analytics",
-      description:
-        "Track sales, inventory, and performance metrics with live reporting and insights.",
-    },
-    {
       icon: ShoppingCart,
       title: "Fast Checkout",
       description:
-        "Lightning-fast POS terminal with barcode scanning, cart parking, and split payments.",
+        "Lightning-fast POS terminal with barcode scanning and quick checkout.",
     },
     {
       icon: Users,
@@ -64,11 +57,9 @@ export default function ReadyPOSLanding() {
 
   const benefits = [
     "Seamless WooCommerce Integration",
-    "Offline Mode Support",
-    "Receipt Printing & Email",
-    "Employee Shift Management",
+    "Receipt Printing",
     "Discount & Coupon Support",
-    "Refund & Exchange Processing",
+    "Refund Processing",
   ];
 
   return (
@@ -100,7 +91,7 @@ export default function ReadyPOSLanding() {
             </a>
             <a
               className="text-sm font-medium hover:text-primary transition-colors"
-              href="https://johuniq.tech"
+              href="https://wordpress.org/support/plugin/ready-pos/"
               target="_blank"
               rel="noopener noreferrer">
               Support
@@ -145,28 +136,28 @@ export default function ReadyPOSLanding() {
                   size="lg"
                   variant="outline"
                   className="font-bold text-base px-8">
-                  <BarChart3 className="mr-2 h-5 w-5" />
+                  <Store className="mr-2 h-5 w-5" />
                   Get Started
                 </Button>
               </div>
 
               <div className="grid grid-cols-3 gap-8 pt-8 border-t w-full max-w-2xl">
                 <div>
-                  <div className="text-3xl font-black text-primary">99.9%</div>
+                  <div className="text-3xl font-black text-primary">v1.0</div>
                   <div className="text-xs text-muted-foreground font-medium">
-                    Uptime
+                    Stable Release
                   </div>
                 </div>
                 <div>
-                  <div className="text-3xl font-black text-primary">500+</div>
+                  <div className="text-3xl font-black text-primary">GPLv2</div>
                   <div className="text-xs text-muted-foreground font-medium">
-                    Active Stores
+                    Open Source
                   </div>
                 </div>
                 <div>
-                  <div className="text-3xl font-black text-primary">24/7</div>
+                  <div className="text-3xl font-black text-primary">Free</div>
                   <div className="text-xs text-muted-foreground font-medium">
-                    Support
+                    Forever
                   </div>
                 </div>
               </div>
@@ -379,7 +370,7 @@ export default function ReadyPOSLanding() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li>
                   <a
-                    href="https://johuniq.tech"
+                    href="https://wordpress.org/plugins/ready-pos/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:text-foreground transition-colors">
@@ -440,15 +431,15 @@ export default function ReadyPOSLanding() {
 
           <div className="mt-8 pt-8 border-t flex flex-col sm:flex-row justify-between items-center gap-4">
             <p className="text-xs text-muted-foreground">
-              © 2024 Ready POS by{" "}
+              © 2024 Ready POS. Released under the{" "}
               <a
-                href="https://johuniq.tech"
+                href="https://wordpress.org/plugins/ready-pos/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-foreground transition-colors font-semibold">
-                Johuniq
+                GPLv2 or later
               </a>
-              . All rights reserved.
+              .
             </p>
             <div className="flex gap-4">
               <Badge variant="outline" className="text-xs">

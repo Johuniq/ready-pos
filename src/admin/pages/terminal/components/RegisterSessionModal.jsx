@@ -34,7 +34,6 @@ export default function RegisterSessionModal({
   open,
   onOpenChange,
   mode = "open",
-  onShiftChange,
 }) {
   const [session, setSession] = useAtom(sessionAtom);
   const [settings] = useAtom(settingsAtom);
@@ -116,8 +115,8 @@ export default function RegisterSessionModal({
 
       if (res.success) {
         toast.success("Register opened successfully!");
-        const currentSessionRes = await api.get("/sessions/current");
-        setSession(currentSessionRes);
+        // Use session data from the open response — no extra API call needed
+        setSession({ has_active: true, session: res.data });
         onOpenChange(false);
       } else {
         toast.error("Failed to open register");
@@ -139,21 +138,7 @@ export default function RegisterSessionModal({
 
     setLoading(true);
     try {
-      // First, try to auto clock-out the shift
-      try {
-        const shiftRes = await api.post("/shifts/clock-out", {
-          sessionId: session.session.id,
-          notes: "Automatic clock-out on register closing.",
-        });
-        if (shiftRes.success && onShiftChange) {
-          onShiftChange(null);
-        }
-      } catch (shiftErr) {
-        // Log but don't block register closing if shift clock-out fails
-        
-      }
-
-      // Then close the register
+      // Close the register
       const res = await api.post("/sessions/close", {
         sessionId: session.session.id,
         closingCash: parseFloat(closingCash) || 0,
@@ -284,7 +269,7 @@ export default function RegisterSessionModal({
                 Opening Notes
               </label>
               <Textarea
-                placeholder="Enter shift notes or notes on cash drawer status..."
+                placeholder="Enter notes on cash drawer status..."
                 value={openingNotes}
                 onChange={(e) => setOpeningNotes(e.target.value)}
                 className="text-xs min-h-16 resize-none"

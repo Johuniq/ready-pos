@@ -69,7 +69,7 @@ class Uninstall {
 	 * @return void
 	 */
 	public static function clear_roles() {
-		// Remove legacy custom roles from the GPL build.
+		// Remove legacy custom roles.
 		remove_role( 'pos_cashier' );
 		remove_role( 'pos_manager' );
 
@@ -199,10 +199,7 @@ class Uninstall {
 			$wpdb->prefix . 'readypos_inventory_count_items',
 			$wpdb->prefix . 'readypos_purchase_orders',
 			$wpdb->prefix . 'readypos_suppliers',
-			$wpdb->prefix . 'readypos_gift_cards',
-			$wpdb->prefix . 'readypos_returns',
 			$wpdb->prefix . 'readypos_saved_carts',
-			$wpdb->prefix . 'readypos_employee_shifts',
 			$wpdb->prefix . 'readypos_audit_log',
 		);
 
@@ -266,7 +263,6 @@ class Uninstall {
 			'inventory_counts',
 			'purchase_orders',
 			'suppliers',
-			'gift_cards',
 			'returns',
 			'saved_carts',
 		);

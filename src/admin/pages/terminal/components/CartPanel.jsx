@@ -5,8 +5,6 @@ import {
   Minus,
   Tag,
   CreditCard,
-  Play,
-  Pause,
   X,
   Star,
   Gift,
@@ -44,7 +42,7 @@ import { api } from "@/lib/api";
 import { isPaymentMethodEnabled } from "@/lib/paymentMethods";
 import ShippingModal from "./ShippingModal";
 
-export default function CartPanel({ onOpenPayment, onOpenHeldCarts }) {
+export default function CartPanel({ onOpenPayment }) {
   const {
     cart,
     discount,
@@ -112,32 +110,6 @@ export default function CartPanel({ onOpenPayment, onOpenHeldCarts }) {
     setNotes(tempNotes);
     setShowNotesModal(false);
     toast.success("Order notes saved");
-  };
-
-  const handleHoldCart = async () => {
-    if (cart.length === 0) {
-      toast.error("Cart is empty");
-      return;
-    }
-
-    try {
-      const payload = {
-        cart_items: cart,
-        customer_id: customer?.id || 0,
-        discount_type: discount.type,
-        discount_value: discount.value,
-        notes: notes,
-      };
-
-      await api.post("/orders/hold", { cart: payload });
-      clearCart();
-      toast.success("Cart put on hold");
-      if (onOpenHeldCarts) {
-        // Refresh counts or list if needed
-      }
-    } catch (err) {
-      toast.error(err.message || "Failed to hold cart");
-    }
   };
 
   return (
@@ -444,16 +416,6 @@ export default function CartPanel({ onOpenPayment, onOpenHeldCarts }) {
             className="w-12 h-11 shrink-0 rounded-xl hover:bg-destructive/10 hover:text-destructive border-border"
             title="Clear Cart">
             <Trash2 className="w-4.5 h-4.5" />
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleHoldCart}
-            disabled={cart.length === 0}
-            className="w-12 h-11 shrink-0 rounded-xl border-border"
-            title="Hold Order">
-            <Pause className="w-4.5 h-4.5 text-amber-500" />
           </Button>
 
           <Button

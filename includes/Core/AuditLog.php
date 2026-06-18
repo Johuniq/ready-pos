@@ -31,7 +31,6 @@ class AuditLog {
 	const EVENT_FINANCIAL = 'financial';
 	const EVENT_SYSTEM = 'system';
 	const EVENT_CART = 'cart';
-	const EVENT_SHIFT = 'shift';
 
 	/**
 	 * Severity levels
@@ -126,36 +125,23 @@ class AuditLog {
 	}
 
 	/**
-	 * Get client IP address (handles proxies and load balancers)
+	 * Get client IP address.
+	 *
+	 * Uses only REMOTE_ADDR to prevent IP spoofing via forwarding
+	 * headers which can be set by the client.
 	 *
 	 * @return string
 	 */
 	private static function get_client_ip() {
-		$ip_keys = array(
-			'HTTP_CF_CONNECTING_IP', // Cloudflare
-			'HTTP_X_REAL_IP',        // Nginx proxy
-			'HTTP_X_FORWARDED_FOR',  // Most proxies
-			'REMOTE_ADDR',           // Direct connection
-		);
+		$remote_addr = isset( $_SERVER['REMOTE_ADDR'] )
+			? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) )
+			: '';
 
-		foreach ( $ip_keys as $key ) {
-			if ( ! empty( $_SERVER[ $key ] ) ) {
-				$ip = sanitize_text_field( wp_unslash( $_SERVER[ $key ] ) );
-				
-				// X-Forwarded-For may contain multiple IPs
-				if ( strpos( $ip, ',' ) !== false ) {
-					$ips = explode( ',', $ip );
-					$ip = trim( $ips[0] );
-				}
-				
-				// Validate IP address
-				if ( filter_var( $ip, FILTER_VALIDATE_IP ) ) {
-					return $ip;
-				}
-			}
+		if ( '' === $remote_addr || ! filter_var( $remote_addr, FILTER_VALIDATE_IP ) ) {
+			return 'unknown';
 		}
 
-		return 'unknown';
+		return $remote_addr;
 	}
 
 	/**

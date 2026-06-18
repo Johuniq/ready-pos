@@ -59,6 +59,7 @@ class Admin {
 		add_filter( 'admin_footer_text', array( $this, 'custom_footer' ) );
 		add_filter( 'update_footer', array( $this, 'custom_footer_version' ), 99 );
 		add_action( 'admin_notices', array( $this, 'show_cache_notice' ) );
+		add_filter( 'style_loader_tag', array( $this, 'manifest_style_tag' ), 10, 2 );
 	}
 
 	/**
@@ -74,7 +75,7 @@ class Admin {
 		}
 
 		// Check if cache was just cleared
-		if ( isset( $_GET['readypos_cache_cleared'] ) && '1' === $_GET['readypos_cache_cleared'] ) {
+		if ( isset( $_GET['readypos_cache_cleared'] ) && '1' === sanitize_text_field( wp_unslash( $_GET['readypos_cache_cleared'] ) ) ) {
 			?>
 			<div class="notice notice-success is-dismissible">
 				<p>
@@ -101,15 +102,9 @@ class Admin {
 			);
 			wp_localize_script( self::HANDLE, self::OBJ_NAME, $this->get_data() );
 
-			// PWA: inject manifest link and service worker registration.
-			add_action(
-				'admin_head',
-				function () {
-					$manifest_url = plugins_url( 'assets/manifest.json', READYPOS_PLUGIN_FILE );
-					echo '<link rel="manifest" href="' . esc_url( $manifest_url ) . '">' . "\n";
-					echo '<meta name="theme-color" content="#2563eb">' . "\n";
-				}
-			);
+			// PWA: enqueue manifest link and theme-color meta tag.
+			wp_enqueue_style( 'readypos-manifest', plugins_url( 'assets/manifest.json', READYPOS_PLUGIN_FILE ), array(), READYPOS_VERSION );
+			add_action( 'admin_head', array( $this, 'output_pwa_meta' ) );
 
 			// SECURITY FIX #WP.ORG-2: Use wp_enqueue_script instead of inline <script> tags
 			add_action(
@@ -139,6 +134,32 @@ class Admin {
 				}
 			);
 		}
+	}
+
+	/**
+	 * Output PWA theme-color meta tag and preconnect for manifest in admin head.
+	 *
+	 * Note: WordPress has no wp_enqueue_* API for <link rel="manifest"> or <meta>.
+	 * We use wp_resource_hints for the manifest URL and output the meta tag directly.
+	 *
+	 * @return void
+	 */
+	public function output_pwa_meta() {
+		echo '<meta name="theme-color" content="#2563eb">' . "\n";
+	}
+
+	/**
+	 * Change the rel attribute for the manifest stylesheet tag.
+	 *
+	 * @param string $html    The link tag HTML.
+	 * @param string $handle  The stylesheet handle.
+	 * @return string Modified HTML.
+	 */
+	public function manifest_style_tag( $html, $handle ) {
+		if ( 'readypos-manifest' === $handle ) {
+			$html = str_replace( "rel='stylesheet'", "rel='manifest'", $html );
+		}
+		return $html;
 	}
 
 	/**
@@ -206,8 +227,9 @@ class Admin {
 		$screen = get_current_screen();
 		if ( $screen && in_array( $screen->id, $this->allowed_screens, true ) ) {
 			return sprintf(
-				'<span id="footer-thankyou">%s <a href="https://johuniq.tech" target="_blank" rel="noopener">Johuniq</a></span>',
-				__( 'Ready POS — Professional WooCommerce Point of Sale. Built by', 'ready-pos-for-woocommerce' )
+				'<span id="footer-thankyou">%s <a href="https://wordpress.org/plugins/ready-pos/" target="_blank" rel="noopener">%s</a></span>',
+				__( 'Ready POS — Professional WooCommerce Point of Sale. Released under', 'ready-pos-for-woocommerce' ),
+				__( 'GPLv2 or later', 'ready-pos-for-woocommerce' )
 			);
 		}
 		return $text;

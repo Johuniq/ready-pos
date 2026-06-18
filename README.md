@@ -15,41 +15,31 @@ Built on a powerful decoupled architecture featuring a **Laravel-inspired Eloque
 
 ## 🚀 Quick Links
 
-- **WordPress.org:** [Download Free Version](https://wordpress.org/plugins/ready-pos/)
-- **Website:** [readypos.johuniq.tech](https://readypos.johuniq.tech/)
-- **Pro Version:** [Upgrade to Pro](https://readypos.johuniq.tech/)
-- **Demo:** [Try Live Demo](https://readypos.johuniq.tech/)
+- **WordPress.org:** [Download from WordPress.org](https://wordpress.org/plugins/ready-pos/)
+- **Source Code:** [View on GitHub](https://github.com/Johuniq/ready-pos)
 - **Support:** [Get Help](https://wordpress.org/support/plugin/ready-pos/)
 
 ---
 
 ## ⚡ Features
 
-### 🔄 **Offline Mode & Real-time Sync** ✨ NEW
+### 🔄 Real-time Multi-Terminal Sync
 
-- **Complete Offline Operation**: Continue selling during internet outages with local order queue and inventory cache
-- **Intelligent Sync**: Automatic synchronization with exponential backoff retry and idempotency protection
-- **Conflict Resolution**: User-friendly UI to resolve inventory conflicts with local/server/manual options
-- **Sync Dashboard**: Full visibility into pending orders, failed operations, and sync status
 - **Real-time Multi-Terminal Updates**: Register A sells → Register B updates instantly (<100ms with WebSocket)
 - **Automatic Fallback**: Seamless switch between WebSocket (instant) and REST polling (5-second) modes
+- **Local Caching**: Fast product and inventory loading via local cache to keep the terminal responsive on slower connections
 - **Zero Configuration**: Works out-of-the-box on any hosting with automatic fallback
-- **Audit Trail**: Complete history of all sync operations and conflict resolutions
 
 📚 **Documentation:**
-- [Offline Mode Guide](docs/OFFLINE_MODE.md)
 - [Real-time Sync Guide](docs/REALTIME_SYNC.md)
-- [Quick Start](docs/OFFLINE_MODE_QUICK_START.md)
-- [Complete Summary](OFFLINE_AND_REALTIME_COMPLETE.md)
 
 ### 🛒 High-Performance Fullscreen POS Terminal
 
 - **Dynamic Inventory Grid**: Instant search, category filters, and quick-add support.
 - **Product Variations**: Interactive modal to select product attributes (size, color, etc.) with real-time stock indicators.
 - **Barcode Scanner Support**: Native keyboard listener that detects barcode sweeps and adds items directly to the checkout.
-- **Cart Parking & Held Orders**: Save active cart sessions ("Hold/Park") and recall them instantly on any register.
 - **Dynamic Discounts & Taxes**: Apply custom cart-level discounts, line-item adjustments, and auto-calculate WooCommerce taxes.
-- **Flexible Checkout & Numpad**: Rapid cash/card splitting, quick-cash action buttons, change-due calculator, and integrated numeric keypad.
+- **Flexible Checkout & Numpad**: Quick-cash action buttons, change-due calculator, and integrated numeric keypad.
 - **Thermal & Standard Receipt Printing**: Auto-generated custom thermal layouts with customizable header, footer, receipt info, and print preview.
 - **Customer-Facing Display**: Real-time second screen showing cart items, prices, totals, and promotional messages for enhanced customer transparency.
 
@@ -59,13 +49,6 @@ Built on a powerful decoupled architecture featuring a **Laravel-inspired Eloque
 - **Register Controls**: Define specific cash drawers/registers per outlet.
 - **Cashier Register Sessions**: Full drawer tracking. Keep record of initial cash balances, cashier logins, session statuses, and closing drawer cash reconciliation reports.
 - **POS Customers Manager**: Seamless customer selection (guest checkouts, typeahead search, and rapid "Quick Add Customer" drawer form).
-
-### 📊 Back-Office Admin & Analytics
-
-- **Dynamic Dashboard**: Modern interactive charts showing net sales, order volume, cashier statistics, and recent POS sales.
-- **Visual Analytics**: Interactive Recharts detailing sales trends, checkout type split, cashier performance metrics, top-selling products, and payment methods.
-- **Order Manager**: Paginated view of all transaction histories, itemized invoices, cashier logs, and immediate refund/return handlers.
-- **Granular Settings**: Customize thermal receipt layout, payment options, register restrictions, and cashier workflows.
 
 ---
 
@@ -82,7 +65,7 @@ Built on a powerful decoupled architecture featuring a **Laravel-inspired Eloque
 ├── 📂 includes               # Core Plugin Logic
 │   ├── 📂 Admin              # WordPress admin menu registration
 │   ├── 📂 Assets             # Dynamic Vite build asset enqueueing & localization injection
-│   ├── 📂 Controllers        # REST Controllers (Products, Orders, Customers, Sessions, Reports, Settings)
+│   ├── 📂 Controllers        # REST Controllers (Products, Orders, Customers, Sessions, Settings)
 │   ├── 📂 Core               # WooCommerce integration checks, Custom POS page routers, and User Roles
 │   ├── 📂 Models             # Eloquent Models mapping database tables to active records
 │   ├── 📂 Routes             # Custom Laravel-like REST API router
@@ -91,7 +74,7 @@ Built on a powerful decoupled architecture featuring a **Laravel-inspired Eloque
 ├── 📂 src                    # React Client (Vite development and build paths)
 │   ├── 📂 admin              # Admin app codebase
 │   │   ├── 📂 hooks          # Custom hooks (e.g., useCart.js)
-│   │   ├── 📂 pages          # Dashboard, Orders, Reports, Outlets, Settings, POS Terminal
+│   │   ├── 📂 pages          # Dashboard, Orders, Outlets, Settings, POS Terminal
 │   │   ├── 📂 stores         # State stores powered by Jotai (posStore.js)
 │   │   └── 📄 main.jsx
 │   ├── 📂 components         # Custom UI library built on Shadcn primitives and Tailwind
@@ -119,7 +102,7 @@ Built on a powerful decoupled architecture featuring a **Laravel-inspired Eloque
 
    ```bash
    cd wp-content/plugins
-   git clone <repository-url> ready-pos
+   git clone https://github.com/Johuniq/ready-pos.git ready-pos
    cd ready-pos
    ```
 
@@ -135,48 +118,41 @@ Built on a powerful decoupled architecture featuring a **Laravel-inspired Eloque
    - Table seeding (setting up the default POS Outlet and main register)
    - Registering a dedicated "POS Cashier" user role.
 
+### Building Assets from Source
+
+The plugin includes pre-built production assets in `assets/admin/dist/` and `assets/frontend/dist/`. To rebuild them from the source code in `src/`:
+
+```bash
+# Development mode (hot-reload on ports 5173/5174)
+npm run dev
+
+# Production build
+npm run build
+```
+
+The build uses:
+- **Vite** for admin and frontend React applications
+- **@wordpress/scripts** (Webpack) for Gutenberg blocks
+- **Tailwind CSS** for styling
+- **React 18** with JSX
+
 ---
 
-## 📋 Free vs Pro Features
+## 📋 Features
 
-### ✅ Free Version
+Ready POS includes everything you need to run a modern point-of-sale operation:
 
-Perfect for small stores and getting started:
-
-- **Single outlet with 1 register** - Great for single-location stores
-- **Up to 2 cashiers** - Small team support
-- **Up to 50 customers** - Customer management basics
-- **Up to 100 products** - Suitable for boutiques and specialty shops
-- **Full POS terminal** - Complete checkout interface
+- **Multi-outlet & multi-register** - Map physical store locations to distinct inventories, tax zones, and operational guidelines
+- **Unlimited cashiers & customers** - Role-based access for cashiers and managers; integrates with all your existing WooCommerce customers
+- **Full POS terminal** - Complete checkout interface with cart, payment, and receipt
 - **Barcode scanning** - USB/Bluetooth scanner support
 - **Cash & card payments** - Accept multiple payment types
-- **Receipt printing** - Browser-based printing
-- **Register sessions** - Track opening/closing balances
-- **Basic reporting** - Daily sales and transaction history
+- **Receipt printing** - Browser-based and ESC/POS thermal printer support
+- **Register sessions** - Track opening/closing cash drawer balances
 - **WooCommerce sync** - Real-time inventory updates
-
-### 🌟 Pro Version
-
-Scale your retail operations:
-
-- **Unlimited outlets & registers** - Multi-location support
-- **Unlimited cashiers & customers** - No limits as you grow
 - **Multi-location inventory** - Track stock per outlet
-- **Split payments** - Cash + card combinations
-- **Gift cards & store credit** - Enhanced payment options
-- **Thermal receipt printers** - ESC/POS printer support
 - **Cash drawer control** - Automatic drawer opening
-- **Weight scales** - For produce and bulk items
-- **Customer-facing display** - Second screen for customers
-- **Loyalty points** - Reward repeat customers
-- **Advanced reports** - Cashier performance, product analytics
-- **Offline mode** - Keep selling during internet outages
-- **Employee shifts** - Track cashier work hours
-- **Barcode labels** - Print product labels
-- **Low stock alerts** - Automatic inventory notifications
-- **Priority support** - Email, chat, and phone assistance
-
-[Compare Plans](https://readypos.johuniq.tech/) | [View Pro Demo](https://readypos.johuniq.tech/)
+- **Real-time sync** - Keep all terminals updated across the store
 
 ---
 
@@ -230,18 +206,6 @@ All custom REST API endpoints are registered under `includes/Routes/Api.php` and
 
 - `GET /readypos/v1/products` — Fetches a paginated, search-filtered lists of active products with inventory and variable listings.
 
-### 📺 Customer Display
-
-- **Real-time Second Screen Display** — Open customer-facing display via Terminal header button
-- **Live Cart Synchronization** — Items, prices, and totals update instantly using BroadcastChannel API
-- **Idle/Welcome Screen** — Displays store branding and rotating promotional messages when cart is empty
-- **Customer Information** — Shows selected customer name and loyalty status
-- **Configurable Messages** — Customize welcome message and up to 4 promotional messages in Settings
-- **Adjustable Idle Timeout** — Set how long before promotional messages appear (10-120 seconds)
-- **Theme-Aware Display** — Automatically matches light/dark theme from main terminal
-- **Multi-Monitor Support** — Optimized for extended desktop setups with second monitor facing customer
-- **Zero-Latency Updates** — Browser-based sync with no server requests required
-
 ### 💰 Orders (`includes/Controllers/Orders/Actions.php`)
 
 - `POST /readypos/v1/orders` — Submits a checkout cart. Creates WooCommerce orders, handles custom metadata, decrements stock, calculates change, and records cashier details.
@@ -258,10 +222,6 @@ All custom REST API endpoints are registered under `includes/Routes/Api.php` and
 - `POST /readypos/v1/sessions/close` — Closes a session, records cash drawer reconciliations, and logs transaction counts.
 - `GET /readypos/v1/sessions/status` — Checks current cashier session status.
 
-### 📈 Reports (`includes/Controllers/Reports/Actions.php`)
-
-- `GET /readypos/v1/reports/summary` — Analytics details providing graphs, top items, cash vs card shares, and totals.
-
 ---
 
 ## 🤝 Contributing
@@ -270,7 +230,7 @@ We welcome contributions from the community! Ready POS is open source (GPLv2) an
 
 ### Ways to Contribute
 
-1. **Report Bugs** - [Open an issue](https://github.com/johuniq/ready-pos/issues) with details
+1. **Report Bugs** - Open an issue on the WordPress.org support forum with details
 2. **Suggest Features** - Share your ideas for improvements
 3. **Submit Pull Requests** - Fix bugs or add features
 4. **Improve Documentation** - Help make our docs better
@@ -288,8 +248,8 @@ We welcome contributions from the community! Ready POS is open source (GPLv2) an
 ### Setting Up Development Environment
 
 ```bash
-# Clone repository
-git clone https://github.com/johuniq/ready-pos.git
+# Download the latest release from WordPress.org
+# https://wordpress.org/plugins/ready-pos/
 cd ready-pos
 
 # Install dependencies
@@ -324,34 +284,20 @@ vendor/bin/phpcs
 
 ## 💬 Support
 
-### Free Support
-
 - **WordPress.org Forums**: [Community support](https://wordpress.org/support/plugin/ready-pos/)
-- **Website**: [readypos.johuniq.tech](https://readypos.johuniq.tech/)
-- **GitHub Issues**: [Report bugs](https://github.com/johuniq/ready-pos/issues)
-- **Video Tutorials**: [YouTube channel](https://youtube.com/@johuniq)
-
-### Pro Support (License Holders)
-
-- **Priority Email Support**: 24-hour response time (business days)
-- **Live Chat**: Real-time assistance during business hours  
-- **Phone Support**: Available for annual license holders
-- **Implementation Assistance**: Help with setup and configuration
-- **Custom Development**: Paid services for specific requirements
 
 ### Before Requesting Support
 
-1. Check the [website](https://readypos.johuniq.tech/)
-2. Search [support forum](https://wordpress.org/support/plugin/ready-pos/) for similar issues
-3. Update WordPress, WooCommerce, and Ready POS to latest versions
-4. Test with default theme and no other plugins
-5. Check browser console for JavaScript errors
+1. Search the [support forum](https://wordpress.org/support/plugin/ready-pos/) for similar issues
+2. Update WordPress, WooCommerce, and Ready POS to latest versions
+3. Test with default theme and no other plugins
+4. Check browser console for JavaScript errors
 
 ### Include in Support Requests
 
 - WordPress version
 - WooCommerce version
-- Ready POS version (Free/Pro)
+- Ready POS version
 - PHP version
 - Browser and OS
 - Steps to reproduce the issue
@@ -421,8 +367,6 @@ All third-party licenses are compatible with GPL.
 
 Thank you to everyone who contributes to making Ready POS better!
 
-[View Contributors](https://github.com/johuniq/ready-pos/graphs/contributors)
-
 ---
 
 ## 🗺️ Roadmap
@@ -455,41 +399,11 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
 ## 🔗 Links
 
-- **Website**: [readypos.johuniq.tech](https://readypos.johuniq.tech/)
 - **WordPress.org**: [wordpress.org/plugins/ready-pos](https://wordpress.org/plugins/ready-pos/)
 - **Support Forum**: [wordpress.org/support/plugin/ready-pos](https://wordpress.org/support/plugin/ready-pos/)
-- **GitHub**: [github.com/johuniq/ready-pos](https://github.com/johuniq/ready-pos)
-- **Twitter**: [@johuniq](https://twitter.com/johuniq)
-
----
-
-## ⭐ Show Your Support
-
-If you find Ready POS helpful, please:
-
-- ⭐ Star this repository
-- 🐦 Tweet about it
-- 📝 Write a review on [WordPress.org](https://wordpress.org/support/plugin/ready-pos/reviews/)
-- 💬 Tell other store owners
-- 🤝 Contribute to the project
-
----
-
-## 📧 Contact
-
-- **Email**: support@johuniq.tech
-- **Website**: [johuniq.tech](https://johuniq.tech)
-- **Twitter**: [@johuniq](https://twitter.com/johuniq)
-
-For security issues, please email: security@johuniq.tech
 
 ---
 
 <p align="center">
-  <strong>Made with ❤️ by <a href="https://johuniq.tech">Johuniq</a></strong>
-</p>
-
-<p align="center">
-  <a href="https://wordpress.org/plugins/ready-pos/">Download from WordPress.org</a> •
-  <a href="https://readypos.johuniq.tech/">Visit Website</a>
+  <a href="https://wordpress.org/plugins/ready-pos/">Download from WordPress.org</a>
 </p>

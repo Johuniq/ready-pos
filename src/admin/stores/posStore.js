@@ -11,13 +11,6 @@ export const settingsAtom = atom({
   payment_cash: "yes",
   payment_card: "yes",
   keyboard_status: "yes",
-  customer_display_enabled: "yes",
-  customer_display_idle_timeout: 30,
-  customer_display_message: "Welcome to our store!",
-  customer_display_promo_1: "Special offers available - Ask our staff!",
-  customer_display_promo_2: "Join our loyalty program and save more",
-  customer_display_promo_3: "",
-  customer_display_promo_4: "",
 });
 
 // Selected customer for POS transaction
@@ -52,9 +45,6 @@ export const sessionAtom = atom({
   has_active: false,
   session: null,
 });
-
-// Held orders / parked carts count
-export const heldOrdersCountAtom = atom(0);
 
 // Derived atom: Cart Subtotal
 export const cartSubtotalAtom = atom((get) => {

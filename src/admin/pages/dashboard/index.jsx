@@ -25,9 +25,9 @@ import {
   ArrowDown,
   ArrowUp,
   DollarSign,
-  LayoutDashboard,
   Receipt,
   RefreshCw,
+  AlertTriangle,
   ShoppingCart,
   Store,
   TerminalSquare,
@@ -71,18 +71,20 @@ export default function DashboardPage() {
   const [sessions, setSessions] = useState([]);
   const [topProducts, setTopProducts] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [lowStockItems, setLowStockItems] = useState([]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
     setError("");
 
     const endpoints = [
-      { key: "sales", url: "/reports/dashboard-sales-summary?days=30", pro: false },
-      { key: "orders", url: "/orders/get?page=1&limit=6", pro: false },
-      { key: "outlets", url: "/settings/outlets", pro: false },
-      { key: "sessions", url: "/sessions/history", pro: false },
-      { key: "products", url: "/reports/dashboard-product-performance?days=30", pro: false },
-      { key: "payments", url: "/reports/dashboard-payment-methods?days=30", pro: false },
+      { key: "sales", url: "/reports/dashboard-sales-summary?days=30" },
+      { key: "orders", url: "/orders/get?page=1&limit=6" },
+      { key: "outlets", url: "/settings/outlets" },
+      { key: "sessions", url: "/sessions/history" },
+      { key: "products", url: "/reports/dashboard-product-performance?days=30" },
+      { key: "payments", url: "/reports/dashboard-payment-methods?days=30" },
+      { key: "lowstock", url: "/reports/dashboard-low-stock?limit=8" },
     ];
 
     try {
@@ -99,6 +101,7 @@ export default function DashboardPage() {
       const sessionsData = getValue(3, []);
       const productsData = getValue(4, []);
       const paymentsData = getValue(5, []);
+      const lowStockData = getValue(6, []);
 
       setSummary({
         ...(salesData?.summary || {}),
@@ -111,6 +114,7 @@ export default function DashboardPage() {
       setSessions(sessionsData || []);
       setTopProducts(productsData || []);
       setPayments(paymentsData || []);
+      setLowStockItems(lowStockData || []);
 
       // Report partial failures with endpoint names + reasons
       const failures = results
@@ -232,7 +236,7 @@ export default function DashboardPage() {
   return (
     <div className="page-container">
       <PageHeader
-        title="Dashboard"
+        title="Overview"
         description="Here's an overview of your retail POS sales performance and registers."
         actions={
           <>
@@ -589,6 +593,71 @@ export default function DashboardPage() {
                             </TableCell>
                             <TableCell className="text-xs font-bold text-foreground text-right pr-6">
                               {formatPrice(item.total)}
+                            </TableCell>
+                          </TableRow>
+                        ),
+                      )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Low Stock Alerts */}
+        <Card className="shadow-sm border border-border/60 rounded-2xl">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                <span>Low Stock Alerts</span>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Products at or below restock threshold.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0 min-h-[250px]">
+            {lowStockItems.length === 0 ? (
+              <div className="text-xs text-emerald-600 py-12 text-center flex flex-col items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-emerald-500 opacity-50" />
+                All products are well stocked
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table className="premium-table">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="pl-6">Product</TableHead>
+                      <TableHead className="text-center w-20">
+                        Stock
+                      </TableHead>
+                      <TableHead className="text-right pr-6 w-24">
+                        Threshold
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {lowStockItems
+                      .slice(0, 8)
+                      .map(
+                        (
+                          /** @type {any} */ item,
+                          /** @type {number} */ idx,
+                        ) => (
+                          <TableRow key={idx} className="hover:bg-muted/10">
+                            <TableCell className="font-medium text-xs text-foreground pl-6 truncate max-w-[140px]">
+                              {item.name}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge
+                                variant="destructive"
+                                className="text-[10px] font-bold">
+                                {item.stock}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground text-right pr-6 font-semibold">
+                              {item.threshold}
                             </TableCell>
                           </TableRow>
                         ),

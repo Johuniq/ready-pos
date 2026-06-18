@@ -4,11 +4,9 @@ import ErrorPage from "./pages/error/Error";
 import Dashboard from "./pages/dashboard";
 import Terminal from "./pages/terminal/Terminal";
 import Orders from "./pages/orders";
-import Outlets from "./pages/outlets";
 import Settings from "./pages/settings";
 import Customers from "./pages/customers";
 import Onboarding from "./pages/onboarding";
-import CustomerDisplay from "./pages/terminal/components/CustomerDisplay";
 
 export const router = createHashRouter([
   {
@@ -37,10 +35,6 @@ export const router = createHashRouter([
         element: <Customers />,
       },
       {
-        path: "outlets",
-        element: <Outlets />,
-      },
-      {
         path: "settings",
         element: <Settings />,
       },
@@ -49,9 +43,5 @@ export const router = createHashRouter([
         element: <Onboarding />,
       },
     ],
-  },
-  {
-    path: "customer-display",
-    element: <CustomerDisplay />,
   },
 ]);

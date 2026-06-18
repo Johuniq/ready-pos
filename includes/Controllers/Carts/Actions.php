@@ -128,7 +128,7 @@ class Actions {
 		$table_name = $wpdb->prefix . 'readypos_saved_carts';
 
 		// Check if user is manager/admin - they can see all carts
-		$is_manager = current_user_can( 'manage_pos' ) || current_user_can( 'manage_options' );
+		$is_manager = current_user_can( 'readypos_manage_pos' ) || current_user_can( 'manage_options' );
 
 		if ( $is_manager ) {
 			// Get all carts
@@ -191,7 +191,7 @@ class Actions {
 		}
 
 		// Check if user is manager/admin or owner
-		$is_manager = current_user_can( 'manage_pos' ) || current_user_can( 'manage_options' );
+		$is_manager = current_user_can( 'readypos_manage_pos' ) || current_user_can( 'manage_options' );
 
 		if ( ! $is_manager && intval( $cart->user_id ) !== $user_id ) {
 			return new \WP_Error( 'unauthorized', __( 'You do not have permission to delete this cart.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );

@@ -18,6 +18,7 @@ const distFiles = [
   "vendor/**",          // CRITICAL: Composer dependencies
   "views/**",
   "LICENSE",
+  "composer.json",      // Dependency manifest (required for transparency)
   "readme.txt",
   "ready-pos.php",      // CRITICAL: Main plugin file
   "plugin.php",         // CRITICAL: Plugin class file
@@ -68,8 +69,7 @@ const distFiles = [
   "!.prettierrc.json",
   "!bower.json",
   "!components.json",
-  "!composer.json",
-  "!composer.lock",
+  "!composer.lock",     // Exclude lock file; composer.json is explicitly included above
   "!gruntfile.cjs",
   "!package.json",
   "!package-lock.json",

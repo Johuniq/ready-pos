@@ -137,6 +137,13 @@ export const api = {
       body: JSON.stringify(data),
     });
   },
+
+  delete(endpoint, data = {}) {
+    return this.request(endpoint, {
+      method: "DELETE",
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 export { ApiError };

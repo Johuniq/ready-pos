@@ -111,7 +111,6 @@ export default function LayoutOne() {
       </main>
       {/* App footer — hidden on terminal/onboarding */}
       {!location.pathname.includes("/terminal") &&
-        !location.pathname.includes("/customer-display") &&
         !location.pathname.includes("/onboarding") && (
           <footer className="border-t px-6 py-3 flex items-center justify-between text-[11px] text-muted-foreground bg-background mt-auto">
             <span>
@@ -122,11 +121,11 @@ export default function LayoutOne() {
               — Professional WooCommerce Point of Sale
             </span>
             <a
-              href="https://johuniq.tech"
+              href="https://wordpress.org/plugins/ready-pos/"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-foreground transition-colors font-semibold">
-              Built by Johuniq
+              Ready POS
             </a>
           </footer>
         )}

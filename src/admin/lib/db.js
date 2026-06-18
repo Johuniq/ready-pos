@@ -1,5 +1,9 @@
-// IndexedDB Promise-based wrapper for offline POS operations
-const DB_NAME = "ready_pos_offline";
+// IndexedDB Promise-based wrapper for local POS data caching.
+// Stores the product/category/customer catalogs locally so the
+// terminal can render immediately on startup and survive brief
+// network hiccups. Orders, payments, and inventory writes always
+// flow through the live API and are not queued here.
+const DB_NAME = "ready_pos_local_cache";
 const DB_VERSION = 2; // Incremented for schema changes
 const LOCAL_STORAGE_KEYS = ["ready_pos_favorites"];
 
@@ -38,48 +42,6 @@ export const openDB = () => {
         const customerStore = db.createObjectStore("customers", { keyPath: "id" });
         customerStore.createIndex("email", "email", { unique: false });
         customerStore.createIndex("phone", "phone", { unique: false });
-      }
-
-      // Store 4: Offline Orders Queue
-      if (!db.objectStoreNames.contains("offline_orders")) {
-        const orderStore = db.createObjectStore("offline_orders", {
-          keyPath: "localId",
-        });
-        orderStore.createIndex("syncStatus", "_syncStatus", { unique: false });
-        orderStore.createIndex("createdAt", "_createdAt", { unique: false });
-      }
-
-      // Store 5: Offline Inventory (NEW in v2)
-      if (!db.objectStoreNames.contains("offline_inventory")) {
-        const inventoryStore = db.createObjectStore("offline_inventory", {
-          keyPath: "product_id",
-        });
-        inventoryStore.createIndex("pendingSync", "_pendingSync", {
-          unique: false,
-        });
-        inventoryStore.createIndex("lastUpdate", "_lastUpdate", {
-          unique: false,
-        });
-      }
-
-      // Store 6: Sync Queue for non-order operations (NEW in v2)
-      if (!db.objectStoreNames.contains("sync_queue")) {
-        const queueStore = db.createObjectStore("sync_queue", {
-          keyPath: "id",
-          autoIncrement: true,
-        });
-        queueStore.createIndex("timestamp", "timestamp", { unique: false });
-        queueStore.createIndex("retries", "retries", { unique: false });
-      }
-
-      // Store 7: Sync History (NEW in v2)
-      if (!db.objectStoreNames.contains("sync_history")) {
-        const historyStore = db.createObjectStore("sync_history", {
-          keyPath: "id",
-          autoIncrement: true,
-        });
-        historyStore.createIndex("timestamp", "timestamp", { unique: false });
-        historyStore.createIndex("type", "type", { unique: false });
       }
 
       // Migration logic for existing data
@@ -199,29 +161,9 @@ export const dbOperations = {
     });
   },
 
-  // Add sync history entry
-  async logSync(type, data) {
-    const entry = {
-      type, // 'order', 'inventory', 'queue', 'manual'
-      timestamp: Date.now(),
-      success: data.success || false,
-      itemCount: data.itemCount || 0,
-      errors: data.errors || [],
-      details: data.details || null,
-    };
-    return this.put("sync_history", entry);
-  },
-
-  // Get recent sync history
-  async getSyncHistory(limit = 50) {
-    const all = await this.getAll("sync_history");
-    return all
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .slice(0, limit);
-  },
 };
 
-export const resetOfflineStorage = async () => {
+export const resetLocalCache = async () => {
   const tasks = [];
 
   if (typeof localStorage !== "undefined") {

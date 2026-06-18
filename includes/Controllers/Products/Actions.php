@@ -50,7 +50,7 @@ class Actions {
 				return $this->get_products_internal( $limit, $page, $search, $category );
 			},
 			'products',
-			300 // 5 minutes
+			0 // use Cache::CACHE_GROUPS['products'] default (30s)
 		);
 	}
 
@@ -75,12 +75,9 @@ class Actions {
 
 		$tax_query = array();
 
-		// Search by name / content / SKU / barcode
 		if ( ! empty( $search ) ) {
-			// Check SKU first
 			$sku_product_id = wc_get_product_id_by_sku( $search );
 			if ( ! $sku_product_id ) {
-				// Check barcode directly via postmeta index lookup
 				global $wpdb;
 				$sku_product_id = $wpdb->get_var( $wpdb->prepare(
 					"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ('_barcode', 'barcode') AND meta_value = %s LIMIT 1",
@@ -89,12 +86,9 @@ class Actions {
 			}
 
 			if ( $sku_product_id ) {
-				// SKU/Barcode match found — return this product directly, ignore category filter.
 				$query_args['p'] = $sku_product_id;
 			} else {
 				$query_args['s'] = $search;
-
-				// Only apply category filter when doing a text search (not SKU match).
 				if ( ! empty( $category ) && 'all' !== $category ) {
 					$tax_query[] = array(
 						'taxonomy' => 'product_cat',
@@ -104,7 +98,6 @@ class Actions {
 				}
 			}
 		} else {
-			// No search — apply category filter normally.
 			if ( ! empty( $category ) && 'all' !== $category ) {
 				$tax_query[] = array(
 					'taxonomy' => 'product_cat',
@@ -119,10 +112,8 @@ class Actions {
 			$query_args['tax_query'] = $tax_query;
 		}
 
-		// Allow filtering query parameters
 		$query_args = apply_filters( 'readypos_get_products_args', $query_args, $request );
 
-		// Resolve active outlet for multi-outlet stock overlay
 		$outlet_id = $this->resolve_outlet_id();
 
 		$wp_query = new \WP_Query( $query_args );
@@ -131,25 +122,27 @@ class Actions {
 		if ( $wp_query->have_posts() ) {
 			$product_ids = wp_list_pluck( $wp_query->posts, 'ID' );
 
-			// Prime term cache in 1 query for all products
-			update_object_term_cache( $product_ids, 'product' );
+			// Batch-load all WC product objects in one call (avoids N+1 wc_get_product per post)
+			$wc_products = wc_get_products( array(
+				'include' => $product_ids,
+				'limit'   => count( $product_ids ),
+				'type'    => array( 'simple', 'variable' ),
+			) );
 
-			// Collect all product and variation IDs to batch fetch outlet stock
-			$all_stock_ids = array();
-			foreach ( $wp_query->posts as $post ) {
-				$all_stock_ids[] = $post->ID;
-				$product = wc_get_product( $post->ID );
-				if ( $product && $product->is_type( 'variable' ) ) {
-					$children = $product->get_children();
-					if ( ! empty( $children ) ) {
-						foreach ( $children as $child_id ) {
-							$all_stock_ids[] = $child_id;
-						}
+			$wc_product_map = array();
+			$all_stock_ids  = array();
+			foreach ( $wc_products as $wc_product ) {
+				$pid = $wc_product->get_id();
+				$wc_product_map[ $pid ] = $wc_product;
+				$all_stock_ids[] = $pid;
+				if ( $wc_product->is_type( 'variable' ) ) {
+					foreach ( $wc_product->get_children() as $child_id ) {
+						$all_stock_ids[] = $child_id;
 					}
 				}
 			}
 
-			// Pre-fetch all relevant outlet stock records
+			// Batch-fetch all outlet stock records in one query
 			$outlet_stocks = array();
 			if ( $outlet_id && ! empty( $all_stock_ids ) ) {
 				$stocks = POSOutletStock::where( 'outlet_id', $outlet_id )
@@ -160,23 +153,56 @@ class Actions {
 				}
 			}
 
-			foreach ( $wp_query->posts as $post ) {
-				$product = wc_get_product( $post->ID );
-				if ( ! $product ) {
+			// Batch-fetch all product_cat terms in one query (avoids N+1 wp_get_post_terms per product)
+			$all_cat_terms = wp_get_object_terms( $product_ids, 'product_cat', array( 'fields' => 'all' ) );
+			$product_cats_map = array();
+			if ( ! is_wp_error( $all_cat_terms ) ) {
+				foreach ( $all_cat_terms as $term ) {
+					if ( ! isset( $product_cats_map[ $term->object_id ] ) ) {
+						$product_cats_map[ $term->object_id ] = array();
+					}
+					$product_cats_map[ $term->object_id ][] = array(
+						'id'   => $term->term_id,
+						'name' => $term->name,
+						'slug' => $term->slug,
+					);
+				}
+			}
+
+			// Batch-load all variation products for variable parents
+			$all_variation_ids = array();
+			foreach ( $wc_product_map as $wc_product ) {
+				if ( $wc_product->is_type( 'variable' ) ) {
+					$all_variation_ids = array_merge( $all_variation_ids, $wc_product->get_children() );
+				}
+			}
+
+			$variation_map = array();
+			if ( ! empty( $all_variation_ids ) ) {
+				$variation_products = wc_get_products( array(
+					'include' => $all_variation_ids,
+					'limit'   => count( $all_variation_ids ),
+					'type'    => 'variation',
+				) );
+				foreach ( $variation_products as $vp ) {
+					$variation_map[ $vp->get_id() ] = $vp;
+				}
+			}
+
+			foreach ( $product_ids as $pid ) {
+				if ( ! isset( $wc_product_map[ $pid ] ) ) {
 					continue;
 				}
-
-				// Skip product types we can't sell on a POS terminal.
-				$type = $product->get_type();
-				if ( ! in_array( $type, array( 'simple', 'variable' ), true ) ) {
-					continue;
-				}
-
-				$products[] = $this->format_product( $product, $outlet_id, $outlet_stocks );
+				$products[] = $this->format_product(
+					$wc_product_map[ $pid ],
+					$outlet_id,
+					$outlet_stocks,
+					$product_cats_map[ $pid ] ?? array(),
+					$variation_map
+				);
 			}
 		}
 
-		$total = count( $products );
 		$total_pages = $limit > 0 ? (int) ceil( (int) $wp_query->found_posts / $limit ) : 1;
 
 		return new \WP_REST_Response(
@@ -200,26 +226,33 @@ class Actions {
 			return new \WP_Error( 'wc_missing', __( 'WooCommerce is not active.', 'ready-pos-for-woocommerce' ), array( 'status' => 500 ) );
 		}
 
-		$terms = get_terms(
-			array(
-				'taxonomy'   => 'product_cat',
-				'hide_empty' => false,
-			)
-		);
-
-		$categories = array();
-		if ( ! is_wp_error( $terms ) ) {
-			foreach ( $terms as $term ) {
-				$categories[] = array(
-					'id'    => $term->term_id,
-					'name'  => $term->name,
-					'slug'  => $term->slug,
-					'count' => $term->count,
+		return $this->cache_response(
+			'product_categories',
+			function () {
+				$terms = get_terms(
+					array(
+						'taxonomy'   => 'product_cat',
+						'hide_empty' => false,
+					)
 				);
-			}
-		}
 
-		return new \WP_REST_Response( $categories, 200 );
+				$categories = array();
+				if ( ! is_wp_error( $terms ) ) {
+					foreach ( $terms as $term ) {
+						$categories[] = array(
+							'id'    => $term->term_id,
+							'name'  => $term->name,
+							'slug'  => $term->slug,
+							'count' => $term->count,
+						);
+					}
+				}
+
+				return new \WP_REST_Response( $categories, 200 );
+			},
+			'categories',
+			0 // use Cache::CACHE_GROUPS['categories'] default (60s)
+		);
 	}
 
 	/**
@@ -266,27 +299,16 @@ class Actions {
 	 * @param array       $outlet_stocks Pre-loaded outlet stocks mapping.
 	 * @return array
 	 */
-	private function format_product( $product, $outlet_id = null, $outlet_stocks = array() ) {
+	private function format_product( $product, $outlet_id = null, $outlet_stocks = array(), $categories = array(), $variation_map = array() ) {
 		$image_id  = $product->get_image_id();
 		$image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'medium' ) : wc_placeholder_img_src();
 
-		// Get stock quantity — override with outlet-specific stock if available
 		$stock_quantity      = $product->get_stock_quantity();
 		$low_stock_threshold = null;
-		if ( $outlet_id ) {
-			if ( isset( $outlet_stocks[ $product->get_id() ] ) ) {
-				$outlet_stock = $outlet_stocks[ $product->get_id() ];
-				$stock_quantity      = floatval( $outlet_stock->stock_quantity );
-				$low_stock_threshold = intval( $outlet_stock->low_stock_threshold );
-			} else if ( empty( $outlet_stocks ) ) {
-				$outlet_stock = POSOutletStock::where( 'outlet_id', $outlet_id )
-					->where( 'product_id', $product->get_id() )
-					->first();
-				if ( $outlet_stock ) {
-					$stock_quantity      = floatval( $outlet_stock->stock_quantity );
-					$low_stock_threshold = intval( $outlet_stock->low_stock_threshold );
-				}
-			}
+		if ( $outlet_id && isset( $outlet_stocks[ $product->get_id() ] ) ) {
+			$outlet_stock          = $outlet_stocks[ $product->get_id() ];
+			$stock_quantity        = floatval( $outlet_stock->stock_quantity );
+			$low_stock_threshold   = intval( $outlet_stock->low_stock_threshold );
 		}
 
 		$formatted = array(
@@ -304,65 +326,103 @@ class Actions {
 			'tax_status'           => $product->get_tax_status(),
 			'tax_class'            => $product->get_tax_class(),
 			'image'                => $image_url,
-			'categories'           => $this->get_product_categories( $product->get_id() ),
+			'categories'           => $categories,
 			'barcode'              => $product->get_meta( '_barcode' ) ?: $product->get_meta( 'barcode' ) ?: '',
 			'low_stock_threshold'  => $low_stock_threshold,
 			'variations'           => array(),
 		);
 
-		// Include variation IDs if variable product
 		if ( $product->is_type( 'variable' ) ) {
-			$children = $product->get_children();
+			$children   = $product->get_children();
 			$variations = array();
-			if ( ! empty( $children ) ) {
-				$variation_products = wc_get_products( array(
-					'include' => $children,
-					'limit'   => -1,
-					'type'    => 'variation',
-				) );
-				foreach ( $variation_products as $variation ) {
-					$var_image_id = $variation->get_image_id();
-					$var_image_url = $var_image_id ? wp_get_attachment_image_url( $var_image_id, 'medium' ) : $image_url;
-
-					// Override variation stock with outlet-specific stock
-					$var_stock_quantity      = $variation->get_stock_quantity();
-					$var_low_stock_threshold = null;
-					if ( $outlet_id ) {
-						if ( isset( $outlet_stocks[ $variation->get_id() ] ) ) {
-							$var_outlet_stock = $outlet_stocks[ $variation->get_id() ];
-							$var_stock_quantity      = floatval( $var_outlet_stock->stock_quantity );
-							$var_low_stock_threshold = intval( $var_outlet_stock->low_stock_threshold );
-						} else if ( empty( $outlet_stocks ) ) {
-							$var_outlet_stock = POSOutletStock::where( 'outlet_id', $outlet_id )
-								->where( 'product_id', $variation->get_id() )
-								->first();
-							if ( $var_outlet_stock ) {
-								$var_stock_quantity      = floatval( $var_outlet_stock->stock_quantity );
-								$var_low_stock_threshold = intval( $var_outlet_stock->low_stock_threshold );
-							}
-						}
-					}
-
-					$variations[] = array(
-						'id'                  => $variation->get_id(),
-						'name'                => $variation->get_name(),
-						'sku'                 => $variation->get_sku(),
-						'price'               => floatval( $variation->get_price() ),
-						'regular_price'       => floatval( $variation->get_regular_price() ),
-						'sale_price'          => floatval( $variation->get_sale_price() ),
-						'stock_quantity'      => $var_stock_quantity,
-						'manage_stock'        => $variation->get_manage_stock(),
-						'stock_status'        => $variation->get_stock_status(),
-						'attributes'          => $variation->get_variation_attributes(),
-						'image'               => $var_image_url,
-						'low_stock_threshold' => $var_low_stock_threshold,
-					);
+			foreach ( $children as $child_id ) {
+				if ( ! isset( $variation_map[ $child_id ] ) ) {
+					continue;
 				}
+				$variation = $variation_map[ $child_id ];
+
+				$var_image_id  = $variation->get_image_id();
+				$var_image_url = $var_image_id ? wp_get_attachment_image_url( $var_image_id, 'medium' ) : $image_url;
+
+				$var_stock_quantity      = $variation->get_stock_quantity();
+				$var_low_stock_threshold = null;
+				if ( $outlet_id && isset( $outlet_stocks[ $child_id ] ) ) {
+					$var_outlet_stock       = $outlet_stocks[ $child_id ];
+					$var_stock_quantity     = floatval( $var_outlet_stock->stock_quantity );
+					$var_low_stock_threshold = intval( $var_outlet_stock->low_stock_threshold );
+				}
+
+				$variations[] = array(
+					'id'                  => $variation->get_id(),
+					'name'                => $variation->get_name(),
+					'sku'                 => $variation->get_sku(),
+					'price'               => floatval( $variation->get_price() ),
+					'regular_price'       => floatval( $variation->get_regular_price() ),
+					'sale_price'          => floatval( $variation->get_sale_price() ),
+					'stock_quantity'      => $var_stock_quantity,
+					'manage_stock'        => $variation->get_manage_stock(),
+					'stock_status'        => $variation->get_stock_status(),
+					// Normalize attribute keys for the frontend: strip the
+					// `attribute_pa_` / `attribute_` prefix and URL-decode
+					// the slug (WooCommerce stores non-ASCII slugs like
+					// Bengali "অজন" as percent-encoded form
+					// `%e0%a6%93%e0%a6%9c%e0%a6%a8`, which is unreadable
+					// when surfaced directly in the variation modal).
+					'attributes'          => $this->normalize_variation_attributes( $variation->get_variation_attributes() ),
+					'image'               => $var_image_url,
+					'low_stock_threshold' => $var_low_stock_threshold,
+				);
 			}
 			$formatted['variations'] = $variations;
 		}
 
 		return $formatted;
+	}
+
+	/**
+	 * Normalize WooCommerce variation attribute keys for the POS frontend.
+	 *
+	 * WooCommerce stores attribute slugs as percent-encoded values when the
+	 * original term name contains non-ASCII characters (e.g. Bengali
+	 * "অজন" is stored as `%e0%a6%93%e0%a6%9c%e0%a6%a8`). The keys also
+	 * carry an `attribute_pa_` or `attribute_` prefix that the REST API
+	 * layer adds. Surfacing either of those directly in the variation
+	 * selector renders a label like
+	 * "ATTRIBUTE %E0%A6%93%E0%A6%9C%E0%A6%A8" which is unusable for a
+	 * cashier. This helper strips the prefix and decodes the slug so the
+	 * frontend receives a clean, human-readable key such as "অজন" while
+	 * keeping the original term slug available as the value (which the
+	 * POS already understands for matching).
+	 *
+	 * @param array $raw_attributes Raw attribute map from
+	 *                               WC_Product_Variation::get_variation_attributes().
+	 * @return array Map of normalized key => value (slug).
+	 */
+	private function normalize_variation_attributes( array $raw_attributes ) {
+		$normalized = array();
+		foreach ( $raw_attributes as $key => $value ) {
+			$clean_key = $key;
+
+			// Strip WooCommerce attribute prefixes. Order matters: the
+			// `attribute_pa_` form is a subset of `attribute_`, so we
+			// try the longer one first.
+			if ( 0 === strpos( $clean_key, 'attribute_pa_' ) ) {
+				$clean_key = substr( $clean_key, strlen( 'attribute_pa_' ) );
+			} elseif ( 0 === strpos( $clean_key, 'attribute_' ) ) {
+				$clean_key = substr( $clean_key, strlen( 'attribute_' ) );
+			}
+
+			// Decode percent-encoded slugs (UTF-8 / non-ASCII).
+			if ( false !== strpos( $clean_key, '%' ) ) {
+				$decoded = urldecode( $clean_key );
+				if ( '' !== $decoded ) {
+					$clean_key = $decoded;
+				}
+			}
+
+			$normalized[ $clean_key ] = $value;
+		}
+		return $normalized;
 	}
 
 	/**

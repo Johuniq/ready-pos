@@ -75,7 +75,6 @@ RTL stylesheet is automatically loaded for RTL languages.
 
 - **Translation Questions**: plugins@wordpress.org
 - **Technical Issues**: https://wordpress.org/support/plugin/ready-pos/
-- **GitHub**: https://github.com/johuniq/ready-pos
 
 ## Credits
 

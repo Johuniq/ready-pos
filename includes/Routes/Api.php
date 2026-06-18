@@ -27,17 +27,6 @@ Route::prefix(
 		$route->get( '/orders/get', '\Readypos\Controllers\Orders\Actions@get' );
 		$route->get( '/orders/get/{id}', '\Readypos\Controllers\Orders\Actions@get_detail' );
 		$route->post( '/orders/refund', '\Readypos\Controllers\Orders\Actions@refund' );
-		$route->post( '/orders/hold', '\Readypos\Controllers\Orders\Actions@hold' );
-		$route->get( '/orders/held', '\Readypos\Controllers\Orders\Actions@get_held' );
-		$route->post( '/orders/resume', '\Readypos\Controllers\Orders\Actions@resume' );
-
-		// Returns & Exchanges API.
-		$route->get( '/returns/settings', '\Readypos\Controllers\Returns\Actions@get_settings' );
-		$route->get( '/returns/get', '\Readypos\Controllers\Returns\Actions@get' );
-		$route->get( '/returns/get/{id}', '\Readypos\Controllers\Returns\Actions@get_detail' );
-		$route->post( '/returns/check-eligibility', '\Readypos\Controllers\Returns\Actions@check_eligibility' );
-		$route->post( '/returns/process', '\Readypos\Controllers\Returns\Actions@process_return' );
-		$route->post( '/returns/exchange', '\Readypos\Controllers\Returns\Actions@process_exchange' );
 
 		// Customers API.
 		$route->get( '/customers/list', '\Readypos\Controllers\Customers\Actions@list' );
@@ -61,13 +50,6 @@ Route::prefix(
 		$route->post( '/shipping/calculate', '\Readypos\Controllers\Shipping\Actions@calculate' );
 		$route->get( '/shipping/methods', '\Readypos\Controllers\Shipping\Actions@get_methods' );
 
-		// Gift Cards & Store Credit API.
-		$route->get( '/gift-cards/list', '\Readypos\Controllers\GiftCards\Actions@list' );
-		$route->post( '/gift-cards/create', '\Readypos\Controllers\GiftCards\Actions@create' );
-		$route->get( '/gift-cards/check', '\Readypos\Controllers\GiftCards\Actions@check_balance' );
-		$route->post( '/gift-cards/redeem', '\Readypos\Controllers\GiftCards\Actions@redeem' );
-		$route->post( '/gift-cards/topup', '\Readypos\Controllers\GiftCards\Actions@topup' );
-
 		// Sessions API.
 		$route->post( '/sessions/open', '\Readypos\Controllers\Sessions\Actions@open' );
 		$route->post( '/sessions/close', '\Readypos\Controllers\Sessions\Actions@close' );
@@ -75,15 +57,11 @@ Route::prefix(
 		$route->get( '/sessions/history', '\Readypos\Controllers\Sessions\Actions@history' );
 		$route->post( '/sessions/cash-adjustment', '\Readypos\Controllers\Sessions\Actions@cash_adjustment' );
 
-		// Shifts API.
-		$route->post( '/shifts/clock-in', '\Readypos\Controllers\Shifts\Actions@clock_in' );
-		$route->post( '/shifts/clock-out', '\Readypos\Controllers\Shifts\Actions@clock_out' );
-		$route->get( '/shifts/current', '\Readypos\Controllers\Shifts\Actions@current' );
-
 		// Reports API - Dashboard-Only (Free for All Users).
 		$route->get( '/reports/dashboard-sales-summary', '\Readypos\Controllers\Reports\Actions@dashboard_sales_summary' );
 		$route->get( '/reports/dashboard-product-performance', '\Readypos\Controllers\Reports\Actions@dashboard_product_performance' );
 		$route->get( '/reports/dashboard-payment-methods', '\Readypos\Controllers\Reports\Actions@dashboard_payment_methods' );
+		$route->get( '/reports/dashboard-low-stock', '\Readypos\Controllers\Reports\Actions@dashboard_low_stock' );
 
 		// Settings API.
 		$route->get( '/settings/get', '\Readypos\Controllers\Settings\Actions@get' );
@@ -101,12 +79,6 @@ Route::prefix(
 		$route->post( '/settings/registers/update', '\Readypos\Controllers\Settings\Actions@update_register' );
 		$route->post( '/settings/registers/delete', '\Readypos\Controllers\Settings\Actions@delete_register' );
 		$route->post( '/settings/registers/update-status', '\Readypos\Controllers\Settings\Actions@update_register_status' );
-
-		// Offline Sync API - Conflict detection and idempotency.
-		// Orders endpoint with idempotency is handled by OfflineSync::create_order_with_idempotency
-		// which overrides the standard create endpoint when _idempotencyKey is present.
-		$route->post( '/inventory/adjust', '\Readypos\Controllers\Orders\OfflineSync@adjust_inventory_with_idempotency' );
-		$route->get( '/sync/status', '\Readypos\Controllers\Orders\OfflineSync@get_sync_status' );
 
 		// Hook for additional custom API routes.
 		do_action( 'readypos_api', $route );

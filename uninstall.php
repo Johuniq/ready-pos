@@ -16,7 +16,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 
 // Load plugin constants
 if ( ! defined( 'READYPOS_VERSION' ) ) {
-	define( 'READYPOS_VERSION', '1.0.1' );
+	define( 'READYPOS_VERSION', '1.0.0' );
 }
 if ( ! defined( 'READYPOS_DIR' ) ) {
 	define( 'READYPOS_DIR', plugin_dir_path( __FILE__ ) );

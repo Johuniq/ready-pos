@@ -32,9 +32,18 @@ trait Cacheable {
 		}
 
 		// Include request parameters in cache key for GET requests
-		if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'GET' === $_SERVER['REQUEST_METHOD'] ) {
-			$params = isset( $_GET ) ? $_GET : array();
+		if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'GET' === sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) {
+			$params = isset( $_GET ) ? array_map( 'sanitize_text_field', wp_unslash( $_GET ) ) : array();
 			unset( $params['_wpnonce'] ); // Remove nonce from cache key
+
+			// Skip cache when a cache-buster (`_t`) is supplied. The
+			// frontend appends this after a mutation (e.g. Pay In) to
+			// guarantee a fresh read instead of a stale 60s entry that
+			// pre-dates the cash_total update.
+			if ( isset( $params['_t'] ) ) {
+				return call_user_func( $callback );
+			}
+
 			$key .= '_' . md5( wp_json_encode( $params ) );
 		}
 

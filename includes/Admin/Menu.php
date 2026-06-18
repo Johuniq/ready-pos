@@ -44,9 +44,9 @@ class Menu {
 	 */
 	public function menu() {
 		add_menu_page(
+			__( 'Overview', 'ready-pos-for-woocommerce' ),
 			__( 'Ready POS', 'ready-pos-for-woocommerce' ),
-			__( 'Ready POS', 'ready-pos-for-woocommerce' ),
-			'use_pos',
+			'readypos_use_pos',
 			$this->parent_slug,
 			array( $this, 'admin_page' ),
 			'dashicons-store',
@@ -65,7 +65,7 @@ class Menu {
 				'parent_slug' => $this->parent_slug,
 				'page_title'  => __( 'POS Terminal', 'ready-pos-for-woocommerce' ),
 				'menu_title'  => __( 'POS Terminal', 'ready-pos-for-woocommerce' ),
-				'capability'  => 'use_pos',
+				'capability'  => 'readypos_use_pos',
 				'menu_slug'   => $plugin_url . '/#/terminal',
 				'function'    => null,
 			),
@@ -73,7 +73,7 @@ class Menu {
 				'parent_slug' => $this->parent_slug,
 				'page_title'  => __( 'Orders', 'ready-pos-for-woocommerce' ),
 				'menu_title'  => __( 'Orders', 'ready-pos-for-woocommerce' ),
-				'capability'  => 'use_pos',
+				'capability'  => 'readypos_use_pos',
 				'menu_slug'   => $plugin_url . '/#/orders',
 				'function'    => null,
 			),
@@ -81,23 +81,15 @@ class Menu {
 				'parent_slug' => $this->parent_slug,
 				'page_title'  => __( 'Customers', 'ready-pos-for-woocommerce' ),
 				'menu_title'  => __( 'Customers', 'ready-pos-for-woocommerce' ),
-				'capability'  => 'manage_pos',
+				'capability'  => 'readypos_manage_pos',
 				'menu_slug'   => $plugin_url . '/#/customers',
-				'function'    => null,
-			),
-			array(
-				'parent_slug' => $this->parent_slug,
-				'page_title'  => __( 'Outlets', 'ready-pos-for-woocommerce' ),
-				'menu_title'  => __( 'Outlets', 'ready-pos-for-woocommerce' ),
-				'capability'  => 'manage_pos',
-				'menu_slug'   => $plugin_url . '/#/outlets',
 				'function'    => null,
 			),
 			array(
 				'parent_slug' => $this->parent_slug,
 				'page_title'  => __( 'Settings', 'ready-pos-for-woocommerce' ),
 				'menu_title'  => __( 'Settings', 'ready-pos-for-woocommerce' ),
-				'capability'  => 'manage_pos',
+				'capability'  => 'readypos_manage_pos',
 				'menu_slug'   => $plugin_url . '/#/settings',
 				'function'    => null,
 			),
@@ -115,6 +107,35 @@ class Menu {
 				$submenu['function']
 			);
 		}
+
+		// Upgrade to Pro link (same pattern as WPForms, Yoast, etc.)
+		add_submenu_page(
+			$this->parent_slug,
+			__( 'Upgrade to Pro', 'ready-pos-for-woocommerce' ),
+			__( 'Upgrade to Pro', 'ready-pos-for-woocommerce' ),
+			'readypos_manage_pos',
+			'https://readypos.johuniq.tech',
+			null
+		);
+
+		// Style the "Upgrade to Pro" menu item to stand out.
+		add_action( 'admin_head', array( $this, 'upgrade_menu_style' ) );
+	}
+
+	/**
+	 * Inject CSS to highlight the "Upgrade to Pro" submenu item.
+	 *
+	 * @return void
+	 */
+	public function upgrade_menu_style() {
+		$screen = get_current_screen();
+		if ( ! $screen ) {
+			return;
+		}
+		$css = '#adminmenu a[href*="readypos.johuniq.tech"]{background:#d63638!important;color:#fff!important;font-weight:600;}';
+		$css .= '#adminmenu a[href*="readypos.johuniq.tech"]:hover{background:#b32d2e!important;color:#fff!important;}';
+		$css .= '#adminmenu a[href*="readypos.johuniq.tech"] .wp-menu-image::before{color:#fff!important;}';
+		wp_add_inline_style( 'admin-menu', $css );
 	}
 
 	/**
@@ -123,7 +144,7 @@ class Menu {
 	 * @return void
 	 */
 	public function admin_page() {
-		if ( ! current_user_can( 'use_pos' ) ) {
+		if ( ! current_user_can( 'readypos_use_pos' ) ) {
 			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'ready-pos-for-woocommerce' ) );
 		}
 		?>

@@ -18,8 +18,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { api } from "@/lib/api";
 import { formatPrice } from "@/lib/currency";
+import { api } from "@/lib/api";
 import { toast } from "sonner";
 import {
   User,
@@ -29,7 +29,6 @@ import {
   ShoppingBag,
   Calendar,
   Receipt,
-  Gift,
   Loader2,
 } from "lucide-react";
 
@@ -46,11 +45,27 @@ export default function CustomerDetailModal({ open, onOpenChange, customer }) {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [totalOrders, setTotalOrders] = useState(0);
 
-  // Loyalty redemption
-  const [redeeming, setRedeeming] = useState(false);
+  // Loyalty display
   const [currentPoints, setCurrentPoints] = useState(0);
+
+  const fetchHistory = async (targetPage = 1) => {
+    if (!customer?.id) return;
+    setLoading(true);
+    try {
+      const data = await api.get(`/customers/history/${customer.id}`, {
+        page: targetPage,
+        limit: 8,
+      });
+      setOrders(data?.orders || []);
+      setTotalPages(data?.total_pages || 1);
+      setPage(data?.page || targetPage);
+    } catch (err) {
+      toast.error(err.message || "Failed to load purchase history");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (open && customer?.id) {
@@ -60,65 +75,21 @@ export default function CustomerDetailModal({ open, onOpenChange, customer }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, customer?.id]);
 
-  const fetchHistory = async (targetPage = 1) => {
-    setLoading(true);
-    try {
-      const data = await api.get(`/customers/history/${customer.id}`, {
-        page: targetPage,
-        limit: 8,
-      });
-      setOrders(data?.orders || []);
-      setTotalPages(data?.total_pages || 1);
-      setTotalOrders(data?.total || 0);
-      setPage(data?.page || targetPage);
-    } catch (err) {
-      toast.error(err.message || "Failed to load purchase history");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRedeemPoints = async () => {
-    if (currentPoints < 100) {
-      toast.error("Minimum 100 points required to redeem (= $1 discount)");
-      return;
-    }
-
-    // Redeem all available points
-    setRedeeming(true);
-    try {
-      const res = await api.post("/customers/redeem-points", {
-        id: customer.id,
-        points: currentPoints,
-      });
-      if (res.success) {
-        toast.success(
-          `Redeemed ${res.points_redeemed} points → ${formatPrice(
-            res.discount_amount,
-          )} discount available at checkout`,
-        );
-        setCurrentPoints(res.remaining_points);
-      }
-    } catch (err) {
-      toast.error(err.message || "Failed to redeem points");
-    } finally {
-      setRedeeming(false);
-    }
-  };
-
-  if (!customer) return null;
-
-  const initial = (customer.first_name?.[0] || "?").toUpperCase();
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl rounded-xl select-none overflow-hidden max-h-[90vh] flex flex-col p-0">
+        {!customer ? (
+          <div className="h-64 flex items-center justify-center">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <>
         {/* Header with customer profile */}
         <div className="p-6 pb-4 border-b bg-muted/10">
           <DialogHeader>
             <DialogTitle className="text-base font-bold flex items-center gap-3">
               <div className="w-11 h-11 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
-                {initial}
+                {(customer.first_name?.[0] || "?").toUpperCase()}
               </div>
               <div>
                 <span className="block">
@@ -161,32 +132,21 @@ export default function CustomerDetailModal({ open, onOpenChange, customer }) {
 
         {/* Loyalty Points Card */}
         <div className="px-6 pt-4">
-          <div className="flex items-center justify-between bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-amber-500/10">
-                <Star className="w-5 h-5 text-amber-500" />
-              </div>
-              <div>
-                <p className="text-xs font-bold text-foreground">
-                  Loyalty Points
-                </p>
-                <p className="text-2xl font-black text-amber-600 tracking-tight">
-                  {currentPoints}
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  100 pts = {formatPrice(1)} discount
-                </p>
-              </div>
+          <div className="flex items-center gap-3 bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
+            <div className="p-2.5 rounded-lg bg-amber-500/10">
+              <Star className="w-5 h-5 text-amber-500" />
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={currentPoints < 100 || redeeming}
-              onClick={handleRedeemPoints}
-              className="text-xs font-bold gap-1.5">
-              <Gift className="w-3.5 h-3.5" />
-              {redeeming ? "Redeeming..." : "Redeem All"}
-            </Button>
+            <div>
+              <p className="text-xs font-bold text-foreground">
+                Loyalty Points
+              </p>
+              <p className="text-2xl font-black text-amber-600 tracking-tight">
+                {currentPoints}
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                Redeem at checkout via the POS terminal
+              </p>
+            </div>
           </div>
         </div>
 
@@ -197,9 +157,6 @@ export default function CustomerDetailModal({ open, onOpenChange, customer }) {
               <Calendar className="w-3.5 h-3.5 text-primary" />
               Purchase History
             </h4>
-            <span className="text-[10px] text-muted-foreground font-semibold">
-              {totalOrders} order{totalOrders !== 1 ? "s" : ""}
-            </span>
           </div>
 
           {loading && orders.length === 0 ? (
@@ -305,6 +262,8 @@ export default function CustomerDetailModal({ open, onOpenChange, customer }) {
             Close
           </Button>
         </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

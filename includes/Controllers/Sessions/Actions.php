@@ -10,6 +10,7 @@ namespace Readypos\Controllers\Sessions;
 
 use Readypos\Models\POSSession;
 use Readypos\Traits\Cacheable;
+use Readypos\Utils\Cache;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -28,9 +29,13 @@ class Actions {
 	/**
 	 * Cache group for session listings.
 	 *
+	 * Uses the standard 'sessions' group so that Cache::invalidate('session')
+	 * and Cache::invalidate('cash_adjustment') cascade to every endpoint that
+	 * reads from this group, including Reports and the current session lookup.
+	 *
 	 * @var string
 	 */
-	private $cache_group = 'pos_sessions';
+	private $cache_group = 'sessions';
 
 	/**
 	 * Open a new register session.
@@ -262,18 +267,15 @@ class Actions {
 					200
 				);
 			},
-			$this->cache_group,
-			5
+				// TTL 0 = use the group default from Cache::CACHE_GROUPS
+				// (sessions = 5s). This way the central constant controls
+				// the value and we get instant refreshes everywhere.
+				$this->cache_group,
+				0
 		);
 	}
 
-	/**
-	 * List historical sessions (closed first), with simple pagination.
-	 *
-	 * @param \WP_REST_Request $request REST request.
-	 * @return \WP_REST_Response
-	 */
-	public function history( \WP_REST_Request $request ) {
+		public function history( \WP_REST_Request $request ) {
 		global $wpdb;
 
 		$user_id   = get_current_user_id();
@@ -520,6 +522,19 @@ class Actions {
 				unset( $cache_e );
 			}
 
+			// Cascade invalidation: a Pay In / Pay Out changes session
+			// totals (covered by the 'sessions' group above) AND affects
+			// the orders/report aggregations (today's cash movements,
+			// drawer summary, etc). Going through Cache::invalidate()
+			// ensures every related group is wiped so the next read
+			// returns fresh data, no matter which endpoint the frontend
+			// hits.
+			try {
+				Cache::invalidate( 'cash_adjustment' );
+			} catch ( \Throwable $cascade_e ) {
+				unset( $cascade_e );
+			}
+
 			return new \WP_REST_Response(
 				array(
 					'success'    => true,
@@ -543,12 +558,24 @@ class Actions {
 		$data = $this->format_row( (object) $session->getAttributes() );
 		$outlet = \Readypos\Models\POSOutlet::find( $session->outlet_id );
 		if ( $outlet ) {
+			// Payment methods are owned by global settings (single source of
+			// truth — see Settings\Actions::get_enabled_payment_methods_for_response).
+			// Derive them here from the same options so the terminal session
+			// payload can never desync from the Settings page or the outlet
+			// configuration modal.
+			$session_payment_methods = array();
+			if ( 'yes' === get_option( 'readypos_payment_cash', 'yes' ) ) {
+				$session_payment_methods[] = 'cash';
+			}
+			if ( 'yes' === get_option( 'readypos_payment_card', 'yes' ) ) {
+				$session_payment_methods[] = 'card';
+			}
 			$data['outlet'] = array(
 				'id'              => $outlet->id,
 				'name'            => $outlet->name,
 				'pricing_config'  => $outlet->get_pricing_config(),
 				'tax_config'      => $outlet->get_tax_config(),
-				'payment_methods' => $outlet->get_payment_methods(),
+				'payment_methods' => $session_payment_methods,
 			);
 		} else {
 			$data['outlet'] = null;

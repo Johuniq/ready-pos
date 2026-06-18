@@ -7,7 +7,6 @@ import {
     cartTaxAmountAtom,
     cartTotalAtom,
     customerAtom,
-    heldOrdersCountAtom,
     sessionAtom,
     settingsAtom,
 } from "@/admin/stores/posStore";
@@ -20,84 +19,21 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import CartPanel from "./components/CartPanel";
 import CartTabs from "./components/CartTabs";
-import HeldCartsModal from "./components/HeldCartsModal";
 import PaymentModal from "./components/PaymentModal";
 import POSHeader from "./components/POSHeader";
 import ProductGrid from "./components/ProductGrid";
 import RegisterSessionModal from "./components/RegisterSessionModal";
-import ShiftTrackerModal from "./components/ShiftTrackerModal";
 
 export default function Terminal() {
   const [session, setSession] = useAtom(sessionAtom);
   const setSettings = useSetAtom(settingsAtom);
-  const setHeldCount = useSetAtom(heldOrdersCountAtom);
-  const { addToCart } = useCart();
-
-  // Read cart states to broadcast to customer-display
-  const [cart] = useAtom(cartAtom);
-  const [customer] = useAtom(customerAtom);
-  const [discountAmount] = useAtom(cartDiscountAmountAtom);
-  const [taxAmount] = useAtom(cartTaxAmountAtom);
-  const [subtotal] = useAtom(cartSubtotalAtom);
-  const [total] = useAtom(cartTotalAtom);
-  const [coupons] = useAtom(cartCouponsAtom);
-  const [settings] = useAtom(settingsAtom);
-
-  // Sync state with Customer Display via BroadcastChannel
-  useEffect(() => {
-    const channel = new BroadcastChannel("readypos_customer_display");
-
-    const broadcastState = () => {
-      channel.postMessage({
-        type: "SYNC_STATE",
-        data: {
-          cart,
-          customer,
-          discountAmount,
-          taxAmount,
-          subtotal,
-          total,
-          coupons,
-          settings,
-        },
-      });
-    };
-
-    // Broadcast current state on changes
-    broadcastState();
-
-    // Listen for REQUEST_STATE from new customer display windows
-    const handleMessage = (event) => {
-      if (event.data?.type === "REQUEST_STATE") {
-        broadcastState();
-      }
-    };
-    channel.addEventListener("message", handleMessage);
-
-    return () => {
-      channel.removeEventListener("message", handleMessage);
-      channel.close();
-    };
-  }, [
-    cart,
-    customer,
-    discountAmount,
-    taxAmount,
-    subtotal,
-    total,
-    coupons,
-    settings,
-  ]);
+  const { addToCart, cart } = useCart();
 
   // Modal Visibility States
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showHeldCartsModal, setShowHeldCartsModal] = useState(false);
   const [showSessionModal, setShowSessionModal] = useState(false);
-  const [showShiftModal, setShowShiftModal] = useState(false);
   const [sessionModalMode, setSessionModalMode] = useState("open"); // "open" or "close"
 
-  // Shift Tracking States
-  const [activeShift, setActiveShift] = useState(null);
   const [initializing, setInitializing] = useState(true);
   const [initError, setInitError] = useState(null);
 
@@ -105,12 +41,10 @@ export default function Terminal() {
     setInitializing(true);
     setInitError(null);
     try {
-      // Fetch settings, session, shift, and held orders concurrently to optimize POS initialization
-      const [settingsData, sessionData, shiftData, heldData] = await Promise.all([
+      // Fetch settings and session concurrently to optimize POS initialization
+      const [settingsData, sessionData] = await Promise.all([
         api.get("/settings/get"),
         api.get("/sessions/current"),
-        api.get("/shifts/current"),
-        api.get("/orders/held"),
       ]);
 
       if (settingsData) {
@@ -119,18 +53,8 @@ export default function Terminal() {
 
       setSession(sessionData || { has_active: false, session: null });
 
-      const hasShift = shiftData && shiftData.has_active;
-      if (hasShift) {
-        setActiveShift(shiftData.shift);
-      } else {
-        setActiveShift(null);
-        setShowShiftModal(true);
-      }
-
-      setHeldCount(heldData?.length || 0);
-
-      // Force session modal open if there's no active session AND shift is clocked in
-      if ((!sessionData || !sessionData.has_active) && hasShift) {
+      // Force session modal open if there's no active session
+      if (!sessionData || !sessionData.has_active) {
         setSessionModalMode("open");
         setShowSessionModal(true);
       }
@@ -145,14 +69,13 @@ export default function Terminal() {
     }
   };
 
-  // Load initial settings and check shift & session status
+  // Load initial settings and check session status
   useEffect(() => {
     initializePOS();
-  }, [setSession, setSettings, setHeldCount]);
+  }, [setSession, setSettings]);
 
   // Refresh settings when another tab signals an update, or when the
-  // window regains focus. Ensures customer display message/promos and
-  // other settings are always in sync.
+  // window regains focus. Ensures settings are always in sync.
   useEffect(() => {
     let channel;
     try {
@@ -179,24 +102,25 @@ export default function Terminal() {
           .catch(() => {});
       }
     };
-    const onFocus = () => {
+
+    // Throttle focus/visibility re-fetches to at most once per 5 minutes
+    let lastFetchAt = Date.now();
+    const FIVE_MIN = 5 * 60 * 1000;
+
+    const throttledRefetch = () => {
+      if (Date.now() - lastFetchAt < FIVE_MIN) return;
+      lastFetchAt = Date.now();
       api
         .get("/settings/get")
         .then((data) => data && setSettings(data))
         .catch(() => {});
     };
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        api
-          .get("/settings/get")
-          .then((data) => data && setSettings(data))
-          .catch(() => {});
-      }
-    };
 
     window.addEventListener("storage", onStorage);
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", throttledRefetch);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") throttledRefetch();
+    });
 
     return () => {
       if (channel) {
@@ -207,18 +131,9 @@ export default function Terminal() {
         }
       }
       window.removeEventListener("storage", onStorage);
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", throttledRefetch);
     };
   }, [setSettings]);
-
-  // Sequential lock: force register session open once a shift is active
-  useEffect(() => {
-    if (!initializing && activeShift && (!session || !session.has_active)) {
-      setSessionModalMode("open");
-      setShowSessionModal(true);
-    }
-  }, [activeShift, session?.has_active, initializing]);
 
   // Global keyboard shortcuts for keyboard-first workflow:
   // F1 -> focus product search, F2 -> focus customer search,
@@ -277,16 +192,8 @@ export default function Terminal() {
           setShowPaymentModal(false);
           return;
         }
-        if (showHeldCartsModal) {
-          setShowHeldCartsModal(false);
-          return;
-        }
         if (showSessionModal) {
           setShowSessionModal(false);
-          return;
-        }
-        if (showShiftModal) {
-          setShowShiftModal(false);
           return;
         }
 
@@ -298,7 +205,7 @@ export default function Terminal() {
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [showPaymentModal, showHeldCartsModal, showSessionModal, showShiftModal, cart]);
+  }, [showPaymentModal, showSessionModal, cart]);
 
   // Handle session button click in Header
   const handleOpenCloseSession = () => {
@@ -331,9 +238,6 @@ export default function Terminal() {
       {/* Header */}
       <POSHeader
         onOpenCloseSession={handleOpenCloseSession}
-        onOpenHeldCarts={() => setShowHeldCartsModal(true)}
-        onOpenShiftTracker={() => setShowShiftModal(true)}
-        activeShift={activeShift}
       />
 
       {/* Main Terminal Workspace */}
@@ -348,7 +252,6 @@ export default function Terminal() {
           <CartTabs />
           <CartPanel
             onOpenPayment={() => setShowPaymentModal(true)}
-            onOpenHeldCarts={() => setShowHeldCartsModal(true)}
           />
         </div>
       </div>
@@ -359,24 +262,10 @@ export default function Terminal() {
         onOpenChange={setShowPaymentModal}
       />
 
-      <HeldCartsModal
-        open={showHeldCartsModal}
-        onOpenChange={setShowHeldCartsModal}
-      />
-
       <RegisterSessionModal
         open={showSessionModal}
         onOpenChange={setShowSessionModal}
         mode={sessionModalMode}
-        onShiftChange={setActiveShift}
-      />
-
-      <ShiftTrackerModal
-        open={showShiftModal}
-        onOpenChange={setShowShiftModal}
-        activeShift={activeShift}
-        onShiftChange={setActiveShift}
-        sessionId={session.session?.id}
       />
     </div>
   );

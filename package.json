@@ -104,10 +104,7 @@
     "cmdk": "^0.2.1",
     "date-fns": "^3.3.1",
     "embla-carousel-react": "^8.4.0",
-    "file-saver": "^2.0.5",
     "jotai": "^2.6.5",
-    "jspdf": "^2.5.2",
-    "jspdf-autotable": "^3.8.3",
     "lucide-react": "^0.302.0",
     "next-themes": "^0.2.1",
     "react-aria-components": "^1.0.0-rc.0",
@@ -122,7 +119,6 @@
     "tailwindcss-animate": "^1.0.7",
     "tailwindcss-react-aria-components": "^1.0.0-rc.0",
     "vite-svg-loader": "^5.0.1",
-    "xlsx": "^0.18.5",
     "zod": "^3.23.0-canary.20240222T232722"
   },
   "resolutions": {

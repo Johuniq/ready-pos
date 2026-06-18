@@ -170,16 +170,7 @@ export function ErrorBoundaryFallback({ error, resetErrorBoundary }) {
                 Something went wrong and the application crashed. Please try
                 refreshing the page.
               </p>
-              {error?.message && (
-                <details className="mt-4 text-left">
-                  <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
-                    Error details
-                  </summary>
-                  <pre className="mt-2 p-3 bg-muted rounded text-xs overflow-auto max-h-40">
-                    {error.message}
-                  </pre>
-                </details>
-              )}
+
             </div>
             <div className="flex gap-2">
               <Button onClick={resetErrorBoundary} variant="default">

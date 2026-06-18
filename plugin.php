@@ -86,14 +86,20 @@ final class Readypos {
 		add_action( 'woocommerce_update_order', array( $this, 'clear_dashboard_reports_cache' ) );
 		add_action( 'woocommerce_trash_order', array( $this, 'clear_dashboard_reports_cache' ) );
 		add_action( 'woocommerce_delete_order', array( $this, 'clear_dashboard_reports_cache' ) );
+
+		// One-time cleanup: clear stale report transients from before cache invalidation fix
+		if ( ! get_option( 'readypos_reports_cache_fix_v2' ) ) {
+			$this->clear_dashboard_reports_cache();
+			update_option( 'readypos_reports_cache_fix_v2', '1', false );
+		}
 	}
 
 	/**
-	 * Clear dashboard reports transients (free cache only).
+	 * Clear dashboard reports transients.
 	 */
 	public function clear_dashboard_reports_cache() {
 		global $wpdb;
-		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_readypos_report_%_free_%' OR option_name LIKE '_transient_timeout_readypos_report_%_free_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_readypos_report_%' OR option_name LIKE '_transient_timeout_readypos_report_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 	}
 
 	/**

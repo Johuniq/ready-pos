@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -555,37 +553,3 @@ body.wp-admin {
   backdrop-filter: blur(4px) !important;
 }
 
-/* ==============================
-   Customer Display Fullscreen Security
-   ============================== */
-
-/* Hide ALL WordPress admin UI elements when customer display is active */
-.readypos-customer-display-fullscreen #wpadminbar,
-.readypos-customer-display-fullscreen #adminmenumain,
-.readypos-customer-display-fullscreen #adminmenuback,
-.readypos-customer-display-fullscreen #adminmenuwrap,
-.readypos-customer-display-fullscreen #wpfooter,
-.readypos-customer-display-fullscreen .update-nag,
-.readypos-customer-display-fullscreen .notice,
-.readypos-customer-display-fullscreen .error {
-  display: none !important;
-}
-
-/* Ensure customer display takes full screen without margins */
-.readypos-customer-display-fullscreen {
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-}
-
-.readypos-customer-display-fullscreen #wpcontent {
-  margin-left: 0 !important;
-  padding-left: 0 !important;
-}
-
-/* Make sure customer display content is truly fullscreen */
-.readypos-customer-display-fullscreen #wpbody,
-.readypos-customer-display-fullscreen #wpbody-content {
-  margin: 0 !important;
-  padding: 0 !important;
-}

@@ -19,7 +19,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class Actions
  *
- * Handles API requests for creating POS orders, processing checkout, refunding, and parking carts.
+ * Handles API requests for creating POS orders, processing checkout, and refunding.
  *
  * @package Readypos\Controllers\Orders
  */
@@ -40,14 +40,13 @@ class Actions {
 
 		$items           = $request->get_param( 'items' ); // Cart items array
 		$customer_id     = $request->get_param( 'customerId' ); // WP User ID or null
-		$payment_method  = $request->get_param( 'paymentMethod' ); // 'cash', 'card', 'split', 'gift_card'
+		$payment_method  = $request->get_param( 'paymentMethod' ); // 'cash' or 'card'
 		$cash_received   = $request->get_param( 'cashReceived' );
 		$change_given    = $request->get_param( 'changeGiven' );
 		$discount_type   = $request->get_param( 'discountType' ); // 'fixed' or 'percent' or null
 		$discount_value  = $request->get_param( 'discountValue' );
 		$session_id      = $request->get_param( 'sessionId' );
 		$notes           = $request->get_param( 'notes' );
-		$split_payments  = $request->get_param( 'splitPayments' ); // Array of breakdowns when paymentMethod === 'split'
 		$shipping        = $request->get_param( 'shipping' ); // Shipping details: { method_id, method_title, cost, address }
 
 		if ( empty( $items ) || ! is_array( $items ) ) {
@@ -272,55 +271,6 @@ class Actions {
 			$current_user_id = get_current_user_id();
 			$order->add_meta_data( '_readypos_is_pos_order', 'yes' );
 
-			// Store split payment breakdown when applicable.
-			if ( 'split' === $payment_method && is_array( $split_payments ) && ! empty( $split_payments ) ) {
-				$sanitized_breakdown = array();
-				$split_total = 0;
-				
-				foreach ( $split_payments as $sp ) {
-					$amount = floatval( $sp['amount'] ?? 0 );
-					$split_total += $amount;
-					
-					$sanitized_breakdown[] = array(
-						'method' => sanitize_text_field( $sp['method'] ?? '' ),
-						'amount' => $amount,
-						'ref'    => sanitize_text_field( $sp['ref'] ?? '' ),
-					);
-				}
-				
-				// SECURITY FIX: Validate that split payment sum equals order total
-				// Allow 1 cent tolerance for rounding differences
-				$order_total_before_calc = $order->get_total();
-				if ( abs( $split_total - $order_total_before_calc ) > 0.01 ) {
-					return new \WP_Error(
-						'split_payment_mismatch',
-						sprintf(
-							/* translators: 1: split payment sum, 2: order total */
-							__( 'Split payment amounts (%1$s) do not match order total (%2$s).', 'ready-pos-for-woocommerce' ),
-							wc_price( $split_total ),
-							wc_price( $order_total_before_calc )
-						),
-						array( 'status' => 400 )
-					);
-				}
-				
-				$order->add_meta_data( '_readypos_split_payments', wp_json_encode( $sanitized_breakdown ) );
-
-				// Also append a human-readable breakdown to the order note.
-				$breakdown_lines = array();
-				foreach ( $sanitized_breakdown as $sp ) {
-					$breakdown_lines[] = sprintf(
-						'%s: %s%s',
-						ucfirst( str_replace( '_', ' ', $sp['method'] ) ),
-						wc_price( $sp['amount'] ),
-						! empty( $sp['ref'] ) ? ' (' . $sp['ref'] . ')' : ''
-					);
-				}
-				$order->add_order_note(
-					__( 'Split Payment Breakdown:', 'ready-pos-for-woocommerce' ) . "\n" . implode( "\n", $breakdown_lines )
-				);
-			}
-
 			if ( ! empty( $notes ) ) {
 				// SECURITY FIX: Limit notes length to prevent DoS
 				$max_notes_length = 2000;
@@ -395,6 +345,12 @@ class Actions {
 			// Invalidate order caches
 			$this->invalidate_cache( 'order', $order_id );
 
+			// Invalidate dashboard report caches so the next /reports/*
+			// request reflects this newly created order instead of serving
+			// a stale 2-minute transient (which is why terminals completing
+			// sales would not appear in the dashboard).
+			$this->invalidate_report_caches();
+
 			// Update session sales metrics if session is active
 			// SECURITY FIX #6: Use atomic SQL updates to prevent race condition
 			if ( $session_id ) {
@@ -420,23 +376,14 @@ class Actions {
 					// Calculate payment method totals
 					$cash_amount = 0;
 					$card_amount = 0;
-					
-					if ( 'cash' === $payment_method ) {
-						$cash_amount = $order->get_total();
-					} elseif ( 'card' === $payment_method ) {
-						$card_amount = $order->get_total();
-					} elseif ( 'split' === $payment_method && is_array( $split_payments ) ) {
-						foreach ( $split_payments as $sp ) {
-							$amt = floatval( $sp['amount'] ?? 0 );
-							if ( 'cash' === ( $sp['method'] ?? '' ) ) {
-								$cash_amount += $amt;
-							} elseif ( 'card' === ( $sp['method'] ?? '' ) ) {
-								$card_amount += $amt;
-							}
-						}
-					}
-					
-					// Atomic update - prevents race condition on concurrent orders.
+
+				if ( 'cash' === $payment_method ) {
+					$cash_amount = $order->get_total();
+				} elseif ( 'card' === $payment_method ) {
+					$card_amount = $order->get_total();
+				}
+				
+				// Atomic update - prevents race condition on concurrent orders.
 					$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 						$wpdb->prepare(
 							"UPDATE `" . esc_sql( $sessions_table ) . "`
@@ -634,8 +581,45 @@ class Actions {
 				);
 			},
 			'orders',
-			180 // 3 minutes
+						0 // use Cache::CACHE_GROUPS['orders'] default (5s)
 		);
+	}
+
+	/**
+	 * Invalidate all dashboard report transients.
+	 *
+	 * The reports controller caches each response for 2 minutes. After a new
+	 * POS order is created, those transients must be flushed so the freshly
+	 * completed sale shows up in totals, charts, payment-method and product
+	 * performance widgets without the user having to wait for the cache to
+	 * expire.
+	 */
+	private function invalidate_report_caches() {
+		$keys = array(
+			// Sales summary is cached per `$days` window (1, 7, 30, 90, ...).
+			// The most common default and the value the dashboard requests.
+			'readypos_report_sales_summary_1',
+			'readypos_report_sales_summary_7',
+			'readypos_report_sales_summary_30',
+			'readypos_report_sales_summary_90',
+			'readypos_report_product_perf_1',
+			'readypos_report_product_perf_7',
+			'readypos_report_product_perf_30',
+			'readypos_report_product_perf_90',
+			'readypos_report_payment_methods_1',
+			'readypos_report_payment_methods_7',
+			'readypos_report_payment_methods_30',
+			'readypos_report_payment_methods_90',
+			'readypos_report_low_stock_5',
+			'readypos_report_low_stock_8',
+			'readypos_report_low_stock_10',
+			'readypos_report_low_stock_20',
+			'readypos_report_low_stock_50',
+		);
+
+		foreach ( $keys as $key ) {
+			delete_transient( $key );
+		}
 	}
 
 	/**
@@ -677,6 +661,10 @@ class Actions {
 			'date'           => $wc_order->get_date_created()->date( 'Y-m-d H:i:s' ),
 			'status'         => $wc_order->get_status(),
 			'notes'          => $wc_order->get_customer_note(),
+			'customer_id'    => $wc_order->get_customer_id() ? intval( $wc_order->get_customer_id() ) : null,
+			'customer_name'  => trim( $wc_order->get_billing_first_name() . ' ' . $wc_order->get_billing_last_name() ),
+			'customer_email' => $wc_order->get_billing_email(),
+			'customer_phone' => $wc_order->get_billing_phone(),
 		);
 
 		return new \WP_REST_Response( $details, 200 );
@@ -690,7 +678,7 @@ class Actions {
 	 */
 	public function refund( \WP_REST_Request $request ) {
 		// SECURITY FIX: Add permission check for refund operations
-		if ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'manage_pos' ) ) {
+		if ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'readypos_manage_pos' ) ) {
 			return new \WP_Error(
 				'insufficient_permissions',
 				__( 'You do not have permission to process refunds.', 'ready-pos-for-woocommerce' ),
@@ -776,61 +764,5 @@ class Actions {
 		} catch ( \Exception $e ) {
 			return new \WP_Error( 'refund_failed', $e->getMessage(), array( 'status' => 500 ) );
 		}
-	}
-
-	/**
-	 * Park/Hold a cart session.
-	 *
-	 * @param \WP_REST_Request $request REST request.
-	 * @return \WP_REST_Response
-	 */
-	public function hold( \WP_REST_Request $request ) {
-		$cashier_id = get_current_user_id();
-		$cart_data  = $request->get_param( 'cart' ); // JSON/Array of cart items + customer
-		$hold_id    = $request->get_param( 'holdId' ) ?: uniqid( 'hold_' );
-
-		$held_orders = get_transient( 'readypos_held_orders_' . $cashier_id ) ?: array();
-		$held_orders[ $hold_id ] = array(
-			'id'        => $hold_id,
-			'cart'      => $cart_data,
-			'parked_at' => current_time( 'mysql' ),
-		);
-
-		set_transient( 'readypos_held_orders_' . $cashier_id, $held_orders, DAY_IN_SECONDS * 7 );
-
-		return new \WP_REST_Response( array( 'success' => true, 'holdId' => $hold_id ), 200 );
-	}
-
-	/**
-	 * Get all parked/held orders for the current cashier.
-	 *
-	 * @return \WP_REST_Response
-	 */
-	public function get_held() {
-		$cashier_id  = get_current_user_id();
-		$held_orders = get_transient( 'readypos_held_orders_' . $cashier_id ) ?: array();
-
-		return new \WP_REST_Response( array_values( $held_orders ), 200 );
-	}
-
-	/**
-	 * Resume or delete a parked order.
-	 *
-	 * @param \WP_REST_Request $request REST request.
-	 * @return \WP_REST_Response
-	 */
-	public function resume( \WP_REST_Request $request ) {
-		$cashier_id  = get_current_user_id();
-		$hold_id     = $request->get_param( 'holdId' );
-		$held_orders = get_transient( 'readypos_held_orders_' . $cashier_id ) ?: array();
-
-		if ( isset( $held_orders[ $hold_id ] ) ) {
-			$order = $held_orders[ $hold_id ];
-			unset( $held_orders[ $hold_id ] );
-			set_transient( 'readypos_held_orders_' . $cashier_id, $held_orders, DAY_IN_SECONDS * 7 );
-			return new \WP_REST_Response( $order, 200 );
-		}
-
-		return new \WP_REST_Response( null, 404 );
 	}
 }

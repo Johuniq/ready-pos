@@ -15,6 +15,7 @@ use Readypos\Core\Architecture\EventDispatcher;
 use Readypos\Models\POSOrderMeta;
 use Readypos\Models\POSSession;
 use Readypos\Models\POSCustomer;
+use Readypos\Models\POSOutlet;
 use Exception;
 
 defined( 'ABSPATH' ) || exit;
@@ -85,7 +86,6 @@ class CheckoutService implements CheckoutServiceInterface {
 			$discount_value = $data['discountValue'] ?? null;
 			$session_id     = $data['sessionId'] ?? null;
 			$notes          = $data['notes'] ?? '';
-			$split_payments = $data['splitPayments'] ?? array();
 			$shipping       = $data['shipping'] ?? array();
 
 			// 1. Fetch active session and outlet details

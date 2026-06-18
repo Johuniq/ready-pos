@@ -106,34 +106,16 @@ class Actions {
 					'receipt_show_barcode' => get_option( 'readypos_receipt_show_barcode', 'yes' ),
 					'receipt_header'  => get_option( 'readypos_receipt_header', get_bloginfo( 'name' ) ),
 					'receipt_footer'  => get_option( 'readypos_receipt_footer', 'Thank you for shopping with us!' ),
-					'receipt_paper_width' => get_option( 'readypos_receipt_paper_width', '80mm' ),
-					'receipt_blocks'  => json_decode( get_option( 'readypos_receipt_blocks', '[]' ), true ),
-					// Payment Settings
+				'receipt_paper_width' => get_option( 'readypos_receipt_paper_width', '80mm' ),
+				// Payment Settings
 					'payment_cash'    => get_option( 'readypos_payment_cash', 'yes' ),
 					'payment_card'    => get_option( 'readypos_payment_card', 'yes' ),
 					'pos_cash_gateway' => get_option( 'readypos_pos_cash_gateway', 'cod' ),
 					'pos_card_gateway' => get_option( 'readypos_pos_card_gateway', 'stripe' ),
 					// Terminal Settings
-					'keyboard_status' => get_option( 'readypos_keyboard_status', 'yes' ),
-					'customer_display_enabled' => get_option( 'readypos_customer_display_enabled', 'yes' ),
-					'customer_display_idle_timeout' => intval( get_option( 'readypos_customer_display_idle_timeout', 30 ) ),
-					'customer_display_message' => get_option( 'readypos_customer_display_message', 'Welcome to our store!' ),
-					'customer_display_promo_1' => get_option( 'readypos_customer_display_promo_1', 'Special offers available - Ask our staff!' ),
-					'customer_display_promo_2' => get_option( 'readypos_customer_display_promo_2', 'Join our loyalty program and save more' ),
-					'customer_display_promo_3' => get_option( 'readypos_customer_display_promo_3', 'Now open every day until 9 PM' ),
-					'customer_display_promo_4' => get_option( 'readypos_customer_display_promo_4', 'Shop online and pick up in store' ),
-					'max_discount_limit' => intval( get_option( 'readypos_max_discount_limit', '100' ) ),
+				'keyboard_status' => get_option( 'readypos_keyboard_status', 'yes' ),
+				'max_discount_limit' => intval( get_option( 'readypos_max_discount_limit', '100' ) ),
 					'pos_order_prefix' => get_option( 'readypos_pos_order_prefix', '' ),
-					// Return/Exchange Settings
-					'enable_returns'          => get_option( 'readypos_enable_returns', 'yes' ),
-					'enable_exchanges'        => get_option( 'readypos_enable_exchanges', 'yes' ),
-					'enable_store_credit'     => get_option( 'readypos_enable_store_credit', 'yes' ),
-					'return_time_limit_days'  => intval( get_option( 'readypos_return_time_limit_days', 30 ) ),
-					'require_receipt'         => get_option( 'readypos_require_receipt', 'no' ),
-					'restocking_fee_enabled'  => get_option( 'readypos_restocking_fee_enabled', 'no' ),
-					'restocking_fee_type'     => get_option( 'readypos_restocking_fee_type', 'percentage' ),
-					'restocking_fee_value'    => floatval( get_option( 'readypos_restocking_fee_value', 10 ) ),
-					'auto_restock_inventory'  => get_option( 'readypos_auto_restock_inventory', 'yes' ),
 					// Onboarding
 					'onboarding_complete' => get_option( 'readypos_onboarding_complete', 'no' ),
 				);
@@ -141,7 +123,7 @@ class Actions {
 				return new \WP_REST_Response( $default_settings, 200 );
 			},
 			'settings',
-			1800 // 30 minutes
+			0 // use Cache::CACHE_GROUPS['settings'] default (60s)
 		);
 	}
 
@@ -167,7 +149,6 @@ class Actions {
 		$receipt_header  = sanitize_text_field( $request->get_param( 'receipt_header' ) );
 		$receipt_footer  = sanitize_text_field( $request->get_param( 'receipt_footer' ) );
 		$receipt_paper_width = sanitize_text_field( $request->get_param( 'receipt_paper_width' ) );
-		$receipt_blocks  = $request->get_param( 'receipt_blocks' );
 
 		// Payment Settings — only the gateway mappings still need
 		// pre-processing here. The payment_cash / payment_card values
@@ -178,26 +159,8 @@ class Actions {
 
 		// Terminal Settings
 		$keyboard_status = sanitize_text_field( $request->get_param( 'keyboard_status' ) );
-		$customer_display_enabled = sanitize_text_field( $request->get_param( 'customer_display_enabled' ) );
-		$customer_display_idle_timeout = intval( $request->get_param( 'customer_display_idle_timeout' ) );
-		$customer_display_message = sanitize_text_field( $request->get_param( 'customer_display_message' ) );
-		$customer_display_promo_1 = sanitize_text_field( $request->get_param( 'customer_display_promo_1' ) );
-		$customer_display_promo_2 = sanitize_text_field( $request->get_param( 'customer_display_promo_2' ) );
-		$customer_display_promo_3 = sanitize_text_field( $request->get_param( 'customer_display_promo_3' ) );
-		$customer_display_promo_4 = sanitize_text_field( $request->get_param( 'customer_display_promo_4' ) );
 		$max_discount_limit = intval( $request->get_param( 'max_discount_limit' ) );
 		$pos_order_prefix = sanitize_text_field( $request->get_param( 'pos_order_prefix' ) );
-
-		// Return/Exchange Settings
-		$enable_returns = sanitize_text_field( $request->get_param( 'enable_returns' ) );
-		$enable_exchanges = sanitize_text_field( $request->get_param( 'enable_exchanges' ) );
-		$enable_store_credit = sanitize_text_field( $request->get_param( 'enable_store_credit' ) );
-		$return_time_limit_days = intval( $request->get_param( 'return_time_limit_days' ) );
-		$require_receipt = sanitize_text_field( $request->get_param( 'require_receipt' ) );
-		$restocking_fee_enabled = sanitize_text_field( $request->get_param( 'restocking_fee_enabled' ) );
-		$restocking_fee_type = sanitize_text_field( $request->get_param( 'restocking_fee_type' ) );
-		$restocking_fee_value = floatval( $request->get_param( 'restocking_fee_value' ) );
-		$auto_restock_inventory = sanitize_text_field( $request->get_param( 'auto_restock_inventory' ) );
 
 		// Update Site Identity
 		if ( ! empty( $site_name ) ) {
@@ -220,9 +183,6 @@ class Actions {
 		update_option( 'readypos_receipt_header', $receipt_header );
 		update_option( 'readypos_receipt_footer', $receipt_footer );
 		update_option( 'readypos_receipt_paper_width', $receipt_paper_width ?: '80mm' );
-		if ( is_array( $receipt_blocks ) ) {
-			update_option( 'readypos_receipt_blocks', wp_json_encode( $receipt_blocks ) );
-		}
 
 		// Update Payment Settings.
 		// Use the guarded helper so a request that omits payment_cash
@@ -238,26 +198,9 @@ class Actions {
 
 		// Update Terminal Settings
 		update_option( 'readypos_keyboard_status', $keyboard_status );
-		update_option( 'readypos_customer_display_enabled', $customer_display_enabled ?: 'yes' );
-		update_option( 'readypos_customer_display_idle_timeout', $customer_display_idle_timeout ?: 30 );
-		update_option( 'readypos_customer_display_message', $customer_display_message ?: 'Welcome to our store!' );
-		update_option( 'readypos_customer_display_promo_1', $customer_display_promo_1 ?: 'Special offers available - Ask our staff!' );
-		update_option( 'readypos_customer_display_promo_2', $customer_display_promo_2 ?: 'Join our loyalty program and save more' );
-		update_option( 'readypos_customer_display_promo_3', $customer_display_promo_3 ?: 'Now open every day until 9 PM' );
-		update_option( 'readypos_customer_display_promo_4', $customer_display_promo_4 ?: 'Shop online and pick up in store' );
+
 		update_option( 'readypos_max_discount_limit', $max_discount_limit ?: 100 );
 		update_option( 'readypos_pos_order_prefix', $pos_order_prefix );
-
-		// Update Return/Exchange Settings
-		update_option( 'readypos_enable_returns', $enable_returns ?: 'yes' );
-		update_option( 'readypos_enable_exchanges', $enable_exchanges ?: 'yes' );
-		update_option( 'readypos_enable_store_credit', $enable_store_credit ?: 'yes' );
-		update_option( 'readypos_return_time_limit_days', $return_time_limit_days ?: 30 );
-		update_option( 'readypos_require_receipt', $require_receipt ?: 'no' );
-		update_option( 'readypos_restocking_fee_enabled', $restocking_fee_enabled ?: 'no' );
-		update_option( 'readypos_restocking_fee_type', $restocking_fee_type ?: 'percentage' );
-		update_option( 'readypos_restocking_fee_value', $restocking_fee_value ?: 10 );
-		update_option( 'readypos_auto_restock_inventory', $auto_restock_inventory ?: 'yes' );
 
 		// Onboarding flag.
 		$onboarding_complete = sanitize_text_field( $request->get_param( 'onboarding_complete' ) );
@@ -269,6 +212,26 @@ class Actions {
 		$this->invalidate_cache( 'setting' );
 
 		return new \WP_REST_Response( array( 'success' => true ), 200 );
+	}
+
+	/**
+	 * Single source of truth for which POS payment methods are enabled.
+	 * Mirrors the JS helper in src/lib/paymentMethods.js so the server can
+	 * never report a different set than the frontend. Used by the outlet
+	 * config GET/UPDATE responses so the modal stays in sync with global
+	 * settings without needing its own per-outlet meta.
+	 *
+	 * @return array
+	 */
+	protected function get_enabled_payment_methods_for_response() {
+		$methods = array();
+		if ( 'yes' === get_option( 'readypos_payment_cash', 'yes' ) ) {
+			$methods[] = 'cash';
+		}
+		if ( 'yes' === get_option( 'readypos_payment_card', 'yes' ) ) {
+			$methods[] = 'card';
+		}
+		return $methods;
 	}
 
 	/**
@@ -300,7 +263,7 @@ class Actions {
 				return new \WP_REST_Response( $data, 200 );
 			},
 			'payment_methods',
-			3600 // 1 hour
+						0 // use Cache::CACHE_GROUPS['payment_methods'] default (60s)
 		);
 	}
 
@@ -345,7 +308,7 @@ class Actions {
 				return new \WP_REST_Response( $data, 200 );
 			},
 			'outlets',
-			1800 // 30 minutes
+						0 // use Cache::CACHE_GROUPS['outlets'] default (60s)
 		);
 	}
 
@@ -359,15 +322,6 @@ class Actions {
 		$user_id_check = Validator::require_authenticated();
 		if ( is_wp_error( $user_id_check ) ) {
 			return $user_id_check;
-		}
-
-		// GPL version limit: only 1 outlet allowed.
-		if ( (int) POSOutlet::count() >= 1 ) {
-			return new \WP_Error(
-				'outlet_limit_reached',
-				__( 'The free version of Ready POS allows only 1 outlet. Upgrade to Pro to create additional outlets.', 'ready-pos-for-woocommerce' ),
-				array( 'status' => 403 )
-			);
 		}
 
 		$name = Validator::required_string( $request->get_param( 'name' ), __( 'Outlet name', 'ready-pos-for-woocommerce' ), 191 );
@@ -428,15 +382,11 @@ class Actions {
 			)
 		);
 
-		// Also create a default register for it
-		POSRegister::create(
-			array(
-				'outlet_id' => $outlet->id,
-				'name'      => __( 'Register 1', 'ready-pos-for-woocommerce' ),
-				'code'      => 'REG-1',
-				'status'    => POSRegister::STATUS_CLOSED,
-			)
-		);
+		// Note: we intentionally do NOT auto-create a "Register 1" here.
+		// Onboarding and the Settings page both call /settings/registers/create
+		// right after the outlet is created; auto-creating here would result
+		// in two registers per outlet. The user controls register creation
+		// explicitly from the UI.
 
 		\Readypos\Core\AuditLog::log(
 			\Readypos\Core\AuditLog::EVENT_DATA,
@@ -656,15 +606,6 @@ class Actions {
 		// Validate outlet exists
 		if ( ! POSOutlet::find( $outlet_id ) ) {
 			return new \WP_Error( 'outlet_not_found', __( 'Outlet not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404, 'field' => 'outlet_id' ) );
-		}
-
-		// GPL version limit: only 1 register per outlet allowed.
-		if ( (int) POSRegister::where( 'outlet_id', (int) $outlet_id )->count() >= 1 ) {
-			return new \WP_Error(
-				'register_limit_reached',
-				__( 'The free version of Ready POS allows only 1 register per outlet. Upgrade to Pro to add more registers.', 'ready-pos-for-woocommerce' ),
-				array( 'status' => 403 )
-			);
 		}
 
 		// Duplicate name check per outlet
@@ -1163,7 +1104,7 @@ class Actions {
 			'name'            => $outlet->name,
 			'pricing_config'  => $outlet->get_pricing_config(),
 			'tax_config'      => $outlet->get_tax_config(),
-			'payment_methods' => $outlet->get_payment_methods(),
+			'payment_methods' => $this->get_enabled_payment_methods_for_response(),
 		);
 
 		return new \WP_REST_Response( $config, 200 );
@@ -1196,10 +1137,11 @@ class Actions {
 		}
 
 		// Update payment methods
-		$payment_methods = $request->get_param( 'payment_methods' );
-		if ( is_array( $payment_methods ) ) {
-			$outlet->set_payment_methods( $payment_methods );
-		}
+		// Payment methods are owned by global settings (readypos_payment_cash / readypos_payment_card).
+		// We intentionally ignore any 'payment_methods' the request carries so this endpoint can
+		// never desync the per-outlet meta from the single source of truth. The setting is still
+		// echoed back below, computed from the global options, so the modal UI stays accurate.
+		$payment_methods = $this->get_enabled_payment_methods_for_response();
 
 		$outlet->updated_at = current_time( 'mysql' );
 		$outlet->save();
