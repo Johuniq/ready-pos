@@ -389,7 +389,6 @@ grunt.registerTask("release", [
   "copy:main",
   "compress:main",
   "compress:version",
-  "compress:todocs",
   "clean:mapFiles",
 ]);
 
