@@ -462,7 +462,7 @@ export default function Onboarding() {
                   We'll guide you through store setup, payments, and
                   more.
                 </p>
-                <div className="grid grid-cols-2 gap-3 pt-4 text-xs text-muted-foreground max-w-sm">
+                <div className="grid grid-cols-3 gap-3 pt-4 text-xs text-muted-foreground max-w-sm">
                   <span className="flex items-center gap-1.5 p-3 bg-muted/30 rounded-lg">
                     <Store className="w-4 h-4 text-primary" /> Store & Register
                   </span>
@@ -474,7 +474,7 @@ export default function Onboarding() {
                   </span>
                 </div>
                 <p className="text-[11px] text-muted-foreground pt-2">
-                  ⚡ Takes about 3-5 minutes • All settings can be changed later
+                  ⚡ Takes about 1-2 minutes • All settings can be changed later
                 </p>
               </div>
             )}
