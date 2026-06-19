@@ -49,21 +49,21 @@ class WebSocketServer {
      */
     public static function register_rest_routes() {
         // Broadcast event
-        register_rest_route('ready-pos/v1', '/realtime/broadcast', [
+        register_rest_route('readypos/v1', '/realtime/broadcast', [
             'methods' => 'POST',
             'callback' => [self::class, 'broadcast_event'],
             'permission_callback' => [self::class, 'check_permissions'],
         ]);
 
         // Poll for events
-        register_rest_route('ready-pos/v1', '/realtime/poll', [
+        register_rest_route('readypos/v1', '/realtime/poll', [
             'methods' => 'GET',
             'callback' => [self::class, 'poll_events'],
             'permission_callback' => [self::class, 'check_permissions'],
         ]);
 
         // Get connection status
-        register_rest_route('ready-pos/v1', '/realtime/status', [
+        register_rest_route('readypos/v1', '/realtime/status', [
             'methods' => 'GET',
             'callback' => [self::class, 'get_status'],
             'permission_callback' => [self::class, 'check_permissions'],
@@ -314,7 +314,7 @@ class WebSocketServer {
     private static function get_active_registers() {
         global $wpdb;
 
-        $table = $wpdb->prefix . 'ready_pos_sessions';
+        $table = $wpdb->prefix . 'readypos_sessions';
         
         // Get sessions active in last 5 minutes
         $active_sessions = $wpdb->get_results(

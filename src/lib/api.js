@@ -15,7 +15,7 @@ const getApiConfig = () => {
 
   // Fallback defaults for dev environments
   return {
-    url: "/wp-json/ready-pos/v1",
+    url: "/wp-json/readypos/v1",
     nonce: "",
   };
 };

@@ -37,11 +37,6 @@ function boot_eloquent() {
 		$booted = true;
 		return true;
 	} catch ( \Exception $e ) {
-		// Log error for debugging
-		if ( function_exists( 'error_log' ) && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional debug logging for database boot failures
-			error_log( 'ReadyPOS: Failed to boot Eloquent - ' . $e->getMessage() );
-		}
 		return false;
 	}
 }

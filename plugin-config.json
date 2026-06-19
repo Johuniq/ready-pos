@@ -8,7 +8,7 @@
   "text_domain": "ready-pos",
   "domain_path": "/languages",
   "main_class_name": "Readypos",
-  "main_function_name": "ready_pos_init",
+  "main_function_name": "readypos_init",
   "namespace": "Readypos",
   "plugin_prefix": "readypos",
   "constant_prefix": "READYPOS"

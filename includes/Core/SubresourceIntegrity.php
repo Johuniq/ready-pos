@@ -154,11 +154,6 @@ class SubresourceIntegrity {
 			return $custom_hashes[ $url ];
 		}
 
-		// Try to generate hash on-the-fly (only in development)
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG && defined( 'WP_ENVIRONMENT_TYPE' ) && 'local' === WP_ENVIRONMENT_TYPE ) {
-			return self::generate_integrity_hash( $url );
-		}
-
 		return false;
 	}
 

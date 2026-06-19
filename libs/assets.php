@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
 use Exception;
 use WP_HTML_Tag_Processor;
 
-const VITE_CLIENT_SCRIPT_HANDLE = 'vite-client';
+const VITE_CLIENT_SCRIPT_HANDLE = 'readypos-vite-client';
 
 /**
  * Get manifest data
@@ -77,8 +77,7 @@ function get_manifest( string $manifest_dir ): object {
 	 * @param string $manifest_path Manifest file path.
 	 * @param bool   $is_dev        Whether this is a manifest for development assets.
 	 */
-	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Third-party Vite library hook, cannot be renamed
-	$manifest = apply_filters( 'vite_for_wp__manifest_data', $manifest, $manifest_dir, $manifest_path );
+	$manifest = apply_filters( 'readypos_vite_manifest_data', $manifest, $manifest_dir, $manifest_path );
 
 	$manifests[ $manifest_path ] = (object) array(
 		'data'   => $manifest,
@@ -258,8 +257,7 @@ function load_development_asset( object $manifest, string $entry, array $options
 	 * @param string $entry    Entrypoint file.
 	 * @param array  $options  Enqueue options.
 	 */
-	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Third-party Vite library hook, cannot be renamed
-	$assets = apply_filters( 'vite_for_wp__development_assets', $assets, $manifest, $entry, $options );
+	$assets = apply_filters( 'readypos_vite_development_assets', $assets, $manifest, $entry, $options );
 
 	return $assets;
 }
@@ -279,10 +277,6 @@ function load_production_asset( object $manifest, string $entry, array $options 
 	$url = prepare_asset_url( $manifest->dir );
 
 	if ( ! isset( $manifest->data->{$entry} ) ) {
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			wp_die( esc_html( sprintf( '[Vite] Entry %s not found.', $entry ) ) );
-		}
-
 		return null;
 	}
 
@@ -323,8 +317,7 @@ function load_production_asset( object $manifest, string $entry, array $options 
 	 * @param string $entry    Entrypoint file.
 	 * @param array  $options  Enqueue options.
 	 */
-	// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Third-party Vite library hook, cannot be renamed
-	$assets = apply_filters( 'vite_for_wp__production_assets', $assets, $manifest, $entry, $options );
+	$assets = apply_filters( 'readypos_vite_production_assets', $assets, $manifest, $entry, $options );
 
 	return $assets;
 }
@@ -395,10 +388,6 @@ function register_asset( string $manifest_dir, string $entry, array $options ): 
 	try {
 		$manifest = get_manifest( $manifest_dir );
 	} catch ( Exception $e ) {
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			wp_die( esc_html( $e->getMessage() ) );
-		}
-
 		return null;
 	}
 

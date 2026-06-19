@@ -31,6 +31,6 @@ import "./editor.scss";
  */
 export default function Edit() {
   return (
-    <p {...useBlockProps()}>{__("Hello from the editor!", "ready-pos")}</p>
+    <p {...useBlockProps()}>{__("Hello from the editor!", "ready-pos-for-woocommerce")}</p>
   );
 }

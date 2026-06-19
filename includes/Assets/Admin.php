@@ -27,7 +27,7 @@ class Admin {
 	/**
 	 * Script handle.
 	 */
-	const HANDLE = 'ready-pos-admin';
+	const HANDLE = 'readypos-admin';
 
 	/**
 	 * Localized JS global object name.
@@ -46,7 +46,7 @@ class Admin {
 	 * @var array
 	 */
 	private $allowed_screens = array(
-		'toplevel_page_ready-pos',
+		'toplevel_page_readypos',
 	);
 
 	/**

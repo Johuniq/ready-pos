@@ -9,7 +9,7 @@ import { PageSkeleton } from "@/components/loading/PageSkeleton";
 import { AlertProvider } from "@/components/ui/alert-provider";
 import { Toaster } from "sonner";
 
-const el = document.getElementById("myplugin");
+const el = document.getElementById("readypos-app");
 
 if (el) {
   ReactDOM.createRoot(el).render(

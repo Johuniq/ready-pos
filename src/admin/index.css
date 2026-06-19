@@ -164,15 +164,15 @@
 }
 
 /* Remove all WordPress admin bottom spacing */
-.toplevel_page_ready-pos #wpbody-content,
-.toplevel_page_ready-pos #wpbody,
-.toplevel_page_ready-pos #wpcontent {
+.toplevel_page_readypos #wpbody-content,
+.toplevel_page_readypos #wpbody,
+.toplevel_page_readypos #wpcontent {
   padding-bottom: 0 !important;
   margin-bottom: 0 !important;
 }
 
 /* Hide WP default footer on our plugin pages */
-.toplevel_page_ready-pos #wpfooter {
+.toplevel_page_readypos #wpfooter {
   display: none !important;
 }
 

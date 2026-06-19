@@ -294,11 +294,6 @@ export default function PaymentModal({ open, onOpenChange }) {
         } catch (refreshErr) {
           // Non-fatal: the header will self-heal within the 5s
           // group TTL or on the next focus event.
-          // eslint-disable-next-line no-console
-          console.warn(
-            "[PaymentModal] Failed to refresh session after sale:",
-            refreshErr,
-          );
         }
       } else {
         toast.error("Checkout failed");

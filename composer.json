@@ -1,6 +1,6 @@
 {
   "name": "readypos/readypos",
-  "description": "Wordpress Plugin boilerplate",
+  "description": "Point of Sale system for WooCommerce",
   "autoload": {
     "psr-4": {
       "Readypos\\": "includes/",

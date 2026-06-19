@@ -51,6 +51,11 @@ release
 # Development files
 plugin-config.json
 **/vite-dev-server.json
+.env
+.env.example
+.env.*
+playground.blueprint.json
+*.blueprint.json
 
 # OS files
 .DS_Store

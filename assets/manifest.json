@@ -2,7 +2,7 @@
   "name": "Ready POS",
   "short_name": "ReadyPOS",
   "description": "Professional WooCommerce Point of Sale Terminal",
-  "start_url": "/wp-admin/admin.php?page=ready-pos#/terminal",
+  "start_url": "/wp-admin/admin.php?page=readypos#/terminal",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#ffffff",

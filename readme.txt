@@ -19,7 +19,7 @@ Transform your WooCommerce store into a Point of Sale system. Fast checkout, inv
 
 The source code for all compiled JavaScript and CSS assets is publicly available on GitHub:
 
-**https://github.com/Johuniq/ready-pos**
+https://github.com/Johuniq/ready-pos
 
 The unminified source files are located in the `src/` directory of the repository. To build from source:
 

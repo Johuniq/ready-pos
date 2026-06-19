@@ -3,9 +3,9 @@
 // terminal can render immediately on startup and survive brief
 // network hiccups. Orders, payments, and inventory writes always
 // flow through the live API and are not queued here.
-const DB_NAME = "ready_pos_local_cache";
+const DB_NAME = "readypos_local_cache";
 const DB_VERSION = 2; // Incremented for schema changes
-const LOCAL_STORAGE_KEYS = ["ready_pos_favorites"];
+const LOCAL_STORAGE_KEYS = ["readypos_favorites"];
 
 export const openDB = () => {
   return new Promise((resolve, reject) => {
@@ -173,7 +173,7 @@ export const resetLocalCache = async () => {
   if (typeof sessionStorage !== "undefined") {
     Object.keys(sessionStorage)
       .filter(
-        (key) => key.startsWith("readypos_") || key.startsWith("ready_pos_"),
+        (key) => key.startsWith("readypos_"),
       )
       .forEach((key) => sessionStorage.removeItem(key));
   }

@@ -74,7 +74,7 @@ export default function ProductGrid() {
   // Favorites pinning state
   const [favorites, setFavorites] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem("ready_pos_favorites") || "[]");
+      return JSON.parse(localStorage.getItem("readypos_favorites") || "[]");
     } catch {
       return [];
     }
@@ -91,7 +91,7 @@ export default function ProductGrid() {
 
   // Save favorites to localStorage
   useEffect(() => {
-    localStorage.setItem("ready_pos_favorites", JSON.stringify(favorites));
+    localStorage.setItem("readypos_favorites", JSON.stringify(favorites));
   }, [favorites]);
 
   // Fetch categories once on mount

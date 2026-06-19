@@ -22,7 +22,7 @@ class Frontend {
 	/**
 	 * Script handle for Readypos.
 	 */
-	const HANDLE = 'ready-pos-frontend';
+	const HANDLE = 'readypos-frontend';
 
 	/**
 	 * JS Object name for Readypos.
@@ -41,7 +41,7 @@ class Frontend {
 	 * @var array
 	 */
 	private $allowed_screens = array(
-		'toplevel_page_ready-pos',
+		'toplevel_page_readypos',
 	);
 
 	/**

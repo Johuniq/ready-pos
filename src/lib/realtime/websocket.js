@@ -81,7 +81,7 @@ class WebSocketManager {
     const host = window.location.host;
 
     // Default WebSocket endpoint (requires server setup)
-    return `${protocol}//${host}/ws/ready-pos`;
+    return `${protocol}//${host}/ws/readypos`;
   }
 
   /**

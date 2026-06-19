@@ -390,10 +390,6 @@ class Route {
 				}
 
 				if ( ! isset( $route->prefix ) ) {
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional debug logging in development mode
-						error_log( sprintf( '[ReadyPOS] Route %s must have a prefix', $route->endpoint ?? 'unknown' ) );
-					}
 					continue;
 				}
 
@@ -452,10 +448,6 @@ class Route {
 
 					return $instance->{$method}( $request );
 				} catch ( \Throwable $e ) {
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional debug logging in development mode
-						error_log( sprintf( '[ReadyPOS] Route callback error: %s', $e->getMessage() ) );
-					}
 					return new \WP_Error(
 						'rest_callback_error',
 						__( 'Internal server error.', 'ready-pos-for-woocommerce' ),
@@ -518,10 +510,6 @@ class Route {
 
 					return $instance->{$method}( $request );
 				} catch ( \Throwable $e ) {
-					if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional debug logging in development mode
-						error_log( sprintf( '[ReadyPOS] Auth callback error: %s', $e->getMessage() ) );
-					}
 					return false;
 				}
 			};
@@ -531,10 +519,6 @@ class Route {
 		try {
 			return self::prepare_callback( $callback );
 		} catch ( \Throwable $e ) {
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Intentional debug logging in development mode
-				error_log( sprintf( '[ReadyPOS] Invalid auth callback: %s', $e->getMessage() ) );
-			}
 			return '__return_false';
 		}
 	}

@@ -26,7 +26,7 @@ class Menu {
 	 *
 	 * @var string
 	 */
-	private $parent_slug = 'ready-pos';
+	private $parent_slug = 'readypos';
 
 	/**
 	 * Initialize menu hooks.
@@ -132,10 +132,11 @@ class Menu {
 		if ( ! $screen ) {
 			return;
 		}
-		$css = '#adminmenu a[href*="readypos.johuniq.tech"]{background:#d63638!important;color:#fff!important;font-weight:600;}';
-		$css .= '#adminmenu a[href*="readypos.johuniq.tech"]:hover{background:#b32d2e!important;color:#fff!important;}';
-		$css .= '#adminmenu a[href*="readypos.johuniq.tech"] .wp-menu-image::before{color:#fff!important;}';
-		wp_add_inline_style( 'colors', $css );
+		echo '<style>
+			#adminmenu a[href*="readypos.johuniq.tech"]{background:#d63638!important;color:#fff!important;font-weight:600;}
+			#adminmenu a[href*="readypos.johuniq.tech"]:hover{background:#b32d2e!important;color:#fff!important;}
+			#adminmenu a[href*="readypos.johuniq.tech"] .wp-menu-image::before{color:#fff!important;}
+		</style>';
 	}
 
 	/**
@@ -148,7 +149,7 @@ class Menu {
 			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'ready-pos-for-woocommerce' ) );
 		}
 		?>
-		<div id="myplugin" class="readypos-app"></div>
+		<div id="readypos-app" class="readypos-app"></div>
 		<?php
 	}
 }

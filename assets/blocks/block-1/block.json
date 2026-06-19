@@ -1,7 +1,7 @@
 {
   "$schema": "https://schemas.wp.org/trunk/block.json",
   "apiVersion": 3,
-  "name": "ready-pos/block-1",
+  "name": "readypos/block-1",
   "version": "0.1.0",
   "title": "WPB Block 1",
   "category": "widgets",
@@ -11,7 +11,7 @@
   "supports": {
     "html": false
   },
-  "textdomain": "ready-pos",
+  "textdomain": "ready-pos-for-woocommerce",
   "editorScript": "file:./index.js",
   "editorStyle": "file:./index.css",
   "style": "file:./style-index.css",

@@ -64,7 +64,7 @@ class Tools {
 		// Redirect back with success message
 		$redirect_url = add_query_arg(
 			array(
-				'page'                   => 'ready-pos',
+				'page'                   => 'readypos',
 				'readypos_cache_cleared' => $deleted,
 			),
 			admin_url( 'admin.php' )
@@ -99,7 +99,7 @@ class Tools {
 		// Redirect back with success message
 		$redirect_url = add_query_arg(
 			array(
-				'page'                         => 'ready-pos',
+				'page'                         => 'readypos',
 				'readypos_cache_group_cleared' => $group,
 			),
 			admin_url( 'admin.php' )

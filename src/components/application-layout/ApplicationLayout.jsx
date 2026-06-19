@@ -80,7 +80,7 @@ const ApplicationLayout = () => {
 
     // Redirect to WordPress logout URL
     // WordPress will handle the logout and redirect back to wp-login.php
-    const logoutUrl = '/wp-admin/admin.php?page=ready-pos';
+    const logoutUrl = '/wp-admin/admin.php?page=readypos';
     const wpLogoutUrl = `/wp-login.php?action=logout&redirect_to=${encodeURIComponent(logoutUrl)}`;
     
     window.location.href = wpLogoutUrl;

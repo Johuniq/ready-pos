@@ -40,7 +40,7 @@ if ( ! defined( 'READYPOS_ASSETS_URL' ) ) {
 	define( 'READYPOS_ASSETS_URL', READYPOS_URL . 'assets' );
 }
 if ( ! defined( 'READYPOS_ROUTE_PREFIX' ) ) {
-	define( 'READYPOS_ROUTE_PREFIX', 'ready-pos/v1' );
+	define( 'READYPOS_ROUTE_PREFIX', 'readypos/v1' );
 }
 
 // Load dependencies AFTER constants are defined
@@ -63,14 +63,14 @@ require_once plugin_dir_path( __FILE__ ) . 'plugin.php';
  * @since 1.0.0
  * @return void
  */
-function ready_pos_init() {
+function readypos_init() {
 	if ( class_exists( 'Readypos' ) ) {
 		Readypos::get_instance()->init();
 	}
 }
 
 // Hook for plugin initialization.
-add_action( 'plugins_loaded', 'ready_pos_init' );
+add_action( 'plugins_loaded', 'readypos_init' );
 
 /**
  * Declare compatibility with WooCommerce HPOS.
