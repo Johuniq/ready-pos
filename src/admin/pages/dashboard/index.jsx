@@ -192,7 +192,7 @@ export default function DashboardPage() {
       changeLabel: "vs last period",
       icon: DollarSign,
       iconBg: "bg-emerald-500/10",
-      iconColor: "text-emerald-600",
+      iconColor: "text-emerald-600 dark:text-emerald-400",
     },
     {
       title: "Total Orders",
@@ -201,7 +201,7 @@ export default function DashboardPage() {
       changeLabel: "vs last period",
       icon: ShoppingCart,
       iconBg: "bg-blue-500/10",
-      iconColor: "text-blue-600",
+      iconColor: "text-blue-600 dark:text-blue-400",
     },
     {
       title: "Average Order Value",
@@ -213,7 +213,7 @@ export default function DashboardPage() {
       changeLabel: "vs last period",
       icon: Receipt,
       iconBg: "bg-purple-500/10",
-      iconColor: "text-purple-600",
+      iconColor: "text-purple-600 dark:text-purple-400",
     },
     {
       title: "Active Registers",
@@ -222,7 +222,7 @@ export default function DashboardPage() {
       changeLabel: `${outlets.length} outlet${outlets.length !== 1 ? "s" : ""}`,
       icon: TerminalSquare,
       iconBg: registerStats.open > 0 ? "bg-cyan-500/10" : "bg-amber-500/10",
-      iconColor: registerStats.open > 0 ? "text-cyan-600" : "text-amber-600",
+      iconColor: registerStats.open > 0 ? "text-cyan-600 dark:text-cyan-400" : "text-amber-600 dark:text-amber-400",
     },
   ];
 
@@ -300,16 +300,16 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-1 text-[11px]">
                           {isPositive && (
                             <>
-                              <ArrowUp className="h-3 w-3 text-emerald-600" />
-                              <span className="font-semibold text-emerald-600">
+                              <ArrowUp className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
                                 +{metric.change}%
                               </span>
                             </>
                           )}
                           {isNegative && (
                             <>
-                              <ArrowDown className="h-3 w-3 text-rose-600" />
-                              <span className="font-semibold text-rose-600">
+                              <ArrowDown className="h-3 w-3 text-rose-600 dark:text-rose-400" />
+                              <span className="font-semibold text-rose-600 dark:text-rose-400">
                                 {metric.change}%
                               </span>
                             </>
@@ -609,7 +609,7 @@ export default function DashboardPage() {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div className="space-y-1">
               <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                <AlertTriangle className="h-4 w-4 text-amber-500 dark:text-amber-400" />
                 <span>Low Stock Alerts</span>
               </CardTitle>
               <CardDescription className="text-xs">
@@ -619,8 +619,8 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="p-0 min-h-[250px]">
             {lowStockItems.length === 0 ? (
-              <div className="text-xs text-emerald-600 py-12 text-center flex flex-col items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-emerald-500 opacity-50" />
+              <div className="text-xs text-emerald-600 dark:text-emerald-400 py-12 text-center flex flex-col items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-emerald-500 opacity-50 dark:text-emerald-400" />
                 All products are well stocked
               </div>
             ) : (

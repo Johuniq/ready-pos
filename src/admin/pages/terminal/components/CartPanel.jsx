@@ -300,7 +300,7 @@ export default function CartPanel({ onOpenPayment }) {
         {customer && customer.loyalty_points > 0 && (
           <div className="flex items-center justify-between bg-amber-500/5 border border-amber-500/20 rounded-lg p-2.5 text-xs">
             <div className="flex items-center gap-2">
-              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-400 dark:text-amber-400 dark:fill-amber-300" />
               <div>
                 <span className="font-bold text-foreground">
                   {customer.loyalty_points} pts
@@ -345,7 +345,7 @@ export default function CartPanel({ onOpenPayment }) {
                     toast.error(err.message || "Failed to redeem points");
                   }
                 }}
-                className="h-7 text-[10px] font-bold gap-1 hover:bg-amber-500/10 text-amber-700">
+                className="h-7 text-[10px] font-bold gap-1 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400">
                 <Gift className="w-3 h-3" />
                 Redeem
               </Button>

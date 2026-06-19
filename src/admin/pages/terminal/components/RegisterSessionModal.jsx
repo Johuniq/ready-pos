@@ -184,12 +184,12 @@ export default function RegisterSessionModal({
           <DialogTitle className="text-base font-bold flex items-center gap-2">
             {mode === "open" ? (
               <>
-                <Unlock className="w-5 h-5 text-emerald-500" />
+                <Unlock className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
                 <span>Open Register Session</span>
               </>
             ) : (
               <>
-                <Lock className="w-5 h-5 text-rose-500" />
+                <Lock className="w-5 h-5 text-rose-500 dark:text-rose-400" />
                 <span>Close Register & Reconcile</span>
               </>
             )}
@@ -306,7 +306,7 @@ export default function RegisterSessionModal({
               </div>
               <div className="flex justify-between items-center text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  <Banknote className="w-3.5 h-3.5 text-emerald-500" /> Cash
+                  <Banknote className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" /> Cash
                   Payments
                 </span>
                 <span className="font-semibold text-foreground">
@@ -315,7 +315,7 @@ export default function RegisterSessionModal({
               </div>
               <div className="flex justify-between items-center text-muted-foreground">
                 <span className="flex items-center gap-1">
-                  <CreditCard className="w-3.5 h-3.5 text-sky-500" /> Card
+                  <CreditCard className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" /> Card
                   Payments
                 </span>
                 <span className="font-semibold text-foreground">
@@ -362,8 +362,8 @@ export default function RegisterSessionModal({
                   <span
                     className={
                       parseFloat(closingCash) - expectedCashInDrawer >= 0
-                        ? "text-emerald-500"
-                        : "text-rose-500"
+                        ? "text-emerald-500 dark:text-emerald-400"
+                        : "text-rose-500 dark:text-rose-400"
                     }>
                     {formatPrice(
                       parseFloat(closingCash) - expectedCashInDrawer,

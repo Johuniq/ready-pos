@@ -435,9 +435,9 @@ export default function Orders() {
                     variant="secondary"
                     className={`text-[9px] font-extrabold uppercase px-2 py-0.5 mt-0.5 ${
                       orderDetail.status === "completed"
-                        ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                        ? "bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/20"
                         : orderDetail.status === "refunded"
-                        ? "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                        ? "bg-rose-500/10 text-rose-500 dark:text-rose-400 border border-rose-500/20"
                         : ""
                     }`}>
                     {orderDetail.status}
@@ -528,7 +528,7 @@ export default function Orders() {
                       </span>
                     </div>
                     {orderDetail.discount > 0 && (
-                      <div className="flex justify-between text-rose-500">
+                      <div className="flex justify-between text-rose-500 dark:text-rose-400">
                         <span>Discount:</span>
                         <span className="font-semibold">
                           - {formatPrice(orderDetail.discount)}
@@ -551,7 +551,7 @@ export default function Orders() {
                     </div>
                   </div>
                   {orderDetail.payment_method === "cash" && (
-                    <div className="p-2.5 border rounded-lg bg-emerald-500/5 text-emerald-600 text-[10px] font-bold flex justify-between">
+                    <div className="p-2.5 border rounded-lg bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold flex justify-between">
                       <span>
                         Cash Received: {formatPrice(orderDetail.cash_received)}
                       </span>
@@ -565,11 +565,11 @@ export default function Orders() {
                 {/* Refund Form */}
                 <div className="space-y-2 border-l pl-6">
                   <h4 className="text-xs font-bold text-foreground flex items-center gap-1">
-                    <AlertCircle className="w-4 h-4 text-rose-500" />
+                    <AlertCircle className="w-4 h-4 text-rose-500 dark:text-rose-400" />
                     <span>Manual POS Refund</span>
                   </h4>
                   {orderDetail.status === "refunded" ? (
-                    <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-500 text-xs font-semibold leading-normal flex items-start gap-2">
+                    <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-500 dark:text-rose-400 text-xs font-semibold leading-normal flex items-start gap-2">
                       <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
                       <span>
                         This transaction has been refunded. No further refund

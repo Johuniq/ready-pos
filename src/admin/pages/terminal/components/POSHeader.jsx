@@ -69,7 +69,7 @@ export default function POSHeader({
             {session.has_active ? "Register 1" : "Register Closed"}
           </span>
           {session.has_active && (
-            <span className="bg-emerald-500/10 text-emerald-600 text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+            <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
               Open
             </span>
           )}
@@ -104,7 +104,7 @@ export default function POSHeader({
               onClick={() => setCashAdjustOpen(true)}
               className="h-9 gap-1.5 border-emerald-500/25 bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold text-xs px-3"
               title="Manage petty cash drawer adjustments">
-              <Wallet className="w-4 h-4 text-emerald-500" />
+              <Wallet className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
               <span className="tabular-nums">
                 {formatPrice(
                   (parseFloat(session.session?.opening_cash) || 0) +

@@ -337,8 +337,8 @@ export default function CashAdjustModal({ open, onOpenChange }) {
                       <span
                         className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${
                           log.type === "Pay In"
-                            ? "bg-emerald-500/10 text-emerald-500"
-                            : "bg-amber-500/10 text-amber-500"
+                            ? "bg-emerald-500/10 text-emerald-500 dark:text-emerald-400"
+                            : "bg-amber-500/10 text-amber-500 dark:text-amber-400"
                         }`}>
                         {log.type === "Pay In" ? (
                           <ArrowDownLeft className="w-2.5 h-2.5" />

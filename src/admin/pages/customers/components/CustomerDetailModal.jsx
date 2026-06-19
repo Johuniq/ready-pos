@@ -134,13 +134,13 @@ export default function CustomerDetailModal({ open, onOpenChange, customer }) {
         <div className="px-6 pt-4">
           <div className="flex items-center gap-3 bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
             <div className="p-2.5 rounded-lg bg-amber-500/10">
-              <Star className="w-5 h-5 text-amber-500" />
+              <Star className="w-5 h-5 text-amber-500 dark:text-amber-400" />
             </div>
             <div>
               <p className="text-xs font-bold text-foreground">
                 Loyalty Points
               </p>
-              <p className="text-2xl font-black text-amber-600 tracking-tight">
+              <p className="text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
                 {currentPoints}
               </p>
               <p className="text-[10px] text-muted-foreground">

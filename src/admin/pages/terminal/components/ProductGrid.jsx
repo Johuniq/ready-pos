@@ -544,7 +544,7 @@ export default function ProductGrid() {
                           <Star
                             className={`w-3.5 h-3.5 ${
                               favorites.includes(product.id)
-                                ? "fill-yellow-400 text-yellow-500"
+                                ? "fill-yellow-400 text-yellow-500 dark:fill-yellow-300 dark:text-yellow-400"
                                 : "text-muted-foreground"
                             }`}
                           />

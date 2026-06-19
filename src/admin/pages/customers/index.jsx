@@ -361,7 +361,7 @@ export default function Customers() {
                         <Badge
                           variant="outline"
                           className="text-[10px] font-bold flex items-center gap-1 mx-auto w-fit">
-                          <Star className="w-3 h-3 text-amber-500" />
+                          <Star className="w-3 h-3 text-amber-500 dark:text-amber-400" />
                           {c.loyalty_points || 0}
                         </Badge>
                       </TableCell>
@@ -390,7 +390,7 @@ export default function Customers() {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="h-8 w-8 rounded-full text-rose-500 hover:bg-rose-500/10 hover:text-rose-600"
+                            className="h-8 w-8 rounded-full text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400"
                             onClick={() => setDeleteTarget(c)}
                             title="Delete">
                             <Trash2 className="w-3.5 h-3.5" />
@@ -429,7 +429,7 @@ export default function Customers() {
         onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent className="max-w-sm rounded-xl select-none">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold flex items-center gap-2 text-rose-600">
+            <DialogTitle className="text-base font-bold flex items-center gap-2 text-rose-600 dark:text-rose-400">
               <AlertTriangle className="w-5 h-5" />
               <span>Delete customer?</span>
             </DialogTitle>

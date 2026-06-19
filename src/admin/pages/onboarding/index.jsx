@@ -706,7 +706,7 @@ export default function Onboarding() {
                   <div className="flex items-center justify-between border p-5 rounded-xl bg-muted/5 hover:bg-muted/10 transition-colors">
                     <div className="space-y-1">
                       <p className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                        <DollarSign className="w-4 h-4 text-green-600" />
+                        <DollarSign className="w-4 h-4 text-green-600 dark:text-green-400" />
                         Cash Payments
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -725,7 +725,7 @@ export default function Onboarding() {
                   <div className="flex items-center justify-between border p-5 rounded-xl bg-muted/5 hover:bg-muted/10 transition-colors">
                     <div className="space-y-1">
                       <p className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                        <CreditCard className="w-4 h-4 text-blue-600" />
+                        <CreditCard className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         Card Payments
                       </p>
                       <p className="text-xs text-muted-foreground">
@@ -1029,7 +1029,7 @@ export default function Onboarding() {
             {currentStep.id === "done" && (
               <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
                 <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center animate-pulse">
-                  <Check className="w-8 h-8 text-emerald-500" />
+                  <Check className="w-8 h-8 text-emerald-500 dark:text-emerald-400" />
                 </div>
                 <h1 className="text-2xl font-bold text-foreground">
                   You're all set!

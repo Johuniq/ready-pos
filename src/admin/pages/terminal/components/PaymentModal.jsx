@@ -449,7 +449,7 @@ export default function PaymentModal({ open, onOpenChange }) {
                     <label className="text-[10px] font-bold text-muted-foreground uppercase">
                       Change Due
                     </label>
-                    <div className="h-11 border bg-muted/30 rounded-lg flex items-center px-3 font-extrabold text-base text-emerald-600">
+                    <div className="h-11 border bg-muted/30 rounded-lg flex items-center px-3 font-extrabold text-base text-emerald-600 dark:text-emerald-400">
                       {formatPrice(changeGiven)}
                     </div>
                   </div>
@@ -550,7 +550,7 @@ export default function PaymentModal({ open, onOpenChange }) {
                     className="h-11 rounded-lg text-xs"
                   />
                 </div>
-                <div className="p-3.5 bg-blue-500/10 text-blue-600 rounded-lg text-xs font-medium leading-normal space-y-2">
+                <div className="p-3.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-medium leading-normal space-y-2">
                   <p className="font-bold">Card Payment Options:</p>
                   <ul className="list-disc list-inside space-y-1 text-[11px]">
                     <li>Process payment on your external terminal</li>

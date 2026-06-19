@@ -159,10 +159,10 @@ const ApplicationLayout = () => {
                             <AvatarFallback>CN</AvatarFallback>
                           </Avatar>
                         </div>
-                        <div className="text-neutral-600 text-xs font-medium leading-none">
+                        <div className="text-neutral-600 dark:text-neutral-300 text-xs font-medium leading-none">
                           {window.readypos_admin?.userInfo?.username}
                         </div>
-                        <div className="text-neutral-600 text-xs font-medium leading-none">
+                        <div className="text-neutral-600 dark:text-neutral-300 text-xs font-medium leading-none">
                           <Icons.DownIcon />
                         </div>
                       </div>
