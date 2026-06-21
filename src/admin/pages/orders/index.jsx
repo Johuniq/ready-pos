@@ -52,7 +52,7 @@ import {
 import { ErrorState, EmptyState } from "@/components/error/ErrorState";
 import { handleError } from "@/lib/errorHandler";
 import { useAtom } from "jotai";
-import { settingsAtom } from "@/admin/stores/posStore";
+import { settingsAtom, sessionAtom } from "@/admin/stores/posStore";
 import {
   DataPanel,
   PageHeader,
@@ -69,6 +69,7 @@ export default function Orders() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
   const [settings] = useAtom(settingsAtom);
+  const [, setSession] = useAtom(sessionAtom);
 
   // Filters
   const [filterStatus, setFilterStatus] = useState("all");
@@ -131,8 +132,9 @@ export default function Orders() {
       const data = await api.get(`/orders/get/${orderId}`);
       setOrderDetail(data);
       if (data) {
-        // Default refund amount is the order total
-        setRefundAmount(data.total.toString());
+        // Default refund amount is the remaining refundable amount
+        const refundable = data.refundable_amount ?? data.total;
+        setRefundAmount(refundable.toString());
       }
     } catch (err) {
       toast.error("Failed to load order details");
@@ -145,10 +147,11 @@ export default function Orders() {
   const handleRefund = async (e) => {
     e.preventDefault();
     const amt = parseFloat(refundAmount) || 0;
-    if (amt <= 0 || amt > orderDetail?.total) {
+    const maxRefund = orderDetail?.refundable_amount ?? orderDetail?.total;
+    if (amt <= 0 || amt > maxRefund) {
       toast.error(
         "Please enter a valid refund amount up to " +
-          formatPrice(orderDetail?.total),
+          formatPrice(maxRefund),
       );
       return;
     }
@@ -169,8 +172,52 @@ export default function Orders() {
 
       if (res.success) {
         toast.success("Refund processed successfully!");
-        setShowDetailModal(false);
+        setRefundReason("");
+        // Update the modal in place from the response so we never display
+        // stale data. handleOpenDetail would re-fetch, which could hit the
+        // orders cache and show the pre-refund amount + "completed" status.
+        if (orderDetail) {
+          const nextRefundable =
+            res.refundable_amount ??
+            Math.max(
+              0,
+              Number(orderDetail.total || 0) -
+                Number(res.refunded_amount ?? orderDetail.refunded_amount ?? 0),
+            );
+          setOrderDetail({
+            ...orderDetail,
+            status: res.status ?? orderDetail.status,
+            refunded_amount:
+              res.refunded_amount ?? orderDetail.refunded_amount,
+            refundable_amount: nextRefundable,
+            refund_history:
+              res.refund_history ?? orderDetail.refund_history,
+          });
+          // Default the next refund input to the remaining refundable
+          // amount (or clear it if fully refunded).
+          setRefundAmount(nextRefundable > 0 ? String(nextRefundable) : "");
+        }
+        // Refresh the orders list (cache was invalidated server-side, so
+        // this returns fresh status/totals).
         fetchOrders(page);
+
+        // Refresh the active POS session so the terminal header's
+        // "Drawer Cash Float" badge (opening_cash + cash_total) and the
+        // petty-cash ledger reflect the cash that just left the drawer
+        // for a cash refund. Server already atomically decremented
+        // cash_total/card_total based on the original payment_method.
+        // Cache-bust so we don't read a stale `pos_sessions` entry.
+        try {
+          const refreshedSession = await api.get(
+            `/sessions/current?_t=${Date.now()}`,
+          );
+          if (refreshedSession && refreshedSession.has_active) {
+            setSession(refreshedSession);
+          }
+        } catch (refreshErr) {
+          // Non-fatal: the header will self-heal on the next focus /
+          // route change once the server cache TTL expires.
+        }
       } else {
         toast.error("Failed to process refund");
       }
@@ -254,6 +301,9 @@ export default function Orders() {
               </SelectItem>
               <SelectItem value="refunded" className="text-xs">
                 Refunded
+              </SelectItem>
+              <SelectItem value="partially-refunded" className="text-xs">
+                Partially Refunded
               </SelectItem>
               <SelectItem value="on-hold" className="text-xs">
                 On Hold
@@ -343,11 +393,11 @@ export default function Orders() {
                           className={`badge-status ${
                             order.status === "completed"
                               ? "badge-success"
-                              : order.status === "refunded"
+                              : order.status === "refunded" || order.status === "partially-refunded"
                               ? "badge-danger"
                               : "badge-info"
                           }`}>
-                          {order.status}
+                          {order.status === "partially-refunded" ? "Partial Refund" : order.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right pr-6">
@@ -436,11 +486,11 @@ export default function Orders() {
                     className={`text-[9px] font-extrabold uppercase px-2 py-0.5 mt-0.5 ${
                       orderDetail.status === "completed"
                         ? "bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border border-emerald-500/20"
-                        : orderDetail.status === "refunded"
+                        : orderDetail.status === "refunded" || orderDetail.status === "partially-refunded"
                         ? "bg-rose-500/10 text-rose-500 dark:text-rose-400 border border-rose-500/20"
                         : ""
                     }`}>
-                    {orderDetail.status}
+                    {orderDetail.status === "partially-refunded" ? "Partial Refund" : orderDetail.status}
                   </Badge>
                 </div>
               </div>
@@ -550,6 +600,55 @@ export default function Orders() {
                       </span>
                     </div>
                   </div>
+
+                  {/* Refund reason summary — surfaces the latest refund reason
+                      alongside the payment summary so the cashier doesn't have
+                      to scroll into the Refund History list. Mirrors what the
+                      printed receipt now shows under REFUND INFORMATION. */}
+                  {(orderDetail.status === "refunded" ||
+                    orderDetail.status === "partially-refunded" ||
+                    (orderDetail.refund_history &&
+                      orderDetail.refund_history.length > 0)) && (
+                    <div className="p-2.5 border rounded-lg bg-rose-500/5 border-rose-500/20 text-xs space-y-1">
+                      <p className="text-[9px] font-bold text-rose-500 dark:text-rose-400 uppercase tracking-wider">
+                        Refund Reason
+                      </p>
+                      {(() => {
+                        const history =
+                          orderDetail.refund_history &&
+                          orderDetail.refund_history.length > 0
+                            ? [...orderDetail.refund_history].sort(
+                                (a, b) =>
+                                  new Date(b.date || 0) -
+                                  new Date(a.date || 0),
+                              )
+                            : [];
+                        const latest = history[0];
+                        const reason = latest
+                          ? latest.reason && latest.reason.trim()
+                            ? latest.reason
+                            : "No reason provided"
+                          : orderDetail.refund_reason && orderDetail.refund_reason.trim()
+                          ? orderDetail.refund_reason
+                          : "No reason provided";
+                        return (
+                          <>
+                            <p className="font-semibold text-foreground leading-snug">
+                              {reason}
+                            </p>
+                            {latest && (
+                              <p className="text-[10px] text-muted-foreground">
+                                {formatPrice(latest.amount || 0)}
+                                {latest.date
+                                  ? ` • ${new Date(latest.date).toLocaleString()}`
+                                  : ""}
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
                   {orderDetail.payment_method === "cash" && (
                     <div className="p-2.5 border rounded-lg bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold flex justify-between">
                       <span>
@@ -568,11 +667,62 @@ export default function Orders() {
                     <AlertCircle className="w-4 h-4 text-rose-500 dark:text-rose-400" />
                     <span>Manual POS Refund</span>
                   </h4>
+
+                  {/* Refund History */}
+                  {orderDetail.refund_history && orderDetail.refund_history.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-[9px] font-bold text-muted-foreground uppercase">
+                        Refund History
+                      </p>
+                      <div className="space-y-1.5 text-xs bg-rose-500/5 border border-rose-500/10 p-2.5 rounded-lg">
+                        {orderDetail.refund_history.map((refund) => (
+                          <div key={refund.id} className="flex justify-between items-start gap-2">
+                            <div className="min-w-0">
+                              <span className="font-semibold text-rose-500 dark:text-rose-400">
+                                {formatPrice(refund.amount)}
+                              </span>
+                              {refund.reason && (
+                                <span className="text-muted-foreground ml-1.5">
+                                  — {refund.reason}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                              {new Date(refund.date).toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                        <div className="border-t border-rose-500/10 pt-1.5 flex justify-between font-bold">
+                          <span className="text-foreground">Total Refunded:</span>
+                          <span className="text-rose-500 dark:text-rose-400">
+                            {formatPrice(orderDetail.refunded_amount)}
+                          </span>
+                        </div>
+                        {orderDetail.refundable_amount > 0 && (
+                          <div className="flex justify-between text-muted-foreground">
+                            <span>Remaining Refundable:</span>
+                            <span className="font-semibold text-foreground">
+                              {formatPrice(orderDetail.refundable_amount)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {orderDetail.status === "refunded" ? (
                     <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-500 dark:text-rose-400 text-xs font-semibold leading-normal flex items-start gap-2">
                       <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
                       <span>
-                        This transaction has been refunded. No further refund
+                        This transaction has been fully refunded. No further refund
+                        actions can be taken.
+                      </span>
+                    </div>
+                  ) : orderDetail.refundable_amount <= 0 ? (
+                    <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-500 dark:text-rose-400 text-xs font-semibold leading-normal flex items-start gap-2">
+                      <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                      <span>
+                        This transaction has been fully refunded. No further refund
                         actions can be taken.
                       </span>
                     </div>

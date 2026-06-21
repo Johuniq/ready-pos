@@ -87,11 +87,44 @@ final class Readypos {
 		add_action( 'woocommerce_trash_order', array( $this, 'clear_dashboard_reports_cache' ) );
 		add_action( 'woocommerce_delete_order', array( $this, 'clear_dashboard_reports_cache' ) );
 
+		// Register custom order status for partial refunds
+		add_action( 'init', array( $this, 'register_custom_order_status' ) );
+		add_filter( 'wc_order_statuses', array( $this, 'add_custom_order_status' ) );
+
 		// One-time cleanup: clear stale report transients from before cache invalidation fix
 		if ( ! get_option( 'readypos_reports_cache_fix_v2' ) ) {
 			$this->clear_dashboard_reports_cache();
 			update_option( 'readypos_reports_cache_fix_v2', '1', false );
 		}
+	}
+
+	/**
+	 * Register custom order status for partial refunds.
+	 */
+	public function register_custom_order_status() {
+		register_post_status(
+			'wc-partially-refunded',
+			array(
+				'label'                     => _x( 'Partially Refunded', 'Order status', 'ready-pos-for-woocommerce' ),
+				'public'                    => true,
+				'exclude_from_search'       => false,
+				'show_in_admin_all_list'    => true,
+				'show_in_admin_status_list' => true,
+				/* translators: %s: number of orders */
+				'label_count'               => _n_noop( 'Partially Refunded <span class="count">(%s)</span>', 'Partially Refunded <span class="count">(%s)</span>', 'ready-pos-for-woocommerce' ),
+			)
+		);
+	}
+
+	/**
+	 * Add custom order status to WooCommerce order statuses.
+	 *
+	 * @param array $order_statuses List of order statuses.
+	 * @return array
+	 */
+	public function add_custom_order_status( $order_statuses ) {
+		$order_statuses['wc-partially-refunded'] = _x( 'Partially Refunded', 'Order status', 'ready-pos-for-woocommerce' );
+		return $order_statuses;
 	}
 
 	/**

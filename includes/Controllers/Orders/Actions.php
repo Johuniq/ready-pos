@@ -647,24 +647,66 @@ class Actions {
 			);
 		}
 
+		// Gather refund information
+		$refunded_amount = floatval( $wc_order->get_total_refunded() );
+		$refund_items    = $wc_order->get_refunds();
+		$refund_history  = array();
+		foreach ( $refund_items as $refund ) {
+			$refund_history[] = array(
+				'id'        => $refund->get_id(),
+				'amount'    => floatval( abs( $refund->get_amount() ) ),
+				'reason'    => $refund->get_reason(),
+				'date'      => $refund->get_date_created() ? $refund->get_date_created()->date( 'Y-m-d H:i:s' ) : '',
+			);
+		}
+
+		if ( empty( $refund_history ) ) {
+			global $wpdb;
+			$refund_rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT p.ID, p.post_date,
+							(SELECT meta_value FROM {$wpdb->postmeta}
+							  WHERE post_id = p.ID AND meta_key = '_refund_amount' LIMIT 1) AS refund_amount,
+							(SELECT meta_value FROM {$wpdb->postmeta}
+							  WHERE post_id = p.ID AND meta_key = '_refund_reason' LIMIT 1) AS refund_reason
+					 FROM {$wpdb->posts} p
+					 WHERE p.post_type = 'shop_order_refund'
+					   AND p.post_parent = %d
+					 ORDER BY p.post_date DESC, p.ID DESC",
+					$order_id
+				)
+			);
+			foreach ( (array) $refund_rows as $row ) {
+				$refund_history[] = array(
+					'id'     => intval( $row->ID ),
+					'amount' => floatval( $row->refund_amount ),
+					'reason' => $row->refund_reason,
+					'date'   => $row->post_date ? mysql2date( 'Y-m-d H:i:s', $row->post_date ) : '',
+				);
+			}
+		}
+
 		$details = array(
-			'id'             => $order_id,
-			'order_number'   => $wc_order->get_order_number(),
-			'items'          => $items,
-			'subtotal'       => floatval( $wc_order->get_subtotal() ),
-			'total'          => floatval( $wc_order->get_total() ),
-			'discount'       => floatval( $wc_order->get_discount_total() ),
-			'tax'            => floatval( $wc_order->get_total_tax() ),
-			'payment_method' => $pos_meta ? $pos_meta->payment_method : $wc_order->get_payment_method(),
-			'cash_received'  => $pos_meta ? floatval( $pos_meta->cash_received ) : 0,
-			'change_given'   => $pos_meta ? floatval( $pos_meta->change_given ) : 0,
-			'date'           => $wc_order->get_date_created()->date( 'Y-m-d H:i:s' ),
-			'status'         => $wc_order->get_status(),
-			'notes'          => $wc_order->get_customer_note(),
-			'customer_id'    => $wc_order->get_customer_id() ? intval( $wc_order->get_customer_id() ) : null,
-			'customer_name'  => trim( $wc_order->get_billing_first_name() . ' ' . $wc_order->get_billing_last_name() ),
-			'customer_email' => $wc_order->get_billing_email(),
-			'customer_phone' => $wc_order->get_billing_phone(),
+			'id'               => $order_id,
+			'order_number'     => $wc_order->get_order_number(),
+			'items'            => $items,
+			'subtotal'         => floatval( $wc_order->get_subtotal() ),
+			'total'            => floatval( $wc_order->get_total() ),
+			'discount'         => floatval( $wc_order->get_discount_total() ),
+			'tax'              => floatval( $wc_order->get_total_tax() ),
+			'payment_method'   => $pos_meta ? $pos_meta->payment_method : $wc_order->get_payment_method(),
+			'cash_received'    => $pos_meta ? floatval( $pos_meta->cash_received ) : 0,
+			'change_given'     => $pos_meta ? floatval( $pos_meta->change_given ) : 0,
+			'date'             => $wc_order->get_date_created()->date( 'Y-m-d H:i:s' ),
+			'status'           => $wc_order->get_status(),
+			'notes'            => $wc_order->get_customer_note(),
+			'customer_id'      => $wc_order->get_customer_id() ? intval( $wc_order->get_customer_id() ) : null,
+			'customer_name'    => trim( $wc_order->get_billing_first_name() . ' ' . $wc_order->get_billing_last_name() ),
+			'customer_email'   => $wc_order->get_billing_email(),
+			'customer_phone'   => $wc_order->get_billing_phone(),
+			'refunded_amount'  => $refunded_amount,
+			'refundable_amount'=> max( 0, floatval( $wc_order->get_total() ) - $refunded_amount ),
+			'refund_history'   => $refund_history,
 		);
 
 		return new \WP_REST_Response( $details, 200 );
@@ -749,17 +791,252 @@ class Actions {
 				)
 			);
 
-			// Adjust POS session refunds if session metadata exists
+			// Clear the WP object cache for this order so wc_get_order()
+			// reads fresh totals/status from the database instead of
+			// returning stale in-memory values that cause the UI to show
+			// the pre-refund amount and wrong status.
+			clean_post_cache( $order_id );
+			wp_cache_delete( $order_id, 'orders' );
+
+			$order = wc_get_order( $order_id );
+			if ( ! $order ) {
+				return new \WP_Error( 'not_found', __( 'Order not found after refund.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
+			}
+
+			// Ensure correct order status after refund.
+			// wc_create_refund() handles status internally but may not always
+			// set partially-refunded for manual POS refunds (refund_payment=false
+			// skips the gateway path that normally triggers the transition).
+			$new_refunded_total = $order->get_total_refunded();
+			$desired_status     = ( $new_refunded_total >= $order->get_total() ) ? 'refunded' : 'partially-refunded';
+
+			// Normalize the desired status to the WC prefixed form used by
+			// wp_posts.post_status. The `get_status()` return value uses the
+			// un-prefixed slug (e.g. 'partially-refunded'), but the actual
+			// database value is 'wc-partially-refunded'.
+			$desired_post_status = 'wc-' . $desired_status;
+
+			// Read the authoritative status directly from the database so we
+			// can detect a silently-rejected transition (a known WC quirk
+			// where update_status() returns without throwing even though the
+			// post_status term wasn't updated). This matters most for
+			// partial refunds where the transition from non-`completed`
+			// states can be blocked.
+			global $wpdb;
+			$db_post_status = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT post_status FROM {$wpdb->posts} WHERE ID = %d",
+					$order_id
+				)
+			);
+
+			if ( $db_post_status !== $desired_post_status ) {
+				// Try the high-level WC API first.
+				if ( $order->get_status() !== $desired_status ) {
+					$order->update_status(
+						$desired_status,
+						__( 'Status updated by POS refund.', 'ready-pos-for-woocommerce' )
+					);
+				}
+
+				// Forcefully clear every cache layer that could mask the
+				// post_status change: object cache, post meta, and the
+				// taxonomy term cache for shop_order_status.
+				clean_post_cache( $order_id );
+				wp_cache_delete( $order_id, 'orders' );
+				wp_cache_delete( $order_id, 'post_meta' );
+				clean_term_cache( array( $order_id ), 'shop_order_status' );
+
+				// Verify the transition actually persisted. If WC's
+				// internal validator silently rejected it (which happens
+				// for some installs when the source status isn't in the
+				// WC `valid_order_statuses` allow-list for the target
+				// status), fall back to a direct wp_update_post() so the
+				// post_status is guaranteed to land on the right value.
+				$db_post_status = $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT post_status FROM {$wpdb->posts} WHERE ID = %d",
+						$order_id
+					)
+				);
+				if ( $db_post_status !== $desired_post_status ) {
+					wp_update_post(
+						array(
+							'ID'          => $order_id,
+							'post_status' => $desired_post_status,
+						)
+					);
+					clean_post_cache( $order_id );
+					wp_cache_delete( $order_id, 'orders' );
+					wp_cache_delete( $order_id, 'post_meta' );
+					clean_term_cache( array( $order_id ), 'shop_order_status' );
+					// Also record an order note so the audit trail reflects
+					// the manual fix (helps with debugging POS deployments
+					// where WC's transition validator is overly strict).
+					$order->add_order_note(
+						sprintf(
+							/* translators: %s: order status slug */
+							__( 'POS refund: forced order status to %s via direct DB update.', 'ready-pos-for-woocommerce' ),
+							$desired_status
+						)
+					);
+				}
+
+				// Always re-fetch the order from a clean cache so the
+				// response below reflects the final, persisted state.
+				$order = wc_get_order( $order_id );
+			}
+
+			// Adjust POS session refunds if session metadata exists.
+			// We must also reverse the matching payment-method bucket
+			// (cash_total / card_total) so the terminal header's
+			// "Drawer Cash Float" badge and the petty-cash ledger reflect
+			// the money actually leaving the drawer. Without this, a
+			// cash refund would bump `total_refunds` but the drawer total
+			// would stay inflated until the register is closed.
 			$pos_meta = POSOrderMeta::where( 'wc_order_id', $order_id )->first();
 			if ( $pos_meta && $pos_meta->session_id ) {
 				$session = POSSession::find( $pos_meta->session_id );
 				if ( $session && 'open' === $session->status ) {
-					$session->total_refunds += $amount;
-					$session->save();
+					// Determine which payment-method bucket to credit.
+					// POSOrderMeta stores the original payment_method set
+					// at order creation ('cash' | 'card'). Refunds always
+					// go back to the same bucket the customer paid with.
+					$cash_delta = 0.0;
+					$card_delta = 0.0;
+					if ( 'cash' === $pos_meta->payment_method ) {
+						$cash_delta = -1.0 * floatval( $amount );
+					} elseif ( 'card' === $pos_meta->payment_method ) {
+						$card_delta = -1.0 * floatval( $amount );
+					}
+
+					// Atomic update so we don't race with concurrent sales
+					// and never push cash_total/card_total below zero from
+					// a partial drift. Mirrors the create() flow in shape.
+					global $wpdb;
+					$sessions_table = $wpdb->prefix . 'readypos_sessions';
+
+					$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+						$wpdb->prepare(
+							"UPDATE `" . esc_sql( $sessions_table ) . "`
+							SET total_refunds = total_refunds + %f,
+								cash_total = GREATEST(0, cash_total + %f),
+								card_total = GREATEST(0, card_total + %f)
+							WHERE id = %d AND status = 'open'",
+							floatval( $amount ),
+							$cash_delta,
+							$card_delta,
+							intval( $pos_meta->session_id )
+						)
+					);
+
+					// Bust the cached session row so the next /sessions/current
+					// call recomputes from the DB rather than reading the
+					// pre-refund cash_total.
+					$session_cache_key = 'readypos_open_session_' . absint( $pos_meta->session_id );
+					wp_cache_delete( $session_cache_key, 'readypos_sessions' );
+					$this->clear_cache( 'sessions' );
 				}
 			}
 
-			return new \WP_REST_Response( array( 'success' => true ), 200 );
+			// Reverse loyalty points + total_spent for the customer.
+			// Points are awarded at order creation (1 point per $1 spent) and
+			// visit_count is incremented, so a refund must remove the
+			// proportional amount otherwise the customer keeps points for
+			// money they no longer spent. We only reverse when the order was
+			// originally tied to a customer (matches the create() guard) and
+			// clamp at zero so a manual drift between POSCustomer and the
+			// order can never push the balance negative.
+			$wc_customer_id = $order->get_customer_id();
+			if ( ! empty( $wc_customer_id ) ) {
+				$wc_customer_id_int = intval( $wc_customer_id );
+				$pos_customer       = POSCustomer::where( 'wc_customer_id', $wc_customer_id_int )->first();
+
+				if ( $pos_customer ) {
+					$points_to_revoke = (int) floor( $amount );
+					$new_points       = max( 0, intval( $pos_customer->loyalty_points ) - $points_to_revoke );
+					$new_total_spent  = max( 0, floatval( $pos_customer->total_spent ) - floatval( $amount ) );
+
+					if ( $new_points !== intval( $pos_customer->loyalty_points )
+						|| abs( $new_total_spent - floatval( $pos_customer->total_spent ) ) > 0.0001
+					) {
+						$pos_customer->loyalty_points = $new_points;
+						$pos_customer->total_spent    = $new_total_spent;
+						$pos_customer->save();
+					}
+				}
+			}
+
+			// Invalidate order + orders-list + customer caches so subsequent
+			// reads see the refunded status, updated totals, and post-refund
+			// loyalty balance instead of stale data.
+			$this->invalidate_cache( 'order', $order_id );
+			$this->clear_cache( 'orders' );
+			if ( ! empty( $wc_customer_id ) ) {
+				$this->invalidate_cache( 'customer', intval( $wc_customer_id ) );
+				$this->clear_cache( 'customers' );
+			}
+			$this->invalidate_report_caches();
+
+			// Build refund history for the response so the modal can update
+					// immediately without a second round-trip. We first try
+					// WC's get_refunds(), then fall back to a direct DB query
+					// against shop_order_refund posts so we always return the
+					// correct list even if WC's in-memory cache returns an
+					// empty array right after creation (which happens on
+					// partial refunds in some WC versions).
+					$refund_history = array();
+					foreach ( $order->get_refunds() as $r ) {
+						$refund_history[] = array(
+							'id'     => $r->get_id(),
+							'amount' => floatval( abs( $r->get_amount() ) ),
+							'reason' => $r->get_reason(),
+							'date'   => $r->get_date_created() ? $r->get_date_created()->date( 'Y-m-d H:i:s' ) : '',
+						);
+					}
+
+					if ( empty( $refund_history ) ) {
+						// Defensive DB-direct fallback so the modal always
+						// shows the partial-refund record immediately after
+						// the cashier hits "Process Refund".
+						$refund_rows = $wpdb->get_results(
+							$wpdb->prepare(
+								"SELECT p.ID, p.post_date,
+										(SELECT meta_value FROM {$wpdb->postmeta}
+										  WHERE post_id = p.ID AND meta_key = '_refund_amount' LIMIT 1) AS refund_amount,
+										(SELECT meta_value FROM {$wpdb->postmeta}
+										  WHERE post_id = p.ID AND meta_key = '_refund_reason' LIMIT 1) AS refund_reason
+								 FROM {$wpdb->posts} p
+								 WHERE p.post_type = 'shop_order_refund'
+								   AND p.post_parent = %d
+								 ORDER BY p.post_date DESC, p.ID DESC",
+								$order_id
+							)
+						);
+						foreach ( (array) $refund_rows as $row ) {
+							$refund_history[] = array(
+								'id'     => intval( $row->ID ),
+								'amount' => floatval( $row->refund_amount ),
+								'reason' => $row->refund_reason,
+								'date'   => $row->post_date ? mysql2date( 'Y-m-d H:i:s', $row->post_date ) : '',
+							);
+						}
+					}
+
+			return new \WP_REST_Response(
+				array(
+					'success'           => true,
+					'status'            => $order->get_status(),
+					'refunded_amount'   => floatval( $order->get_total_refunded() ),
+					'refundable_amount' => max( 0, floatval( $order->get_total() ) - floatval( $order->get_total_refunded() ) ),
+					'refund_history'    => $refund_history,
+					'loyalty'           => array(
+						'points_redeemed'  => isset( $points_to_revoke ) ? $points_to_revoke : 0,
+						'remaining_points' => isset( $new_points ) ? $new_points : null,
+					),
+				),
+				200
+			);
 
 		} catch ( \Exception $e ) {
 			return new \WP_Error( 'refund_failed', $e->getMessage(), array( 'status' => 500 ) );

@@ -211,11 +211,11 @@ export default function CustomerDetailModal({ open, onOpenChange, customer }) {
                             className={`badge-status ${
                               order.status === "completed"
                                 ? "badge-success"
-                                : order.status === "refunded"
+                                : order.status === "refunded" || order.status === "partially-refunded"
                                 ? "badge-danger"
                                 : "badge-info"
                             }`}>
-                            {order.status}
+                            {order.status === "partially-refunded" ? "Partial Refund" : order.status}
                           </Badge>
                         </TableCell>
                       </TableRow>

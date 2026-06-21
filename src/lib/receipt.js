@@ -134,6 +134,99 @@ export const printReceipt = (order, settings = {}) => {
             <div class="barcode-text">${orderIdToEncode}</div>
            </div>`;
 
+  // Detect whether this order has been refunded (fully or partially).
+  // The order detail payload from /orders/get/{id} exposes:
+  //   - refunded_amount (number)
+  //   - status ("refunded" | "wc-refunded" for full, "partially-refunded" for partial)
+  //   - refund_history (array of refund records)
+  const refundedAmount = parseFloat(order.refunded_amount) || 0;
+  const refundHistory =
+    Array.isArray(order.refund_history) && order.refund_history.length > 0;
+  const rawStatus = (order.status || "").toString().toLowerCase();
+  const isRefunded =
+    refundedAmount > 0 ||
+    rawStatus === "refunded" ||
+    rawStatus === "wc-refunded" ||
+    rawStatus === "partially-refunded" ||
+    rawStatus === "wc-partially-refunded" ||
+    refundHistory;
+
+  const isPartialRefund =
+    isRefunded &&
+    refundedAmount > 0 &&
+    refundedAmount < parseFloat(order.total || 0);
+
+  const refundSealHtml = isRefunded
+    ? `<div class="refund-seal ${
+        isPartialRefund ? "refund-seal--partial" : "refund-seal--full"
+      }">
+            <div class="refund-seal__title">REFUNDED</div>
+            <div class="refund-seal__sub">${
+              isPartialRefund ? "PARTIAL" : "FULL"
+            }</div>
+        </div>`
+    : "";
+
+  // Render each refund entry from refund_history (id, amount, reason, date).
+  // The backend (/orders/get/{id}) populates this from wc_get_order()->get_refunds(),
+  // so the printed receipt mirrors what the order details modal shows.
+  const refundEntries = Array.isArray(order.refund_history)
+    ? order.refund_history
+    : [];
+  const refundEntriesHtml = refundEntries.length
+    ? refundEntries
+        .map((entry) => {
+          const reason = (entry && entry.reason ? String(entry.reason) : "")
+            .replace(/[&<>"]/g, (c) =>
+              c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&quot;",
+            )
+            .trim();
+          const dateLabel =
+            entry && entry.date ? new Date(entry.date).toLocaleString() : "";
+          return `
+                <div class="refund-summary__row refund-summary__row--entry">
+                    <span class="refund-summary__amount">${formatPrice(
+                      parseFloat(entry.amount) || 0,
+                    )}</span>
+                    <span class="refund-summary__reason">${
+                      reason || "No reason provided"
+                    }</span>
+                </div>
+                ${
+                  dateLabel
+                    ? `<div class="refund-summary__row refund-summary__row--date">${dateLabel}</div>`
+                    : ""
+                }`;
+        })
+        .join("")
+    : "";
+
+  const refundFooterHtml = isRefunded
+    ? `<div class="refund-summary">
+            <div class="refund-summary__row refund-summary__row--title">
+                REFUND INFORMATION
+            </div>
+            ${refundEntriesHtml}
+            <div class="refund-summary__row refund-summary__row--total">
+                <span>Total Refunded:</span>
+                <span>${formatPrice(refundedAmount)}</span>
+            </div>
+            ${
+              isPartialRefund
+                ? `<div class="refund-summary__row">
+                    <span>Net Total:</span>
+                    <span>${formatPrice(
+                      Math.max(
+                        0,
+                        parseFloat(order.total || 0) - refundedAmount,
+                      ),
+                    )}</span>
+                </div>`
+                : ""
+            }
+        </div>`
+    : "";
+
   const receiptHtml = `
         <!DOCTYPE html>
         <html>
@@ -247,10 +340,94 @@ export const printReceipt = (order, settings = {}) => {
                     margin-top: 3px;
                     text-align: center;
                 }
+                .refund-summary {
+                    margin-top: 10px;
+                    padding: 6px 0;
+                    border-top: 1px dashed #000;
+                    border-bottom: 1px dashed #000;
+                    font-size: 11px;
+                }
+                .refund-summary__row {
+                    display: flex;
+                    justify-content: space-between;
+                    padding: 1px 0;
+                    gap: 6px;
+                }
+                .refund-summary__row--title {
+                    font-weight: bold;
+                    text-align: center;
+                    justify-content: center;
+                    margin-bottom: 3px;
+                    letter-spacing: 1px;
+                }
+                .refund-summary__row--entry {
+                    align-items: baseline;
+                }
+                .refund-summary__amount {
+                    font-weight: bold;
+                    white-space: nowrap;
+                }
+                .refund-summary__reason {
+                    text-align: right;
+                    word-break: break-word;
+                    color: #333;
+                }
+                .refund-summary__row--date {
+                    justify-content: flex-end;
+                    font-size: 10px;
+                    color: #555;
+                    padding-top: 0;
+                }
+                .refund-summary__row--total {
+                    border-top: 1px dashed #000;
+                    margin-top: 3px;
+                    padding-top: 3px;
+                    font-weight: bold;
+                }
+                .refund-seal-wrapper {
+                    position: relative;
+                }
+                .refund-seal {
+                    margin: 10px auto 5px;
+                    padding: 8px 6px;
+                    border: 3px double #b00020;
+                    border-radius: 8px;
+                    text-align: center;
+                    color: #b00020;
+                    font-family: 'Courier New', Courier, monospace;
+                    background: rgba(176, 0, 32, 0.04);
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                .refund-seal__title {
+                    font-size: 18px;
+                    font-weight: 900;
+                    letter-spacing: 4px;
+                    line-height: 1;
+                }
+                .refund-seal__sub {
+                    margin-top: 3px;
+                    font-size: 11px;
+                    font-weight: bold;
+                    letter-spacing: 2px;
+                }
+                .refund-seal--full {
+                    border-color: #b00020;
+                    color: #b00020;
+                }
+                .refund-seal--partial {
+                    border-color: #b36b00;
+                    color: #b36b00;
+                    background: rgba(179, 107, 0, 0.05);
+                }
                 @media print {
                     body {
                         margin: 0;
                         padding: 0;
+                    }
+                    .refund-seal {
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
                     }
                 }
             </style>
@@ -340,6 +517,8 @@ export const printReceipt = (order, settings = {}) => {
             </div>
 
             ${footerHtml}
+            ${refundFooterHtml}
+            ${refundSealHtml}
             ${barcodeHtml}
             
             <script>
