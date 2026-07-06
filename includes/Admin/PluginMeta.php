@@ -113,7 +113,7 @@ class PluginMeta {
 		$upgrade_url = 'https://readypos.johuniq.tech';
 
 		$links['upgrade_pro'] = sprintf(
-			'<a href="%s" target="_blank" rel="noopener" style="color:#d63638;font-weight:600;">%s</a>',
+			'<a href="%s" target="_blank" rel="noopener" class="readypos-upgrade-pro">%s</a>',
 			esc_url( $upgrade_url ),
 			__( 'Upgrade to Pro', 'ready-pos-for-woocommerce' )
 		);

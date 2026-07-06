@@ -116,7 +116,9 @@ class Actions {
 	}
 
 	/**
-	 * Get all saved carts for the current user or all carts for managers.
+	 * Get all saved carts for the current user, or all carts when the
+	 * current user is an administrator. There are no other privileged
+	 * roles in this plugin.
 	 *
 	 * @param \WP_REST_Request $request REST request.
 	 * @return \WP_REST_Response
@@ -127,10 +129,10 @@ class Actions {
 		$user_id = get_current_user_id();
 		$table_name = $wpdb->prefix . 'readypos_saved_carts';
 
-		// Check if user is manager/admin - they can see all carts
-		$is_manager = current_user_can( 'readypos_manage_pos' ) || current_user_can( 'manage_options' );
+		// Administrators can see all carts; everyone else sees only their own.
+		$is_admin = current_user_can( \Readypos\Core\Roles::REQUIRED_CAP );
 
-		if ( $is_manager ) {
+		if ( $is_admin ) {
 			// Get all carts
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Required for cart listing, table name is safe
 			$carts = $wpdb->get_results( "SELECT * FROM {$table_name} ORDER BY updated_at DESC" );
@@ -190,10 +192,10 @@ class Actions {
 			return new \WP_Error( 'cart_not_found', __( 'Cart not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
-		// Check if user is manager/admin or owner
-		$is_manager = current_user_can( 'readypos_manage_pos' ) || current_user_can( 'manage_options' );
+		// Check if user is administrator or owner
+		$is_admin = current_user_can( \Readypos\Core\Roles::REQUIRED_CAP );
 
-		if ( ! $is_manager && intval( $cart->user_id ) !== $user_id ) {
+		if ( ! $is_admin && intval( $cart->user_id ) !== $user_id ) {
 			return new \WP_Error( 'unauthorized', __( 'You do not have permission to delete this cart.', 'ready-pos-for-woocommerce' ), array( 'status' => 403 ) );
 		}
 

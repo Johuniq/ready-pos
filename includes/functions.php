@@ -27,10 +27,16 @@ function readypos_install_page( $page_title, $page_name, $page_template_file_nam
 			'post_author' => 1,
 			'post_type'   => 'page',
 		);
+		// Disable WordPress core auto-menu creation feature for this newly created page.
+		remove_action( 'transition_post_status', '_wp_auto_add_pages_to_menu', 10, 3 );
 		// Insert a new page.
 		$id = wp_insert_post( $args );
+		// Re-enable WordPress core auto-menu creation feature.
+		add_action( 'transition_post_status', '_wp_auto_add_pages_to_menu', 10, 3 );
 		// Add post meta for the page template.
-		add_post_meta( $id, '_wp_page_template', $page_template_file_name );
+		if ( ! is_wp_error( $id ) && $id > 0 ) {
+			add_post_meta( $id, '_wp_page_template', $page_template_file_name );
+		}
 	}
 }
 

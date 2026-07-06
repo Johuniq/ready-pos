@@ -13,10 +13,10 @@ use Readypos\Traits\Base;
 /**
  * Class Roles
  *
- * Grants the `readypos_use_pos` / `readypos_manage_pos` capabilities to the built-in
- * WordPress roles that are allowed to operate the POS (Administrator
- * and Shop Manager). POS access is governed entirely by these
- * capabilities on the default WP roles.
+ * Permission helper for the POS REST API. The plugin deliberately does
+ * not introduce custom roles or custom capabilities anymore — access is
+ * gated exclusively by the standard WordPress `manage_options`
+ * capability, which only the built-in `administrator` role has.
  *
  * @package Readypos\Core
  */
@@ -25,55 +25,22 @@ class Roles {
 	use Base;
 
 	/**
-	 * Capability granted to roles that can use the POS UI.
+	 * Capability required for any POS operation.
+	 *
+	 * Kept as a class constant so route registrations and menu
+	 * registrations can reference a single source of truth without
+	 * re-introducing plugin-specific capabilities.
 	 *
 	 * @var string
 	 */
-	const CAP_USE_POS = 'readypos_use_pos';
+	const REQUIRED_CAP = 'manage_options';
 
 	/**
-	 * Capability granted to roles that can manage POS configuration.
+	 * Strip any legacy POS capabilities from all roles.
 	 *
-	 * @var string
-	 */
-	const CAP_MANAGE_POS = 'readypos_manage_pos';
-
-	/**
-	 * Initialize role-related hooks.
-	 *
-	 * @return void
-	 */
-	public function init() {
-		// Grant the POS caps to default WP roles on plugin init.
-		// Safe to call repeatedly — $role->add_cap() is idempotent.
-		add_action( 'init', array( $this, 'grant_pos_caps' ), 20 );
-	}
-
-	/**
-	 * Grant the `readypos_use_pos` and `readypos_manage_pos` capabilities to the default
-	 * WordPress roles that are allowed to operate the POS.
-	 *
-	 * @return void
-	 */
-	public function grant_pos_caps() {
-		$wp_roles = wp_roles();
-
-		if ( ! $wp_roles ) {
-			return;
-		}
-
-		foreach ( array( 'administrator', 'shop_manager' ) as $role_name ) {
-			$role = $wp_roles->get_role( $role_name );
-			if ( $role ) {
-				$role->add_cap( self::CAP_USE_POS );
-				$role->add_cap( self::CAP_MANAGE_POS );
-			}
-		}
-	}
-
-	/**
-	 * Remove the `readypos_use_pos` and `readypos_manage_pos` capabilities from the
-	 * default WordPress roles. Called on plugin uninstall.
+	 * Called on uninstall as a safety net for sites that may have
+	 * previously had the plugin's custom caps installed. Safe to call
+	 * when the caps were never granted.
 	 *
 	 * @return void
 	 */
@@ -84,11 +51,11 @@ class Roles {
 			return;
 		}
 
-		foreach ( array( 'administrator', 'shop_manager' ) as $role_name ) {
-			$role = $wp_roles->get_role( $role_name );
-			if ( $role ) {
-				$role->remove_cap( self::CAP_USE_POS );
-				$role->remove_cap( self::CAP_MANAGE_POS );
+		foreach ( array( 'readypos_use_pos', 'readypos_manage_pos' ) as $legacy_cap ) {
+			foreach ( $wp_roles->role_objects as $role ) {
+				if ( $role && isset( $role->capabilities[ $legacy_cap ] ) ) {
+					$role->remove_cap( $legacy_cap );
+				}
 			}
 		}
 	}
@@ -114,10 +81,7 @@ class Roles {
 			);
 		}
 
-		if ( current_user_can( self::CAP_USE_POS )
-			|| current_user_can( self::CAP_MANAGE_POS )
-			|| current_user_can( 'manage_options' )
-		) {
+		if ( current_user_can( self::REQUIRED_CAP ) ) {
 			return true;
 		}
 

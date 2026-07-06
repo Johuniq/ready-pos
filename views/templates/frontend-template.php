@@ -51,7 +51,7 @@ add_action( 'wp_enqueue_scripts', 'readypos_remove_unwanted_scripts_and_styles',
 wp_head();
 
 ?>
-<div id="myplugin-frontend" class="myplugin-app" style="position: relative; width: 100%;"></div>
+<div id="myplugin-frontend" class="myplugin-app"></div>
 <?php
 
 wp_footer();

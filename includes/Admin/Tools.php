@@ -160,11 +160,11 @@ class Tools {
 
 		ob_start();
 		?>
-		<form method="post" action="<?php echo esc_url( $url ); ?>" style="display: inline;">
+		<form method="post" action="<?php echo esc_url( $url ); ?>" class="readypos-cache-clear-form">
 			<input type="hidden" name="action" value="readypos_clear_cache">
 			<input type="hidden" name="_wpnonce" value="<?php echo esc_attr( $nonce ); ?>">
 			<button type="submit" class="button button-secondary">
-				<span class="dashicons dashicons-update" style="vertical-align: middle;"></span>
+				<span class="dashicons dashicons-update"></span>
 				<?php esc_html_e( 'Clear All Caches', 'ready-pos-for-woocommerce' ); ?>
 			</button>
 		</form>

@@ -2,7 +2,9 @@
 /**
  * Plugin Installer.
  *
- * Runs on plugin activation to install tables, seed defaults, and configure roles.
+ * Runs on plugin activation to install tables and seed defaults.
+ * The plugin does not introduce custom roles or capabilities; access
+ * is controlled by the default WordPress `manage_options` cap.
  *
  * @package Readypos\Core
  * @since 1.0.0
@@ -25,7 +27,6 @@ use Readypos\Database\Migrations\POSInventoryCounts;
 use Readypos\Database\Migrations\POSInventoryCountItems;
 use Readypos\Database\Migrations\POSInventoryHistory;
 use Readypos\Database\Migrations\POSSessionAdjustments;
-use Readypos\Core\Roles;
 use Readypos\Traits\Base;
 
 /**
@@ -45,7 +46,6 @@ class Install {
 	public function init() {
 		$this->install_pages();
 		$this->install_tables();
-		$this->setup_roles();
 	}
 
 	/**
@@ -86,17 +86,5 @@ class Install {
 
 		// SECURITY FIX #17: Install audit log table
 		\Readypos\Database\Migrations\AuditLog::up();
-	}
-
-	/**
-	 * Grant POS capabilities to default WordPress roles
-	 * (Administrator and Shop Manager).
-	 *
-	 * @return void
-	 */
-	private function setup_roles() {
-		if ( class_exists( '\Readypos\Core\Roles' ) ) {
-			\Readypos\Core\Roles::get_instance()->grant_pos_caps();
-		}
 	}
 }

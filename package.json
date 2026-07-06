@@ -7,8 +7,7 @@
     "dev:admin": "vite -c vite.admin.config.js --port 5174",
     "dev:frontend": "vite -c vite.frontend.config.js --port 5173",
     "dev:server": "concurrently \"npm run dev\" \"npx -y @wp-playground/cli@latest server --blueprint=playground.blueprint.json --wp=latest --php=8.3 --mount=.:/wordpress/wp-content/plugins/ready-pos\"",
-    "dev:all": "concurrently \"npm run dev\" \"npm run block:start\"",
-    "build": "vite build -c vite.frontend.config.js && vite build -c vite.admin.config.js && npm run block:build",
+    "build": "vite build -c vite.frontend.config.js && vite build -c vite.admin.config.js",
     "preview": "vite preview",
     "format:check": "prettier --check .",
     "format:fix": "prettier --write .",
@@ -21,9 +20,7 @@
     "release:quick": "npm run build && composer install --no-dev --optimize-autoloader && grunt release",
     "rename": "grunt rename --force && npm run change-text-domain && composer dump-autoload",
     "change-text-domain": "grunt change-text-domain --force",
-    "i18n": "wp i18n make-pot . languages/ready-pos.pot --domain=ready-pos --exclude='*/js/*,build'",
-    "block:start": "wp-scripts start --webpack-src-dir=src/blocks/block-1 --output-path=assets/blocks/block-1",
-    "block:build": "wp-scripts build --webpack-src-dir=src/blocks/block-1 --output-path=assets/blocks/block-1"
+    "i18n": "wp i18n make-pot . languages/ready-pos.pot --domain=ready-pos --exclude='*/js/*,build'"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^4.1.1",
@@ -96,9 +93,6 @@
     "@radix-ui/react-tabs": "^1.0.4",
     "@radix-ui/react-toast": "^1.1.5",
     "@radix-ui/react-tooltip": "^1.0.7",
-    "@wordpress/block-editor": "^14.7.0",
-    "@wordpress/blocks": "^14.1.0",
-    "@wordpress/i18n": "^5.12.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^0.2.1",

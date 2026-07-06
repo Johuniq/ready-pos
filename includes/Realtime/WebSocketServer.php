@@ -74,7 +74,7 @@ class WebSocketServer {
      * Check permissions
      */
     public static function check_permissions() {
-        return current_user_can('manage_woocommerce');
+        return current_user_can('manage_options');
     }
 
     /**

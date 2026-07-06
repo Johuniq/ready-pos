@@ -80,6 +80,16 @@ class Frontend {
 				$this->get_config()
 			);
 			wp_localize_script( self::HANDLE, self::OBJ_NAME, $this->get_data() );
+
+			// Enqueue a tiny dedicated stylesheet for the frontend template wrapper
+			// and attach its layout rules via wp_add_inline_style so we never emit a
+			// raw <style> tag or inline style="..." attribute (WordPress.org guideline).
+			wp_register_style( 'readypos-frontend-template', false, array(), READYPOS_VERSION );
+			wp_enqueue_style( 'readypos-frontend-template' );
+			wp_add_inline_style(
+				'readypos-frontend-template',
+				'.myplugin-app{position:relative;width:100%;}'
+			);
 		}
 	}
 

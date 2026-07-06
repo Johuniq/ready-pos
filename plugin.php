@@ -13,7 +13,6 @@ use Readypos\Core\Template;
 use Readypos\Assets\Frontend;
 use Readypos\Assets\Admin;
 use Readypos\Core\WooCommerceChecker;
-use Readypos\Core\Roles;
 use Readypos\Traits\Base;
 
 defined( 'ABSPATH' ) || exit;

@@ -46,7 +46,7 @@ class Menu {
 		add_menu_page(
 			__( 'Overview', 'ready-pos-for-woocommerce' ),
 			__( 'Ready POS', 'ready-pos-for-woocommerce' ),
-			'readypos_use_pos',
+			\Readypos\Core\Roles::REQUIRED_CAP,
 			$this->parent_slug,
 			array( $this, 'admin_page' ),
 			'dashicons-store',
@@ -60,12 +60,14 @@ class Menu {
 			$plugin_url = '';
 		}
 
+		$admin_cap = \Readypos\Core\Roles::REQUIRED_CAP;
+
 		$submenu_pages = array(
 			array(
 				'parent_slug' => $this->parent_slug,
 				'page_title'  => __( 'POS Terminal', 'ready-pos-for-woocommerce' ),
 				'menu_title'  => __( 'POS Terminal', 'ready-pos-for-woocommerce' ),
-				'capability'  => 'readypos_use_pos',
+				'capability'  => $admin_cap,
 				'menu_slug'   => $plugin_url . '/#/terminal',
 				'function'    => null,
 			),
@@ -73,7 +75,7 @@ class Menu {
 				'parent_slug' => $this->parent_slug,
 				'page_title'  => __( 'Orders', 'ready-pos-for-woocommerce' ),
 				'menu_title'  => __( 'Orders', 'ready-pos-for-woocommerce' ),
-				'capability'  => 'readypos_use_pos',
+				'capability'  => $admin_cap,
 				'menu_slug'   => $plugin_url . '/#/orders',
 				'function'    => null,
 			),
@@ -81,7 +83,7 @@ class Menu {
 				'parent_slug' => $this->parent_slug,
 				'page_title'  => __( 'Customers', 'ready-pos-for-woocommerce' ),
 				'menu_title'  => __( 'Customers', 'ready-pos-for-woocommerce' ),
-				'capability'  => 'readypos_manage_pos',
+				'capability'  => $admin_cap,
 				'menu_slug'   => $plugin_url . '/#/customers',
 				'function'    => null,
 			),
@@ -89,7 +91,7 @@ class Menu {
 				'parent_slug' => $this->parent_slug,
 				'page_title'  => __( 'Settings', 'ready-pos-for-woocommerce' ),
 				'menu_title'  => __( 'Settings', 'ready-pos-for-woocommerce' ),
-				'capability'  => 'readypos_manage_pos',
+				'capability'  => $admin_cap,
 				'menu_slug'   => $plugin_url . '/#/settings',
 				'function'    => null,
 			),
@@ -113,30 +115,40 @@ class Menu {
 			$this->parent_slug,
 			__( 'Upgrade to Pro', 'ready-pos-for-woocommerce' ),
 			__( 'Upgrade to Pro', 'ready-pos-for-woocommerce' ),
-			'readypos_manage_pos',
+			\Readypos\Core\Roles::REQUIRED_CAP,
 			'https://readypos.johuniq.tech',
 			null
 		);
 
 		// Style the "Upgrade to Pro" menu item to stand out.
-		add_action( 'admin_head', array( $this, 'upgrade_menu_style' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'upgrade_menu_style' ) );
 	}
 
 	/**
-	 * Inject CSS to highlight the "Upgrade to Pro" submenu item.
+	 * Enqueue inline CSS to highlight the "Upgrade to Pro" submenu item.
 	 *
+	 * Uses the standard WordPress enqueue API (wp_register_style + wp_add_inline_style)
+	 * per WordPress.org plugin guidelines, instead of echoing a raw <style> tag.
+	 *
+	 * @param string $hook_suffix Current admin page hook suffix.
 	 * @return void
 	 */
-	public function upgrade_menu_style() {
-		$screen = get_current_screen();
-		if ( ! $screen ) {
-			return;
-		}
-		echo '<style>
+	public function upgrade_menu_style( $hook_suffix = '' ) {
+		// Register a tiny dummy stylesheet handle so wp_add_inline_style has a valid target.
+		// The src/file parameters are intentionally omitted because we only attach inline CSS.
+		wp_register_style( 'readypos-admin-menu', false, array(), READYPOS_VERSION );
+		wp_enqueue_style( 'readypos-admin-menu' );
+
+		$inline_css = '
 			#adminmenu a[href*="readypos.johuniq.tech"]{background:#d63638!important;color:#fff!important;font-weight:600;}
 			#adminmenu a[href*="readypos.johuniq.tech"]:hover{background:#b32d2e!important;color:#fff!important;}
 			#adminmenu a[href*="readypos.johuniq.tech"] .wp-menu-image::before{color:#fff!important;}
-		</style>';
+			.readypos-cache-clear-form{display:inline;}
+			.readypos-cache-clear-form .dashicons{vertical-align:middle;}
+			a.readypos-upgrade-pro{color:#d63638;font-weight:600;}
+		';
+
+		wp_add_inline_style( 'readypos-admin-menu', $inline_css );
 	}
 
 	/**
@@ -145,7 +157,7 @@ class Menu {
 	 * @return void
 	 */
 	public function admin_page() {
-		if ( ! current_user_can( 'readypos_use_pos' ) ) {
+		if ( ! current_user_can( \Readypos\Core\Roles::REQUIRED_CAP ) ) {
 			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'ready-pos-for-woocommerce' ) );
 		}
 		?>

@@ -135,7 +135,7 @@ class Route {
 	 *
 	 * @return array
 	 */
-	private function prepare_route_data( $method, $prefix, $endpoint, $callback, $auth = false ) {
+	private function prepare_route_data( $method, $prefix, $endpoint, $callback, $auth = '__return_false' ) {
 		$data = array(
 			'prefix'   => $prefix,
 			'method'   => $method,
@@ -162,7 +162,7 @@ class Route {
 	 *
 	 * @return void
 	 */
-	private function get_normal( $endpoint, $callback, $auth = false ) {
+	private function get_normal( $endpoint, $callback, $auth = '__return_false' ) {
 		$prefix = $this->current['prefix'];
 		$route  = $this->prepare_route_data( self::METHOD_GET, $prefix, $endpoint, $callback, $auth );
 
@@ -181,7 +181,7 @@ class Route {
 	 *
 	 * @return void
 	 */
-	private function get_with_namespace( $prefix, $endpoint, $callback, $auth = false ) {
+	private function get_with_namespace( $prefix, $endpoint, $callback, $auth = '__return_false' ) {
 		self::$routes[ $prefix ][] = $this->prepare_route_data( self::METHOD_GET, $prefix, $endpoint, $callback, $auth );
 	}
 
@@ -196,7 +196,7 @@ class Route {
 	 *
 	 * @return void
 	 */
-	public function post_normal( $endpoint, $callback, $auth = false ) {
+	public function post_normal( $endpoint, $callback, $auth = '__return_false' ) {
 		$prefix = $this->current['prefix'];
 		$route  = $this->prepare_route_data( self::METHOD_POST, $prefix, $endpoint, $callback, $auth );
 
@@ -215,7 +215,7 @@ class Route {
 	 *
 	 * @return void
 	 */
-	private function post_with_namespace( $prefix, $endpoint, $callback, $auth = false ) {
+	private function post_with_namespace( $prefix, $endpoint, $callback, $auth = '__return_false' ) {
 		self::$routes[ $prefix ][] = $this->prepare_route_data( self::METHOD_POST, $prefix, $endpoint, $callback, $auth );
 	}
 
@@ -384,10 +384,6 @@ class Route {
 					'permission_callback' => $auth,
 					'callback'            => $callback,
 				);
-
-				if ( false === $route->auth ) {
-					$args['permission_callback'] = '__return_true';
-				}
 
 				if ( ! isset( $route->prefix ) ) {
 					continue;

@@ -376,12 +376,13 @@ class Actions {
 			return new \WP_Error( 'not_found', __( 'Customer not found.', 'ready-pos-for-woocommerce' ), array( 'status' => 404 ) );
 		}
 
-		// Refuse to delete a user that holds privileged roles (admins, shop managers).
-		$privileged_roles = array( 'administrator', 'shop_manager' );
-		if ( array_intersect( $privileged_roles, (array) $user->roles ) ) {
+		// Refuse to delete a user that holds the administrator role. The plugin
+		// does not introduce any other protected roles; only default WP admins
+		// are considered privileged here.
+		if ( in_array( 'administrator', (array) $user->roles, true ) ) {
 			return new \WP_Error(
 				'cannot_delete_staff',
-				__( 'Privileged users cannot be deleted from the customer manager.', 'ready-pos-for-woocommerce' ),
+				__( 'Administrators cannot be deleted from the customer manager.', 'ready-pos-for-woocommerce' ),
 				array( 'status' => 403 )
 			);
 		}

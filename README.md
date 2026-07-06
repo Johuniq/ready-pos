@@ -52,7 +52,7 @@ Starts Vite dev servers with hot reload:
 npm run build
 ```
 
-Compiles all assets into `assets/admin/dist/`, `assets/frontend/dist/`, and `assets/blocks/`.
+Compiles all assets into `assets/admin/dist/` and `assets/frontend/dist/`.
 
 ### Release Package
 
@@ -67,16 +67,14 @@ Builds assets, installs production PHP dependencies, and creates a distributable
 ## Project Structure
 
 ```
-src/                    # Source code (compiled to assets/)
+  src/                    # Source code (compiled to assets/)
   admin/                #   Admin dashboard React app
   frontend/             #   Public-facing React app
   components/           #   Shared UI components
   lib/                  #   Shared utilities
-  blocks/               #   Gutenberg block source
 assets/                 # Compiled production assets
   admin/dist/           #   Admin app bundle
   frontend/dist/        #   Frontend app bundle
-  blocks/               #   Gutenberg block bundle
 includes/               # PHP backend (WordPress plugin logic)
 database/               # Database migrations and seeders
 views/                  # PHP templates

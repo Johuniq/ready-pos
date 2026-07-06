@@ -720,7 +720,7 @@ class Actions {
 	 */
 	public function refund( \WP_REST_Request $request ) {
 		// SECURITY FIX: Add permission check for refund operations
-		if ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'readypos_manage_pos' ) ) {
+		if ( ! current_user_can( \Readypos\Core\Roles::REQUIRED_CAP ) ) {
 			return new \WP_Error(
 				'insufficient_permissions',
 				__( 'You do not have permission to process refunds.', 'ready-pos-for-woocommerce' ),
